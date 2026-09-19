@@ -6,7 +6,6 @@ import co.edu.uniquindio.legajo.port.PdfExtractionException;
 import co.edu.uniquindio.legajo.port.PdfMetadataExtractor;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -18,11 +17,12 @@ import java.util.regex.Pattern;
 
 /**
  * Reserve PDF metadata extractor (TRD §6.1, item 2; TRD §8): {@code Loader.loadPDF} +
- * {@code PDFTextStripper} with {@code setSortByPosition(true)} for left-to-right,
- * top-to-bottom line order, plus line-based heuristics for the abstract, title and
- * authors. Title and authors are "best effort" by design (TRD §6.1, item 4 only
- * requires the fields to be persisted, not to be exact); the abstract heuristic is the
- * one that matters, because {@link FallbackPdfMetadataExtractor} and {@code
+ * {@link ColumnAwareTextExtractor} for left-to-right, top-to-bottom line order (T4c:
+ * column-aware for a page whose body is laid out in side-by-side blocks, identical to
+ * plain {@code PDFTextStripper} otherwise), plus line-based heuristics for the abstract,
+ * title and authors. Title and authors are "best effort" by design (TRD §6.1, item 4
+ * only requires the fields to be persisted, not to be exact); the abstract heuristic is
+ * the one that matters, because {@link FallbackPdfMetadataExtractor} and {@code
  * verify-corpus}'s non-blank-abstract rule both depend on it finding real text.
  */
 public final class PdfBoxMetadataExtractor implements PdfMetadataExtractor {
@@ -38,9 +38,7 @@ public final class PdfBoxMetadataExtractor implements PdfMetadataExtractor {
     public ExtractedPdfMetadata extract(Path pdfPath) {
         Objects.requireNonNull(pdfPath, "pdfPath");
         try (PDDocument document = Loader.loadPDF(pdfPath.toFile())) {
-            PDFTextStripper stripper = new PDFTextStripper();
-            stripper.setSortByPosition(true);
-            String rawText = stripper.getText(document);
+            String rawText = ColumnAwareTextExtractor.extractText(document);
 
             List<String> nonBlankLines = rawText.lines().map(String::trim).filter(line -> !line.isBlank()).toList();
             String title = nonBlankLines.isEmpty() ? "" : nonBlankLines.get(0);
