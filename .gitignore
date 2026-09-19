@@ -39,3 +39,6 @@ data/pdfs/
 
 # CodeGraph index (per-worktree, never versioned)
 .codegraph/
+
+# jqwik property-test seed database (local run cache, never versioned)
+.jqwik-database
