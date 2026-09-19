@@ -1,0 +1,10 @@
+# TRD §14.1/§14.2: profiles select which services run. `ingest` is a one-shot, local-only
+# extraction step (GROBID) — never part of the `default` demo profile. The backend and
+# frontend services for the `default` profile land with their own Dockerfiles (later task);
+# this file starts with only what T4 needs so it does not invent undocumented services.
+services:
+  grobid:
+    image: lfoppiano/grobid:0.8.2
+    profiles: ["ingest"]
+    ports:
+      - "8070:8070"

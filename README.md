@@ -64,3 +64,63 @@ Health check: `GET /actuator/health`.
 See `.env.example`: `LEGAJO_EMBEDDING_PROVIDER`, `LEGAJO_CORS_ORIGINS`,
 `SPRING_AI_OPENAI_BASE_URL`, `SPRING_AI_OPENAI_API_KEY`. Values never go in git; use a
 local `.env` or the hosting provider's secret panel.
+
+## Ingestion, validation and verification (TRD §6.1)
+
+The pipeline takes any folder of PDFs and writes `data/corpus.json`, replacing whatever
+was there before. `data/pdfs/` is the reference corpus (20 teacher PDFs, never
+committed); `data/corpus.json` and `data/embeddings-*.json` are the only generated files
+that *are* committed, and only once every document has been reviewed and validated.
+
+Three plain `main` entry points under `:bootstrap` (not Spring profiles/
+`CommandLineRunner`s — see `IngestCli`'s Javadoc for why: each is a one-shot offline
+batch job with no web or DI need). All commands run from `backend/`.
+
+1. **Start GROBID** (primary extractor; only needed for ingestion, never for the demo):
+
+   ```bash
+   docker compose --profile ingest up -d grobid
+   # wait until this returns "true":
+   curl -s http://localhost:8070/api/isalive
+   ```
+
+2. **Ingest.** Scans `--input` for `*.pdf` sorted by name, extracts each through GROBID
+   with a PDFBox fallback (used automatically on a GROBID failure *or* an empty
+   abstract), applies the ingestion cleaning step, and writes `--output` with every
+   document `manuallyValidated=false`:
+
+   ```bash
+   ./gradlew :bootstrap:ingest --args="--input=data/pdfs --output=data/corpus.json --grobid-url=http://localhost:8070"
+   ```
+
+3. **Review each abstract by hand.** This is the only mandatory control (TRD §6.1, item
+   5) and is never automatic — inspect `title`/`authors`/`abstract` per document (e.g.
+   by reading the freshly written `data/corpus.json`) before validating anything.
+
+4. **Validate** the documents you reviewed, which freezes their `abstractSha256` and
+   recomputes `corpusSha256`:
+
+   ```bash
+   ./gradlew :bootstrap:validateCorpus --args="--ids=d01,d02"
+   # or, once every document has been reviewed:
+   ./gradlew :bootstrap:validateCorpus --args="--all"
+   ```
+
+5. **Verify.** Exits non-zero and prints every violation (never just the first) if the
+   corpus is invalid; for the reference corpus this must pass with `sourceCount=20`, 20
+   documents, and every document `manuallyValidated=true`:
+
+   ```bash
+   ./gradlew :bootstrap:verifyCorpus
+   ```
+
+6. **Stop GROBID** once ingestion is done — it is not part of the `default` demo profile:
+
+   ```bash
+   docker compose --profile ingest down
+   ```
+
+Re-running step 2 replaces `data/corpus.json` outright (TRD §3.1): every document goes
+back to `manuallyValidated=false`, and any previously computed `data/embeddings-*.json`
+caches become stale (their `corpusSha256` no longer matches) until embeddings are
+recomputed for the new corpus.
