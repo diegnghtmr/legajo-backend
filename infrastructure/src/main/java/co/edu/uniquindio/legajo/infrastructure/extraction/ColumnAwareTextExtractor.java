@@ -30,29 +30,39 @@ import java.util.List;
  * PDFBox-specific reason (this class's Javadoc above).
  *
  * <p>Detection is a per-page, generic geometric heuristic — nothing here is specific to
- * any one document (TC-01, reusability over any PDF folder):
+ * any one document (TC-01, reusability over any PDF folder). An earlier version of this
+ * class tried to classify each line as "narrow" or "full width" by comparing its own
+ * width against a fraction of the page's overall text width, but that measure is fooled
+ * by an ordinary wrapped title: a short wrapped header line ("...critical review") is
+ * individually just as narrow as a real column line, yet it still spans the same x-range
+ * a header occupies, so it silently bridged the very gap the detector was looking for.
+ * The signal this class actually uses is more direct and does not have that failure
+ * mode:
  *
  * <ol>
  *   <li>Collect every glyph's horizontal extent and top-adjusted y position on the page
  *       (via {@link TextPosition}, ignoring page rotation quirks by using the
  *       "direction-adjusted" accessors PDFBox already provides for this purpose).</li>
- *   <li>Group glyphs into rows by y-proximity, split each row into segments wherever an
- *       internal x-gap is at least as wide as a column gutter (so a sidebar and a wide
- *       block sharing one row are not merged back together), and classify a segment as
- *       "full width" when its own horizontal span is at least
- *       {@value #FULL_WIDTH_LINE_RATIO} of the page's overall text span — such segments
- *       (titles, running headers/footers) are excluded from column detection and
- *       re-emitted once, spanning the full width, ahead of the columns.</li>
- *   <li>Among the remaining ("narrow") lines, sort by their left edge and sweep for a
- *       single interior gap of at least {@value #MIN_COLUMN_GAP} points with at least
- *       {@value #MIN_LINES_PER_COLUMN} lines on each side. A page with no such gap keeps
- *       today's exact single-pass extraction; a page with more than one such gap (three
- *       or more columns) also falls back rather than guess, per the task's hard-stop
- *       instruction to fail honestly instead of over-generalizing.</li>
- *   <li>When exactly one gap is found, the page is re-emitted as: the full-width header
- *       block (if any), then the left column top-to-bottom, then the right column
- *       top-to-bottom, using {@link PDFTextStripperByArea} so each block keeps its own
- *       natural reading order.</li>
+ *   <li>Group glyphs into rows by y-proximity, then split each row into segments
+ *       wherever an internal x-gap is at least {@value #MIN_COLUMN_GAP} points wide —
+ *       comfortably above ordinary word/sentence spacing and below a real column
+ *       gutter. A row that splits into exactly two segments is direct, row-level
+ *       evidence of two side-by-side blocks at that height: no width ratio needed,
+ *       because nothing else about that row matters once two genuinely separate blocks
+ *       have been found sharing it. A row with one segment (an ordinary line, whether
+ *       wide or narrow) or three-or-more segments (unsupported multi-column punctuation
+ *       like a piped author line, or 3+ real columns) contributes no evidence either
+ *       way and is simply not counted.</li>
+ *   <li>If at least {@value #MIN_LINES_PER_COLUMN} such two-segment rows are found, the
+ *       column boundary is the midpoint between the widest reach of every row's left
+ *       segment and the narrowest reach of every row's right segment, and the page's
+ *       column body starts at the topmost such row. Fewer than that many rows keeps
+ *       today's exact single-pass extraction, per the task's hard-stop instruction to
+ *       fail honestly rather than trust a single fluke row (a stray page number next to
+ *       a footnote, for instance).</li>
+ *   <li>Everything above that topmost row is re-emitted once, spanning the full page
+ *       width, ahead of the two columns, using {@link PDFTextStripperByArea} so each
+ *       block keeps its own natural reading order.</li>
  * </ol>
  *
  * <p>Pages are processed and concatenated in page order, and each page's own columns are
@@ -67,19 +77,6 @@ import java.util.List;
  * unaffected byte for byte.
  */
 final class ColumnAwareTextExtractor {
-
-    /**
-     * A line narrower than this fraction of the page's overall text width is a column
-     * candidate; a line at or above it is treated as a full-width header/footer line and
-     * excluded from column detection. Measured against the reference corpus's own
-     * two-column page: the wide (abstract) column's own lines run about 0.55-0.60 of
-     * the page's overall text width (the column itself is most of the page), while the
-     * genuine full-width title/author lines above it run about 0.80-1.0. 0.7 sits
-     * squarely in that gap, so a wide-but-still-a-column line is not mistaken for a
-     * spanning header line (which would otherwise remove it from column detection
-     * entirely and defeat the whole point of this class).
-     */
-    private static final double FULL_WIDTH_LINE_RATIO = 0.7;
 
     /**
      * Minimum blank horizontal gap, in PDF points, between two clusters of narrow lines
@@ -99,9 +96,9 @@ final class ColumnAwareTextExtractor {
     private static final float LINE_Y_TOLERANCE = 3f;
 
     /**
-     * A candidate column split is only trusted when each side has at least this many
-     * narrow lines, so a single stray short line (a page number, a lone superscript)
-     * cannot masquerade as a whole column.
+     * A candidate column split is only trusted once at least this many rows split into
+     * exactly two segments, so a single stray two-segment row (a page number next to a
+     * footnote, for instance) cannot masquerade as a whole two-column layout.
      */
     private static final int MIN_LINES_PER_COLUMN = 2;
 
@@ -178,63 +175,30 @@ final class ColumnAwareTextExtractor {
             return null;
         }
 
-        float globalMinX = Float.MAX_VALUE;
-        float globalMaxX = -Float.MAX_VALUE;
-        for (Glyph glyph : glyphs) {
-            globalMinX = Math.min(globalMinX, glyph.xStart());
-            globalMaxX = Math.max(globalMaxX, glyph.xEnd());
-        }
-        float textWidth = globalMaxX - globalMinX;
-        if (textWidth <= 0) {
-            return null;
-        }
-
-        List<LineExtent> narrowLines = groupLines(glyphs).stream()
-                .filter(line -> (line.xEnd() - line.xStart()) < FULL_WIDTH_LINE_RATIO * textWidth)
-                .sorted(Comparator.comparing(LineExtent::xStart))
+        List<TwoSegmentRow> pairs = groupIntoRows(glyphs).stream()
+                .map(ColumnAwareTextExtractor::splitRowIntoSegments)
+                .filter(segments -> segments.size() == 2)
+                .map(segments -> new TwoSegmentRow(segments.get(0), segments.get(1)))
                 .toList();
-        if (narrowLines.size() < 2 * MIN_LINES_PER_COLUMN) {
-            return null;
-        }
-
-        int splitIndex = -1;
-        float clusterMaxXEnd = narrowLines.get(0).xEnd();
-        for (int i = 1; i < narrowLines.size(); i++) {
-            LineExtent line = narrowLines.get(i);
-            if (line.xStart() - clusterMaxXEnd >= MIN_COLUMN_GAP) {
-                if (splitIndex != -1) {
-                    // A second gap means three-or-more columns: unsupported, fall back
-                    // rather than guess (hard-stop instruction: fail honestly).
-                    return null;
-                }
-                splitIndex = i;
-            }
-            clusterMaxXEnd = Math.max(clusterMaxXEnd, line.xEnd());
-        }
-        if (splitIndex == -1) {
-            return null;
-        }
-
-        List<LineExtent> leftCluster = narrowLines.subList(0, splitIndex);
-        List<LineExtent> rightCluster = narrowLines.subList(splitIndex, narrowLines.size());
-        if (leftCluster.size() < MIN_LINES_PER_COLUMN || rightCluster.size() < MIN_LINES_PER_COLUMN) {
+        if (pairs.size() < MIN_LINES_PER_COLUMN) {
             return null;
         }
 
         float leftMaxXEnd = -Float.MAX_VALUE;
-        for (LineExtent line : leftCluster) {
-            leftMaxXEnd = Math.max(leftMaxXEnd, line.xEnd());
-        }
         float rightMinXStart = Float.MAX_VALUE;
-        for (LineExtent line : rightCluster) {
-            rightMinXStart = Math.min(rightMinXStart, line.xStart());
+        float bodyStartY = Float.MAX_VALUE;
+        for (TwoSegmentRow pair : pairs) {
+            leftMaxXEnd = Math.max(leftMaxXEnd, pair.left().xEnd());
+            rightMinXStart = Math.min(rightMinXStart, pair.right().xStart());
+            bodyStartY = Math.min(bodyStartY, pair.left().y());
+        }
+        if (rightMinXStart - leftMaxXEnd < MIN_COLUMN_GAP) {
+            // Defensive: should not happen given each pair's own segments were split at
+            // this same threshold, but a stray row spanning an unusual x-range must not
+            // silently collapse the two columns into an overlapping boundary.
+            return null;
         }
         float columnBoundaryX = (leftMaxXEnd + rightMinXStart) / 2f;
-
-        float bodyStartY = Float.MAX_VALUE;
-        for (LineExtent line : narrowLines) {
-            bodyStartY = Math.min(bodyStartY, line.y());
-        }
 
         PDPage page = document.getPage(pageIndex);
         PDRectangle box = page.getMediaBox();
@@ -264,16 +228,8 @@ final class ColumnAwareTextExtractor {
         return glyphs;
     }
 
-    /**
-     * Groups glyphs into rows by y-proximity only, then splits each row into one or
-     * more horizontal segments wherever two consecutive glyphs (by x) are at least
-     * {@value #MIN_COLUMN_GAP} points apart. The second step is what makes this
-     * column-aware in the first place: a sidebar and a wide text block that happen to
-     * share the same row (the exact case this class exists for) would otherwise be
-     * merged into a single, spuriously "full width" line by y-proximity grouping alone,
-     * hiding the column gap that a purely per-row extent would have exposed.
-     */
-    private static List<LineExtent> groupLines(List<Glyph> glyphs) {
+    /** Groups glyphs into rows by y-proximity only (no x involved yet). */
+    private static List<List<Glyph>> groupIntoRows(List<Glyph> glyphs) {
         List<Glyph> sortedByY = glyphs.stream().sorted(Comparator.comparing(Glyph::y)).toList();
 
         List<List<Glyph>> rows = new ArrayList<>();
@@ -288,12 +244,7 @@ final class ColumnAwareTextExtractor {
             currentRow.add(glyph);
         }
         rows.add(currentRow);
-
-        List<LineExtent> lines = new ArrayList<>();
-        for (List<Glyph> row : rows) {
-            lines.addAll(splitRowIntoSegments(row));
-        }
-        return lines;
+        return rows;
     }
 
     private static List<LineExtent> splitRowIntoSegments(List<Glyph> row) {
@@ -324,6 +275,10 @@ final class ColumnAwareTextExtractor {
     }
 
     private record LineExtent(float xStart, float xEnd, float y) {
+    }
+
+    /** A row that split into exactly two segments: direct evidence of two side-by-side blocks at that height. */
+    private record TwoSegmentRow(LineExtent left, LineExtent right) {
     }
 
     private record ColumnLayout(float bodyStartY, float columnBoundaryX, float pageWidth, float pageHeight) {
