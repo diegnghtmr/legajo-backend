@@ -103,6 +103,37 @@ class PdfBoxMetadataExtractorTest {
         assertThat(metadata.abstractText()).doesNotContain("must never appear");
     }
 
+    /**
+     * T4c: some journals (the reference corpus's own two-column PDF among them) render
+     * a section heading in a letter-spaced display style ("K E Y W O R D S" instead of
+     * "Keywords") purely as typography — a single space between every letter, not a
+     * real word break. Before this fix, {@code NEXT_SECTION_HEADING} never matched that
+     * literal text, so the abstract capture ran straight through it and swallowed the
+     * rest of the document.
+     */
+    @Test
+    void stopsAbstractCaptureAtALetterSpacedKeywordsHeading(@TempDir Path tempDir) throws IOException {
+        Path pdf = tempDir.resolve("letter-spaced-heading.pdf");
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+
+            writeAt(document, page, "A Tiny Paper About Testing", 50, 780);
+            writeAt(document, page, "Ada Lovelace, Grace Hopper", 50, 760);
+            writeAt(document, page, "Abstract", 50, 740);
+            writeAt(document, page, "This is the only abstract line worth keeping.", 50, 720);
+            writeAt(document, page, "K E Y W O R D S", 50, 700);
+            writeAt(document, page, "This text must never appear in the extracted abstract.", 50, 680);
+
+            document.save(pdf.toFile());
+        }
+
+        ExtractedPdfMetadata metadata = new PdfBoxMetadataExtractor().extract(pdf);
+
+        assertThat(metadata.abstractText()).isEqualTo("This is the only abstract line worth keeping.");
+        assertThat(metadata.abstractText()).doesNotContain("must never appear");
+    }
+
     private static void writeAt(PDDocument document, PDPage page, String text, float x, float y) throws IOException {
         try (PDPageContentStream stream = new PDPageContentStream(
                 document, page, PDPageContentStream.AppendMode.APPEND, true)) {

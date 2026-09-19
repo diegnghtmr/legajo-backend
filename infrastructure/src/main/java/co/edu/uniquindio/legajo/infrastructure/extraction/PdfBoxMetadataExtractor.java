@@ -34,6 +34,17 @@ public final class PdfBoxMetadataExtractor implements PdfMetadataExtractor {
             "(?i)^(keywords|index terms|introduction|1\\.?\\s*introduction|i\\.?\\s*introduction|1\\.)\\b.*$");
     private static final Pattern AUTHOR_SEPARATOR = Pattern.compile(",|\\band\\b|&");
 
+    /**
+     * Some journals render a section heading in a letter-spaced display style (a single
+     * space between every letter, purely typographic — "K E Y W O R D S" instead of
+     * "Keywords") that PDFBox reproduces literally. Matches a whole line made of four
+     * or more single letters each separated by exactly one space, generic enough for
+     * any such heading, not just "Keywords": four letters is comfortably above a real
+     * two-letter/three-letter initialism ("Dr. A B", an author's middle initials) that
+     * should not be collapsed.
+     */
+    private static final Pattern LETTER_SPACED_WORD = Pattern.compile("^(?:\\p{L}\\s){3,}\\p{L}$");
+
     @Override
     public ExtractedPdfMetadata extract(Path pdfPath) {
         Objects.requireNonNull(pdfPath, "pdfPath");
@@ -86,11 +97,15 @@ public final class PdfBoxMetadataExtractor implements PdfMetadataExtractor {
             if (trimmed.isBlank()) {
                 continue;
             }
-            if (NEXT_SECTION_HEADING.matcher(trimmed).matches()) {
+            if (NEXT_SECTION_HEADING.matcher(collapseLetterSpacing(trimmed)).matches()) {
                 break;
             }
             abstractBuilder.append(trimmed).append('\n');
         }
         return abstractBuilder.toString();
+    }
+
+    private static String collapseLetterSpacing(String line) {
+        return LETTER_SPACED_WORD.matcher(line).matches() ? line.replace(" ", "") : line;
     }
 }
