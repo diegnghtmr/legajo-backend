@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title level="a" type="main">A Study of Information Retrieval Methods</title>
+      </titleStmt>
+      <sourceDesc>
+        <biblStruct>
+          <analytic>
+            <author>
+              <persName>
+                <forename type="first">Ada</forename>
+                <surname>Lovelace</surname>
+              </persName>
+            </author>
+            <author>
+              <persName>
+                <forename type="first">Grace</forename>
+                <surname>Hopper</surname>
+              </persName>
+            </author>
+          </analytic>
+        </biblStruct>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc>
+      <abstract>
+        <div xmlns="http://www.tei-c.org/ns/1.0">
+          <p>This paper studies several information retrieval methods over a small
+          corpus.</p>
+          <p>Results show consistent improvements across all methods.</p>
+        </div>
+      </abstract>
+    </profileDesc>
+  </teiHeader>
+</TEI>

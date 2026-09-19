@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title level="a" type="main">A Paper Without An Extracted Abstract</title>
+      </titleStmt>
+      <sourceDesc>
+        <biblStruct>
+          <analytic>
+            <author>
+              <persName>
+                <forename type="first">John</forename>
+                <surname>Doe</surname>
+              </persName>
+            </author>
+          </analytic>
+        </biblStruct>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc>
+      <abstract/>
+    </profileDesc>
+  </teiHeader>
+</TEI>
