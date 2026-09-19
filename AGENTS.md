@@ -57,6 +57,7 @@ Dónde vive cada algoritmo, bajo el paquete raíz `co.edu.uniquindio.legajo`:
 | Motor Lance–Williams y los cuatro enlaces | `clustering`: `SingleLinkage`, `CompleteLinkage`, `AverageLinkage`, `WardLinkage` |
 | Correlación cofenética, silueta media, Davies–Bouldin | `evaluation` |
 | NFC, minúsculas, tokens, stopwords, Porter opcional | `preprocess` |
+| Modelo del corpus (`Corpus`, `CorpusDocument`), hashing sha256, `CorpusVerifier` | `corpus` |
 | Puerto de embeddings, puerto de corpus | `port` |
 
 Si el código ya existe y difiere de este mapa, el código manda en ubicación y el

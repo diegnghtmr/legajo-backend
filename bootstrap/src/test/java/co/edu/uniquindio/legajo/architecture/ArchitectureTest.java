@@ -25,6 +25,7 @@ class ArchitectureTest {
             BASE + ".clustering..",
             BASE + ".evaluation..",
             BASE + ".preprocess..",
+            BASE + ".corpus..",
             BASE + ".port.."
     };
 
