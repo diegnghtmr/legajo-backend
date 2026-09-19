@@ -8,3 +8,10 @@ services:
     profiles: ["ingest"]
     ports:
       - "8070:8070"
+    environment:
+      # Works around a JDK cgroup v2 detection bug (NullPointerException in
+      # jdk.internal.platform.cgroupv2.CgroupV2Subsystem) seen on hosts where the
+      # container runtime does not expose a full cgroup v2 controller set (e.g. a
+      # sandboxed/nested Docker daemon); harmless here since this is a single-purpose,
+      # one-shot ingestion container with no other workload sharing its cgroup.
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport"
