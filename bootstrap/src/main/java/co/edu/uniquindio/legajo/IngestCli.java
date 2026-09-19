@@ -47,6 +47,11 @@ public final class IngestCli {
             }
             System.out.println("Every document has manuallyValidated=false; review each abstract, then run "
                     + "validateCorpus (TRD §6.1, item 5).");
+
+            System.out.println("Abstract quality summary:");
+            for (CorpusDocument document : corpus.documents()) {
+                System.out.println(IngestQualitySummary.line(document));
+            }
         } catch (PdfExtractionException e) {
             System.err.println("Ingestion failed: " + e.getMessage());
             System.exit(1);

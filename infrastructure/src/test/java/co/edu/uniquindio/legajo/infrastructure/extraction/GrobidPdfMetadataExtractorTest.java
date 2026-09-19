@@ -97,6 +97,62 @@ class GrobidPdfMetadataExtractorTest {
         assertThatThrownBy(() -> extractor.extract(pdf)).isInstanceOf(PdfExtractionException.class);
     }
 
+    @Test
+    void retriesWithProcessFulltextDocumentWhenTheHeaderAbstractIsSuspicious(@TempDir Path tempDir) throws IOException {
+        String suspiciousHeader = readFixture("extraction/sample-header-suspicious.tei.xml");
+        String cleanFulltext = readFixture("extraction/sample-fulltext-clean.tei.xml");
+
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/api/processHeaderDocument", exchange -> respond(exchange, 200, suspiciousHeader));
+        server.createContext("/api/processFulltextDocument", exchange -> respond(exchange, 200, cleanFulltext));
+        server.start();
+
+        Path pdf = tempDir.resolve("04.pdf");
+        Files.write(pdf, "%PDF-1.4 fake pdf bytes".getBytes(StandardCharsets.UTF_8));
+
+        GrobidPdfMetadataExtractor extractor = new GrobidPdfMetadataExtractor(
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofSeconds(5));
+
+        ExtractedPdfMetadata metadata = extractor.extract(pdf);
+
+        assertThat(metadata.extractedBy()).isEqualTo("GROBID");
+        assertThat(metadata.abstractText())
+                .endsWith("Implications for future research and practice are being discussed.")
+                .doesNotContain("Recent developments in AI have the potential to support the");
+    }
+
+    @Test
+    void keepsTheHeaderResultWhenProcessFulltextDocumentAlsoFails(@TempDir Path tempDir) throws IOException {
+        String suspiciousHeader = readFixture("extraction/sample-header-suspicious.tei.xml");
+
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/api/processHeaderDocument", exchange -> respond(exchange, 200, suspiciousHeader));
+        server.createContext("/api/processFulltextDocument", exchange -> respond(exchange, 500, ""));
+        server.start();
+
+        Path pdf = tempDir.resolve("04.pdf");
+        Files.write(pdf, "%PDF-1.4 fake pdf bytes".getBytes(StandardCharsets.UTF_8));
+
+        GrobidPdfMetadataExtractor extractor = new GrobidPdfMetadataExtractor(
+                "http://127.0.0.1:" + server.getAddress().getPort(), Duration.ofSeconds(5));
+
+        ExtractedPdfMetadata metadata = extractor.extract(pdf);
+
+        assertThat(metadata.extractedBy()).isEqualTo("GROBID");
+        assertThat(metadata.abstractText()).contains("Recent developments in AI have the potential to support the");
+    }
+
+    private static void respond(com.sun.net.httpserver.HttpExchange exchange, int status, String body) throws IOException {
+        byte[] response = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().add("Content-Type", "application/xml");
+        exchange.sendResponseHeaders(status, response.length == 0 ? -1 : response.length);
+        if (response.length > 0) {
+            try (var out = exchange.getResponseBody()) {
+                out.write(response);
+            }
+        }
+    }
+
     private static String readFixture(String resourcePath) throws IOException {
         try (InputStream in = GrobidPdfMetadataExtractorTest.class.getClassLoader().getResourceAsStream(resourcePath)) {
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc>
+      <titleStmt>
+        <title level="a" type="main">Opportunities of Artificial Intelligence for Supporting Complex Problem-Solving</title>
+      </titleStmt>
+      <sourceDesc>
+        <biblStruct>
+          <analytic>
+            <author>
+              <persName>
+                <forename type="first">Srecko</forename>
+                <surname>Joksimovic</surname>
+              </persName>
+            </author>
+          </analytic>
+        </biblStruct>
+      </sourceDesc>
+    </fileDesc>
+    <profileDesc>
+      <abstract>
+        <div xmlns="http://www.tei-c.org/ns/1.0">
+          <p>This paper studies several information retrieval methods over a small corpus, comparing
+          precision and recall across five classical algorithms and two neural rerankers under a
+          shared evaluation protocol. We report consistent improvements across all methods when a
+          lightweight preprocessing step is applied beforehand, and we discuss the practical
+          trade-offs of each approach for production systems that must serve results within a tight
+          latency budget while still preserving acceptable ranking quality. Implications for future
+          research and practice are being discussed. Recent developments in AI have the potential to
+          support the</p>
+        </div>
+      </abstract>
+    </profileDesc>
+  </teiHeader>
+</TEI>
