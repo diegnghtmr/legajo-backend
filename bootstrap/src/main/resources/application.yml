@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: legajo
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when-authorized
+
+legajo:
+  embedding-provider: ${LEGAJO_EMBEDDING_PROVIDER:cached}
+  cors-origins: ${LEGAJO_CORS_ORIGINS:}
