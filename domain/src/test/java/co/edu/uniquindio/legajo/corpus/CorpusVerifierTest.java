@@ -99,6 +99,24 @@ class CorpusVerifierTest {
     }
 
     @Test
+    void reportsDuplicateDocumentIdsBecauseTheyMakeCorpusSha256OrderAmbiguous() {
+        CorpusDocument first = validDocument("d01", "the first abstract with this shared id");
+        CorpusDocument duplicateId = new CorpusDocument("d01", "Title d01 duplicate", List.of("Author"),
+                "a completely different abstract text", "data/pdfs/d01.pdf", "GROBID", true,
+                CorpusHasher.abstractSha256("a completely different abstract text"));
+        CorpusDocument other = validDocument("d03", "a distinct third abstract with different words");
+        Corpus corpus = corpusOf(first, duplicateId, other);
+
+        CorpusVerificationResult result = verifier.verify(corpus);
+
+        List<CorpusViolation> duplicateIdViolations = result.violations().stream()
+                .filter(v -> v.rule() == CorpusRule.UNIQUE_DOCUMENT_ID)
+                .toList();
+        assertThat(duplicateIdViolations).extracting(CorpusViolation::documentId)
+                .containsExactlyInAnyOrder("d01", "d01");
+    }
+
+    @Test
     void reportsBlankTitleAuthorsAndAbstractIndependently() {
         CorpusDocument blankTitle = new CorpusDocument("d01", "", List.of("Author"), "a valid abstract text here",
                 "data/pdfs/d01.pdf", "GROBID", true, CorpusHasher.abstractSha256("a valid abstract text here"));

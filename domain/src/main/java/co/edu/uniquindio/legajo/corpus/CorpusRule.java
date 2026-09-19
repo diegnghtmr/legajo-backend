@@ -13,6 +13,13 @@ public enum CorpusRule {
     MINIMUM_DOCUMENT_COUNT,
     /** No two documents share the same {@code abstractSha256}. */
     NO_DUPLICATE_ABSTRACT_SHA256,
+    /**
+     * No two documents share the same {@code id}. A duplicate id makes {@code
+     * corpusSha256} order-ambiguous, because {@link CorpusHasher#corpusSha256} sorts
+     * documents by id before concatenating them (advisory raised in T3's review,
+     * checked here rather than left as a silent hash collision risk).
+     */
+    UNIQUE_DOCUMENT_ID,
     /** {@code title} is not empty. */
     NON_BLANK_TITLE,
     /** {@code authors} is not empty. */

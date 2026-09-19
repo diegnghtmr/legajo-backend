@@ -48,6 +48,7 @@ public final class CorpusVerifier {
 
         checkDocumentCount(corpus, documents, expectedDocumentCount, violations);
         checkMinimumSize(documents, violations);
+        checkUniqueDocumentIds(documents, violations);
         checkNoDuplicateAbstractHashes(documents, violations);
         documents.forEach(document -> checkDocument(document, violations));
         checkCorpusHash(corpus, documents, violations);
@@ -72,6 +73,18 @@ public final class CorpusVerifier {
             violations.add(CorpusViolation.forCorpus(CorpusRule.MINIMUM_DOCUMENT_COUNT,
                     "corpus must have at least 3 documents (n >= 3) but has %d".formatted(documents.size())));
         }
+    }
+
+    private void checkUniqueDocumentIds(List<CorpusDocument> documents, List<CorpusViolation> violations) {
+        Map<String, List<CorpusDocument>> documentsById = documents.stream()
+                .collect(Collectors.groupingBy(CorpusDocument::id, LinkedHashMap::new, Collectors.toList()));
+
+        documentsById.forEach((id, docs) -> {
+            if (docs.size() > 1) {
+                docs.forEach(doc -> violations.add(CorpusViolation.forDocument(CorpusRule.UNIQUE_DOCUMENT_ID, id,
+                        "id %s is shared with %d other document(s)".formatted(id, docs.size() - 1))));
+            }
+        });
     }
 
     private void checkNoDuplicateAbstractHashes(List<CorpusDocument> documents, List<CorpusViolation> violations) {
