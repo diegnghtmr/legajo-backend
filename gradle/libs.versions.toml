@@ -11,6 +11,7 @@ jacoco = "0.8.13"
 jmh = "1.37"
 jmhGradlePlugin = "0.7.2"
 foojayResolver = "1.0.0"
+pdfbox = "3.0.8"
 
 [libraries]
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "springBoot" }
@@ -23,6 +24,8 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj" }
 jqwik = { module = "net.jqwik:jqwik", version.ref = "jqwik" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
