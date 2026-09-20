@@ -14,7 +14,11 @@
  * every Spring-wired implementation into a {@link SimilarityAlgorithmRegistry} to look one up
  * by id or kind. {@link NumericGuards} centralizes the finiteness guards every trace's compact
  * constructor needs for its tolerance and range comparisons. {@link Representation} names the
- * three vector-space representations RF2's clustering distance base can select (TRD §6.4).
+ * three vector-space representations RF2's clustering distance base can select (TRD §6.4);
+ * {@link TfIdfCorpusVectors} materializes the full-vocabulary, L2-normalized TF-IDF vectors
+ * that representation needs when it is {@code tfidf-cosine} (RF2's Davies–Bouldin metric,
+ * TRD §6.5, needs every document's vector in one shared space — {@link TfIdfCosine}'s own
+ * pairwise vectors are scoped to just the compared pair's terms).
  */
 @NullMarked
 package co.edu.uniquindio.legajo.similarity;
