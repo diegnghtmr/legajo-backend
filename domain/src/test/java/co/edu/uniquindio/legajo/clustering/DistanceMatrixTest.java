@@ -122,6 +122,30 @@ class DistanceMatrixTest {
         assertThat(a.hashCode()).isEqualTo(b.hashCode());
     }
 
+    @Test
+    void equalsIsReflexive() {
+        DistanceMatrix a = DistanceMatrix.cosineDistance(List.of(List.of(1.0, 0.0), List.of(0.0, 1.0)));
+
+        assertThat(a).isEqualTo(a);
+    }
+
+    @Test
+    void equalsIsFalseAgainstNullAndAnUnrelatedType() {
+        DistanceMatrix a = DistanceMatrix.cosineDistance(List.of(List.of(1.0, 0.0), List.of(0.0, 1.0)));
+
+        assertThat(a).isNotEqualTo(null);
+        assertThat(a).isNotEqualTo("not a DistanceMatrix");
+    }
+
+    @Test
+    void cosineDistanceRejectsAnEmptyInnerVector() {
+        List<List<Double>> vectors = List.of(List.of(1.0, 0.0), List.of());
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> DistanceMatrix.cosineDistance(vectors))
+                .withMessageContaining("must not be empty");
+    }
+
     // The remaining tests exercise the package-private raw constructor directly: a genuine
     // cosine derivation can never itself produce an asymmetric, non-zero-diagonal, negative,
     // or non-square matrix, so these invariant violations can only be constructed by hand.
