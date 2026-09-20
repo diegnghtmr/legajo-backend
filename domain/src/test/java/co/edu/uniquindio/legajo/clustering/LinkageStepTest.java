@@ -42,6 +42,13 @@ class LinkageStepTest {
     }
 
     @Test
+    void rejectsANegativeIdx2() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new LinkageStep(0, -1, 1.0, 2))
+                .withMessageContaining("idx2");
+    }
+
+    @Test
     void rejectsANonFiniteMergeDistance() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new LinkageStep(0, 1, Double.NaN, 2));
