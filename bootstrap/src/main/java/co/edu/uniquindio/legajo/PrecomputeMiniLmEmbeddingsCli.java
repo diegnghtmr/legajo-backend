@@ -41,6 +41,15 @@ import java.util.Map;
  * present" — plausibly a native symbol or memory-layout interaction, since no individual
  * micrometer artifact reproduces it alone, only the full set together). The
  * {@code precomputeEmbeddings} task's classpath is scoped to avoid this.
+ *
+ * <p><b>Testable entry point (CLI-contracts advisory).</b> Running the embedder needs
+ * the real ONNX/tokenizer native libraries and either a network download or a
+ * pre-populated {@code build/models/minilm/} cache, so {@code main}'s argument
+ * resolution is isolated in {@link #resolveOptions(String[])} (pure parsing/defaulting,
+ * no I/O), and the network-download helper {@link #downloadIfMissing(Path, String)} is
+ * independently testable for its two fail-closed/idempotency properties: it never
+ * touches the network when the target file already exists, and a syntactically invalid
+ * URL fails before any network I/O is attempted.
  */
 public final class PrecomputeMiniLmEmbeddingsCli {
 
@@ -53,23 +62,17 @@ public final class PrecomputeMiniLmEmbeddingsCli {
     }
 
     public static void main(String[] args) {
-        Map<String, String> options = CliArgs.parse(args);
-        String corpusPath = options.getOrDefault("corpus", "data/corpus.json");
-        String outputPath = options.getOrDefault("output", "data/embeddings-minilm.json");
-        Path tokenizerPath = Path.of(options.getOrDefault("tokenizer", "build/models/minilm/tokenizer.json"));
-        Path modelPath = Path.of(options.getOrDefault("model", "build/models/minilm/model.onnx"));
-        String tokenizerUrl = options.getOrDefault("tokenizer-url", DEFAULT_TOKENIZER_URL);
-        String modelUrl = options.getOrDefault("model-url", DEFAULT_MODEL_URL);
+        Options options = resolveOptions(args);
 
-        downloadIfMissing(tokenizerPath, tokenizerUrl);
-        downloadIfMissing(modelPath, modelUrl);
+        downloadIfMissing(options.tokenizerPath(), options.tokenizerUrl());
+        downloadIfMissing(options.modelPath(), options.modelUrl());
 
-        Corpus corpus = new JsonCorpusRepository(Path.of(corpusPath)).load();
+        Corpus corpus = new JsonCorpusRepository(Path.of(options.corpusPath())).load();
         System.out.printf("precompute-embeddings: %d document(s) loaded from %s (corpusSha256=%s)%n",
-                corpus.documents().size(), corpusPath, corpus.corpusSha256());
+                corpus.documents().size(), options.corpusPath(), corpus.corpusSha256());
 
         List<EmbeddingVector> vectors = new ArrayList<>(corpus.documents().size());
-        try (MiniLmEmbedder embedder = new MiniLmEmbedder(tokenizerPath, modelPath)) {
+        try (MiniLmEmbedder embedder = new MiniLmEmbedder(options.tokenizerPath(), options.modelPath())) {
             for (CorpusDocument document : corpus.documents()) {
                 EmbeddingVector vector = embedder.embed(document.id(), document.abstractText());
                 vectors.add(vector);
@@ -81,13 +84,30 @@ public final class PrecomputeMiniLmEmbeddingsCli {
         int dimension = vectors.isEmpty() ? 0 : vectors.getFirst().dimension();
         EmbeddingCache cache = new EmbeddingCache("1.0", corpus.version(), corpus.corpusSha256(),
                 MiniLmEmbedder.MODEL, dimension, vectors);
-        new JsonEmbeddingRepository(Path.of(outputPath), MiniLmEmbedder.PROVIDER, corpus.corpusSha256()).save(cache);
+        new JsonEmbeddingRepository(Path.of(options.outputPath()), MiniLmEmbedder.PROVIDER, corpus.corpusSha256())
+                .save(cache);
 
         System.out.printf("precompute-embeddings: wrote %d vector(s) (dimension=%d) to %s%n", vectors.size(),
-                dimension, outputPath);
+                dimension, options.outputPath());
     }
 
-    private static void downloadIfMissing(Path path, String url) {
+    /** The resolved {@code --corpus}/{@code --output}/{@code --tokenizer[-url]}/{@code --model[-url]} arguments. */
+    record Options(String corpusPath, String outputPath, Path tokenizerPath, Path modelPath, String tokenizerUrl,
+            String modelUrl) {
+    }
+
+    static Options resolveOptions(String[] args) {
+        Map<String, String> options = CliArgs.parse(args);
+        return new Options(
+                options.getOrDefault("corpus", "data/corpus.json"),
+                options.getOrDefault("output", "data/embeddings-minilm.json"),
+                Path.of(options.getOrDefault("tokenizer", "build/models/minilm/tokenizer.json")),
+                Path.of(options.getOrDefault("model", "build/models/minilm/model.onnx")),
+                options.getOrDefault("tokenizer-url", DEFAULT_TOKENIZER_URL),
+                options.getOrDefault("model-url", DEFAULT_MODEL_URL));
+    }
+
+    static void downloadIfMissing(Path path, String url) {
         if (Files.exists(path)) {
             return;
         }
