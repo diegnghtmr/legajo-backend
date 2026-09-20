@@ -13,7 +13,8 @@
  * distinguishes the four classical capabilities from the two AI-based ones; a caller collects
  * every Spring-wired implementation into a {@link SimilarityAlgorithmRegistry} to look one up
  * by id or kind. {@link NumericGuards} centralizes the finiteness guards every trace's compact
- * constructor needs for its tolerance and range comparisons.
+ * constructor needs for its tolerance and range comparisons. {@link Representation} names the
+ * three vector-space representations RF2's clustering distance base can select (TRD §6.4).
  */
 @NullMarked
 package co.edu.uniquindio.legajo.similarity;
