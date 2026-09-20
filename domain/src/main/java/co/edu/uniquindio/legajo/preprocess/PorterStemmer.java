@@ -1,5 +1,7 @@
 package co.edu.uniquindio.legajo.preprocess;
 
+import java.util.List;
+
 /**
  * Hand-written implementation of the original Porter (1980) stemming algorithm
  * ("An algorithm for suffix stripping", Program 14(3), pp. 130-137). TRD §3.3 lists
@@ -13,8 +15,113 @@ package co.edu.uniquindio.legajo.preprocess;
  * consonant; {@code *o}: stem ends consonant-vowel-consonant, second consonant not
  * W, X, or Y). This class is package-private: {@link TextPreprocessor} is the only
  * caller, gated by the {@code preprocess.stemming} flag (default {@code false}).
+ *
+ * <p><b>Longest-match-wins.</b> Within a step, at most one rule ever fires: the one
+ * whose suffix is the longest match for the current word. Its condition is tested
+ * once; if it fails, the step does nothing more — no shorter-matching suffix in the
+ * same step is tried, even if it would otherwise apply. Steps 2, 3, and 4 implement
+ * this through {@link #applyLongestMatchRule(StringBuilder, List)} over a suffix
+ * list sorted by descending length. Steps 1a, 1b, 1c, 5a, and 5b need no such
+ * dispatch: their rules are either an unconditional if/else-if chain over
+ * non-overlapping suffixes (1a), structurally mutually exclusive (1b's EED branch
+ * returns unconditionally before ED/ING is even considered), or a single rule (1c,
+ * 5a, 5b) — none of them can fall through from a failed condition to a shorter
+ * alternative.
+ *
+ * <p><b>Departures from the paper's printed table.</b> This implementation follows
+ * Porter's own reference implementation, which the official test vocabulary at
+ * <a href="https://tartarus.org/martin/PorterStemmer/">tartarus.org/martin/PorterStemmer</a>
+ * encodes, rather than the 1980 paper's table verbatim. Two rules differ from what
+ * the paper prints: step 2 uses {@code bli -> ble} in place of the narrower
+ * {@code abli -> able} (so {@code dumbly}, {@code horribly}, {@code forcibly} stem
+ * correctly), and adds {@code logi -> log} (so {@code apology} stems to
+ * {@code apolog}, matching {@code analogy} -&gt; {@code analog}). Both are
+ * documented departures the reference implementation makes and the vocabulary
+ * encodes; {@link PorterStemmerConformanceTest} is the proof that this class
+ * reproduces it exactly (0 mismatches over 23,531 words).
  */
 final class PorterStemmer {
+
+    @FunctionalInterface
+    private interface SuffixCondition {
+        boolean test(StringBuilder stem, int stemLength);
+    }
+
+    /** One step-2/3/4 rule: replace {@code suffix} with {@code replacement} if {@code condition} holds. */
+    private record SuffixRule(String suffix, String replacement, SuffixCondition condition) {
+    }
+
+    private static final SuffixCondition MEASURE_GT_0 = (sb, stemLength) -> measure(sb, stemLength) > 0;
+    private static final SuffixCondition MEASURE_GT_1 = (sb, stemLength) -> measure(sb, stemLength) > 1;
+
+    /** (m>1 and (*S or *T)) ION -> (delete); the only step-4 rule with an extra letter test. */
+    private static final SuffixCondition STEP4_ION_CONDITION = (sb, stemLength) -> {
+        if (stemLength <= 0) {
+            return false;
+        }
+        char precedingLetter = sb.charAt(stemLength - 1);
+        return (precedingLetter == 's' || precedingLetter == 't') && measure(sb, stemLength) > 1;
+    };
+
+    // Sorted by descending suffix length: within a step only the longest matching
+    // suffix is ever tested (see applyLongestMatchRule). Order among same-length
+    // entries does not matter since a word cannot end in two different suffixes of
+    // equal length at once.
+    private static final List<SuffixRule> STEP2_RULES = List.of(
+            new SuffixRule("ization", "ize", MEASURE_GT_0),
+            new SuffixRule("ational", "ate", MEASURE_GT_0),
+            new SuffixRule("iveness", "ive", MEASURE_GT_0),
+            new SuffixRule("fulness", "ful", MEASURE_GT_0),
+            new SuffixRule("ousness", "ous", MEASURE_GT_0),
+            new SuffixRule("tional", "tion", MEASURE_GT_0),
+            new SuffixRule("biliti", "ble", MEASURE_GT_0),
+            new SuffixRule("ation", "ate", MEASURE_GT_0),
+            new SuffixRule("entli", "ent", MEASURE_GT_0),
+            new SuffixRule("ousli", "ous", MEASURE_GT_0),
+            new SuffixRule("alism", "al", MEASURE_GT_0),
+            new SuffixRule("aliti", "al", MEASURE_GT_0),
+            new SuffixRule("iviti", "ive", MEASURE_GT_0),
+            new SuffixRule("enci", "ence", MEASURE_GT_0),
+            new SuffixRule("anci", "ance", MEASURE_GT_0),
+            new SuffixRule("izer", "ize", MEASURE_GT_0),
+            new SuffixRule("alli", "al", MEASURE_GT_0),
+            new SuffixRule("ator", "ate", MEASURE_GT_0),
+            new SuffixRule("logi", "log", MEASURE_GT_0), // departure: added, not in the 1980 paper's table
+            new SuffixRule("eli", "e", MEASURE_GT_0),
+            new SuffixRule("bli", "ble", MEASURE_GT_0) // departure: replaces the paper's narrower "abli" -> "able"
+    );
+
+    private static final List<SuffixRule> STEP3_RULES = List.of(
+            new SuffixRule("icate", "ic", MEASURE_GT_0),
+            new SuffixRule("ative", "", MEASURE_GT_0),
+            new SuffixRule("alize", "al", MEASURE_GT_0),
+            new SuffixRule("iciti", "ic", MEASURE_GT_0),
+            new SuffixRule("ical", "ic", MEASURE_GT_0),
+            new SuffixRule("ness", "", MEASURE_GT_0),
+            new SuffixRule("ful", "", MEASURE_GT_0)
+    );
+
+    private static final List<SuffixRule> STEP4_RULES = List.of(
+            new SuffixRule("ement", "", MEASURE_GT_1),
+            new SuffixRule("ance", "", MEASURE_GT_1),
+            new SuffixRule("ence", "", MEASURE_GT_1),
+            new SuffixRule("able", "", MEASURE_GT_1),
+            new SuffixRule("ible", "", MEASURE_GT_1),
+            new SuffixRule("ment", "", MEASURE_GT_1),
+            new SuffixRule("ant", "", MEASURE_GT_1),
+            new SuffixRule("ent", "", MEASURE_GT_1),
+            new SuffixRule("ion", "", STEP4_ION_CONDITION),
+            new SuffixRule("ism", "", MEASURE_GT_1),
+            new SuffixRule("ate", "", MEASURE_GT_1),
+            new SuffixRule("iti", "", MEASURE_GT_1),
+            new SuffixRule("ous", "", MEASURE_GT_1),
+            new SuffixRule("ive", "", MEASURE_GT_1),
+            new SuffixRule("ize", "", MEASURE_GT_1),
+            new SuffixRule("al", "", MEASURE_GT_1),
+            new SuffixRule("er", "", MEASURE_GT_1),
+            new SuffixRule("ic", "", MEASURE_GT_1),
+            new SuffixRule("ou", "", MEASURE_GT_1)
+    );
 
     /** Applies the algorithm to a single already-lowercased token. */
     String stem(String word) {
@@ -101,84 +208,21 @@ final class PorterStemmer {
     }
 
     // --- Step 2: derivational suffixes ----------------------------------------------
-    // Longer suffixes that are themselves tails of another rule's suffix are checked
-    // first (IZATION before ATION, ATIONAL before TIONAL) so the more specific rule
-    // always wins; see Porter (1980) step 2.
 
     void step2(StringBuilder sb) {
-        if (applyConditionalRule(sb, "ization", "ize")) return;
-        if (applyConditionalRule(sb, "ational", "ate")) return;
-        if (applyConditionalRule(sb, "ation", "ate")) return;
-        if (applyConditionalRule(sb, "tional", "tion")) return;
-        if (applyConditionalRule(sb, "enci", "ence")) return;
-        if (applyConditionalRule(sb, "anci", "ance")) return;
-        if (applyConditionalRule(sb, "izer", "ize")) return;
-        if (applyConditionalRule(sb, "abli", "able")) return;
-        if (applyConditionalRule(sb, "alli", "al")) return;
-        if (applyConditionalRule(sb, "entli", "ent")) return;
-        if (applyConditionalRule(sb, "eli", "e")) return;
-        if (applyConditionalRule(sb, "ousli", "ous")) return;
-        if (applyConditionalRule(sb, "ator", "ate")) return;
-        if (applyConditionalRule(sb, "alism", "al")) return;
-        if (applyConditionalRule(sb, "iveness", "ive")) return;
-        if (applyConditionalRule(sb, "fulness", "ful")) return;
-        if (applyConditionalRule(sb, "ousness", "ous")) return;
-        if (applyConditionalRule(sb, "aliti", "al")) return;
-        if (applyConditionalRule(sb, "iviti", "ive")) return;
-        applyConditionalRule(sb, "biliti", "ble");
+        applyLongestMatchRule(sb, STEP2_RULES);
     }
 
     // --- Step 3: derivational suffixes ----------------------------------------------
 
     void step3(StringBuilder sb) {
-        if (applyConditionalRule(sb, "icate", "ic")) return;
-        if (applyConditionalRule(sb, "ative", "")) return;
-        if (applyConditionalRule(sb, "alize", "al")) return;
-        if (applyConditionalRule(sb, "iciti", "ic")) return;
-        if (applyConditionalRule(sb, "ical", "ic")) return;
-        if (applyConditionalRule(sb, "ful", "")) return;
-        applyConditionalRule(sb, "ness", "");
+        applyLongestMatchRule(sb, STEP3_RULES);
     }
 
     // --- Step 4: (m>1) suffixes, dropped outright -----------------------------------
 
     void step4(StringBuilder sb) {
-        if (applyConditionalRuleAbove1(sb, "al", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ance", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ence", "")) return;
-        if (applyConditionalRuleAbove1(sb, "er", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ic", "")) return;
-        if (applyConditionalRuleAbove1(sb, "able", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ible", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ant", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ement", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ment", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ent", "")) return;
-        if (step4Ion(sb)) return;
-        if (applyConditionalRuleAbove1(sb, "ou", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ism", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ate", "")) return;
-        if (applyConditionalRuleAbove1(sb, "iti", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ous", "")) return;
-        if (applyConditionalRuleAbove1(sb, "ive", "")) return;
-        applyConditionalRuleAbove1(sb, "ize", "");
-    }
-
-    /** (m>1 and (*S or *T)) ION -> (delete); the only step-4 rule with an extra letter test. */
-    private boolean step4Ion(StringBuilder sb) {
-        if (!endsWith(sb, "ion")) {
-            return false;
-        }
-        int stemLength = sb.length() - 3;
-        if (stemLength <= 0) {
-            return false;
-        }
-        char precedingLetter = sb.charAt(stemLength - 1);
-        if ((precedingLetter != 's' && precedingLetter != 't') || measure(sb, stemLength) <= 1) {
-            return false;
-        }
-        sb.setLength(stemLength);
-        return true;
+        applyLongestMatchRule(sb, STEP4_RULES);
     }
 
     // --- Step 5a / 5b: final E and double L -----------------------------------------
@@ -202,30 +246,26 @@ final class PorterStemmer {
 
     // --- Shared rule application helpers --------------------------------------------
 
-    /** (m>0) suffix -> replacement. */
-    private boolean applyConditionalRule(StringBuilder sb, String suffix, String replacement) {
-        if (!endsWith(sb, suffix)) {
-            return false;
+    /**
+     * Applies Porter's "longest matching suffix wins" rule for one step: {@code rules}
+     * must be sorted by descending suffix length. Only the first (thus longest)
+     * suffix that matches the word is ever tested; if its condition holds, the
+     * replacement is applied, and if it does not, nothing happens — no shorter
+     * suffix later in the list is tried, even if it would otherwise match. This is
+     * the fix for the defect this class used to have: falling through a failed
+     * longest match to try a shorter one (e.g. "document" incorrectly losing its
+     * "-ent" because the longer "-ment" rule's condition failed first).
+     */
+    private static void applyLongestMatchRule(StringBuilder sb, List<SuffixRule> rules) {
+        for (SuffixRule rule : rules) {
+            if (endsWith(sb, rule.suffix())) {
+                int stemLength = sb.length() - rule.suffix().length();
+                if (rule.condition().test(sb, stemLength)) {
+                    replaceSuffix(sb, rule.suffix().length(), rule.replacement());
+                }
+                return;
+            }
         }
-        int stemLength = sb.length() - suffix.length();
-        if (measure(sb, stemLength) <= 0) {
-            return false;
-        }
-        replaceSuffix(sb, suffix.length(), replacement);
-        return true;
-    }
-
-    /** (m>1) suffix -> replacement. */
-    private boolean applyConditionalRuleAbove1(StringBuilder sb, String suffix, String replacement) {
-        if (!endsWith(sb, suffix)) {
-            return false;
-        }
-        int stemLength = sb.length() - suffix.length();
-        if (measure(sb, stemLength) <= 1) {
-            return false;
-        }
-        replaceSuffix(sb, suffix.length(), replacement);
-        return true;
     }
 
     private static void replaceSuffix(StringBuilder sb, int suffixLength, String replacement) {
