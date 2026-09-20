@@ -47,3 +47,16 @@ tasks.register<JavaExec>("validateCorpus") {
     classpath = sourceSets["main"].runtimeClasspath
     workingDir = rootProject.layout.projectDirectory.asFile
 }
+
+tasks.register<JavaExec>("precomputeEmbeddings") {
+    group = "ingestion"
+    description = "Runs the offline MiniLM precompute (TRD §6.1, §6.3, §9). " +
+            "Args: --corpus=data/corpus.json --output=data/embeddings-minilm.json " +
+            "(tokenizer/model download to build/models/minilm/ on first run)"
+    mainClass.set("co.edu.uniquindio.legajo.PrecomputeMiniLmEmbeddingsCli")
+    classpath = sourceSets["main"].runtimeClasspath
+    workingDir = rootProject.layout.projectDirectory.asFile
+    // ONNX Runtime loads its native library via System.load, a JEP 472 restricted method on
+    // Java 25; this silences the resulting warning for this one-shot offline batch job.
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}

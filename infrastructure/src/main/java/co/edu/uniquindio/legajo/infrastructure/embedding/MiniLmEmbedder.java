@@ -40,8 +40,11 @@ import java.util.Objects;
  */
 public final class MiniLmEmbedder implements AutoCloseable {
 
-    static final String PROVIDER = "local";
-    static final String MODEL = "all-MiniLM-L6-v2";
+    /** The {@code provider} value every {@link EmbeddingVector} built by this class carries. */
+    public static final String PROVIDER = "local";
+
+    /** The {@code model} value every {@link EmbeddingVector} built by this class carries. */
+    public static final String MODEL = "all-MiniLM-L6-v2";
 
     private final HuggingFaceTokenizer tokenizer;
     private final OrtEnvironment environment;
