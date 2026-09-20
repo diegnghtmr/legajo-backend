@@ -108,9 +108,7 @@ public final class EmbeddingLocal implements SimilarityAlgorithm {
      * would otherwise reach callers as a NaN similarity score.
      */
     static double clamp01(double cosine) {
-        if (!Double.isFinite(cosine)) {
-            throw new IllegalArgumentException("cosine must be finite, was " + cosine);
-        }
+        NumericGuards.requireFinite(cosine, "cosine");
         return Math.max(0.0, Math.min(1.0, cosine));
     }
 

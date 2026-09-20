@@ -125,10 +125,7 @@ public final class EmbeddingApi implements SimilarityAlgorithm {
      * {@code NaN} through {@code Math.sqrt} of a negative number.
      */
     static double euclideanDistance(double sumSquaredDiff) {
-        if (!Double.isFinite(sumSquaredDiff) || sumSquaredDiff < 0) {
-            throw new IllegalArgumentException(
-                    "sumSquaredDiff must be a non-negative finite number, was " + sumSquaredDiff);
-        }
+        NumericGuards.requireNonNegativeFinite(sumSquaredDiff, "sumSquaredDiff");
         return Math.sqrt(sumSquaredDiff);
     }
 
@@ -139,9 +136,7 @@ public final class EmbeddingApi implements SimilarityAlgorithm {
      * would otherwise reach callers as a NaN similarity score.
      */
     static double clamp01(double distance) {
-        if (!Double.isFinite(distance)) {
-            throw new IllegalArgumentException("distance must be finite, was " + distance);
-        }
+        NumericGuards.requireFinite(distance, "distance");
         double normalized = 1.0 - distance / SQRT_2;
         return Math.max(0.0, Math.min(1.0, normalized));
     }

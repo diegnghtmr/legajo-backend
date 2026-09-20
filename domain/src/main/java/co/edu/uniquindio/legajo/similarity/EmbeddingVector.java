@@ -35,18 +35,16 @@ public record EmbeddingVector(String documentId, String provider, String model, 
         if (values.isEmpty()) {
             throw new IllegalArgumentException("values must not be empty");
         }
-        if (!Double.isFinite(preNormL2) || preNormL2 < 0) {
-            throw new IllegalArgumentException(
-                    "preNormL2 must be a non-negative finite number, was " + preNormL2);
-        }
+        NumericGuards.requireNonNegativeFinite(preNormL2, "preNormL2");
         values = List.copyOf(values);
 
         double norm = l2Norm(values);
-        // Double.isFinite() is checked explicitly, never inferred from the tolerance
-        // comparison alone: Math.abs(NaN - 1.0) > UNIT_NORM_TOLERANCE is false, so a NaN
-        // norm (e.g. from a zero-norm cache renormalization, 0.0/0.0) would otherwise pass
-        // this guard silently instead of failing closed.
-        if (!Double.isFinite(norm) || Math.abs(norm - 1.0) > UNIT_NORM_TOLERANCE) {
+        // NumericGuards.isOutOfTolerance rejects a non-finite norm explicitly: Math.abs(NaN
+        // - 1.0) > UNIT_NORM_TOLERANCE is false, so a NaN norm (e.g. from a zero-norm cache
+        // renormalization, 0.0/0.0) would otherwise pass a bare tolerance comparison
+        // silently instead of failing closed. This is the exact bug shape NumericGuards
+        // centralizes for the rest of this package.
+        if (NumericGuards.isOutOfTolerance(norm, 1.0, UNIT_NORM_TOLERANCE)) {
             throw new IllegalArgumentException(
                     "values must be L2-normalized to unit length (within %.0e), norm was %.15f for document '%s'"
                             .formatted(UNIT_NORM_TOLERANCE, norm, documentId));
