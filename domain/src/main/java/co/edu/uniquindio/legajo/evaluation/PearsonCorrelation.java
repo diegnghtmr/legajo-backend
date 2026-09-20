@@ -16,7 +16,6 @@ import java.util.Objects;
  */
 public final class PearsonCorrelation {
 
-    private static final double TOLERANCE = 1e-9;
 
     private PearsonCorrelation() {
     }
@@ -40,32 +39,47 @@ public final class PearsonCorrelation {
             throw new IllegalArgumentException("at least two values are required, was " + n);
         }
 
-        double sumX = 0.0;
-        double sumY = 0.0;
-        double sumXY = 0.0;
-        double sumX2 = 0.0;
-        double sumY2 = 0.0;
+        // Two-pass centered sums rather than the raw n*Sxy - Sx*Sy form. Two reasons, both
+        // load-bearing here. First, the raw form's variance term scales with the data, so
+        // comparing it against an absolute epsilon rejects legitimate small-magnitude input:
+        // x = y = (1e-5, 2e-5, 3e-5) has true r = 1 but yields a variance term of 6e-10,
+        // which an absolute 1e-9 floor would read as "no variance". Cophenetic correlation is
+        // fed cosine distances that get this small when the corpus holds near-duplicate
+        // abstracts, so the primary ranking signal (TRD §6.5) would fail closed on legitimate
+        // input. Second, the raw form subtracts two large nearly-equal quantities and loses
+        // precision to cancellation; centering first avoids that.
+        double meanX = 0.0;
+        double meanY = 0.0;
         for (int i = 0; i < n; i++) {
-            double xi = x[i];
-            double yi = y[i];
-            NumericGuards.requireFinite(xi, "x[%d]".formatted(i));
-            NumericGuards.requireFinite(yi, "y[%d]".formatted(i));
-            sumX += xi;
-            sumY += yi;
-            sumXY += xi * yi;
-            sumX2 += xi * xi;
-            sumY2 += yi * yi;
+            NumericGuards.requireFinite(x[i], "x[%d]".formatted(i));
+            NumericGuards.requireFinite(y[i], "y[%d]".formatted(i));
+            meanX += x[i];
+            meanY += y[i];
+        }
+        meanX /= n;
+        meanY /= n;
+
+        double sumOfProducts = 0.0;
+        double centeredSquaresX = 0.0;
+        double centeredSquaresY = 0.0;
+        for (int i = 0; i < n; i++) {
+            double dx = x[i] - meanX;
+            double dy = y[i] - meanY;
+            sumOfProducts += dx * dy;
+            centeredSquaresX += dx * dx;
+            centeredSquaresY += dy * dy;
         }
 
-        double numerator = n * sumXY - sumX * sumY;
-        double varianceTermX = n * sumX2 - sumX * sumX;
-        double varianceTermY = n * sumY2 - sumY * sumY;
-        double denominator = Math.sqrt(varianceTermX * varianceTermY);
-        if (denominator <= TOLERANCE) {
+        // Zero variance is an exact algebraic condition, not an approximate one: it holds if
+        // and only if every value in the array equals its mean. Testing it exactly keeps the
+        // guard scale-free — no magnitude of legitimately-varying input can trip it.
+        if (centeredSquaresX == 0.0 || centeredSquaresY == 0.0) {
             throw new IllegalArgumentException(
                     "Pearson correlation is undefined when x or y has zero variance");
         }
 
-        return numerator / denominator;
+        double denominator = Math.sqrt(centeredSquaresX) * Math.sqrt(centeredSquaresY);
+        NumericGuards.requireFinite(denominator, "denominator");
+        return sumOfProducts / denominator;
     }
 }

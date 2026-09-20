@@ -77,6 +77,28 @@ class PearsonCorrelationTest {
                 .isThrownBy(() -> PearsonCorrelation.of(new double[] {5, 5, 5}, new double[] {1, 2, 3}));
     }
 
+    /**
+     * The guard must be scale-free. A raw {@code n*sumX2 - sumX*sumX} variance term compared
+     * against an absolute 1e-9 floor reads this input as having no variance: the term is
+     * 6e-10 for each array even though the true correlation is exactly 1. Cophenetic
+     * correlation is fed cosine distances that get this small when the corpus holds
+     * near-duplicate abstracts, so an absolute floor would fail RF2's primary ranking signal
+     * closed on legitimate input (TRD §6.5).
+     */
+    @Test
+    void acceptsLegitimateSmallMagnitudeInput() {
+        double[] tiny = {1e-5, 2e-5, 3e-5};
+
+        assertThat(PearsonCorrelation.of(tiny, tiny)).isCloseTo(1.0, within(TOLERANCE));
+    }
+
+    @Test
+    void stillRejectsAConstantArrayWhateverItsMagnitude() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> PearsonCorrelation.of(new double[] {1e-9, 1e-9, 1e-9},
+                        new double[] {1, 2, 3}));
+    }
+
     @Test
     void rejectsANullFirstArray() {
         assertThatNullPointerException().isThrownBy(() -> PearsonCorrelation.of(null, new double[] {1, 2}));
