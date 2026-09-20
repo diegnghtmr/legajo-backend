@@ -19,14 +19,14 @@ import java.util.Optional;
  * without a second, kind-specific method pair or without callers branching on
  * {@link AlgorithmKind} before invoking a capability.
  *
- * <p><b>Extensibility (TRD §4.4).</b> {@link Levenshtein} (S2) and {@link NeedlemanWunsch}
- * (S3) are permitted so far. Jaccard (S4), TF-IDF cosine (S5), and the two embedding
- * capabilities (S6) each join this permits list as their own class, with no change to this
- * interface or to any existing permitted implementation. The {@code @Component} list
- * injection that collects every permitted instance into a registry lives in
- * {@code infrastructure} — this package stays framework-free (ArchUnit-enforced).
+ * <p><b>Extensibility (TRD §4.4).</b> {@link Levenshtein} (S2), {@link NeedlemanWunsch}
+ * (S3), and {@link Jaccard} (S4) are permitted so far. TF-IDF cosine (S5) and the two
+ * embedding capabilities (S6) each join this permits list as their own class, with no
+ * change to this interface or to any existing permitted implementation. The
+ * {@code @Component} list injection that collects every permitted instance into a registry
+ * lives in {@code infrastructure} — this package stays framework-free (ArchUnit-enforced).
  */
-public sealed interface SimilarityAlgorithm permits Levenshtein, NeedlemanWunsch {
+public sealed interface SimilarityAlgorithm permits Levenshtein, NeedlemanWunsch, Jaccard {
 
     /** Stable identifier used by the API, cache keys, and the registry (e.g. "levenshtein"). */
     String id();
