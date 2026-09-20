@@ -111,6 +111,73 @@ class DpMatrixTraceTest {
                 .withMessageContaining("(0,0)");
     }
 
+    @Test
+    void twoTracesWithEqualFieldsButDifferentMatrixInstancesAreEqual() {
+        DpMatrixTrace first = minimalTrace();
+        DpMatrixTrace second = minimalTrace();
+
+        assertThat(first).isEqualTo(second);
+        assertThat(first.hashCode()).isEqualTo(second.hashCode());
+    }
+
+    @Test
+    void tracesWithDifferentMatrixContentAreNotEqual() {
+        DpMatrixTrace first = minimalTrace();
+        double[][] differentMatrix = {{0, 1}, {1, 99}};
+        DpMatrixTrace second = new DpMatrixTrace("levenshtein", List.of("a"), List.of("a"), differentMatrix,
+                List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.MATCH)));
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void rejectsAnOperationsListWithTheWrongSize() {
+        double[][] matrix = {{0, 1}, {1, 0}};
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new DpMatrixTrace("levenshtein", List.of("a"), List.of("a"), matrix,
+                        List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)), List.of()))
+                .withMessageContaining("operations");
+    }
+
+    @Test
+    void rejectsAnOperationWhoseToCellDoesNotMatchThePath() {
+        double[][] matrix = {{0, 1, 2}, {1, 0, 1}};
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new DpMatrixTrace("levenshtein", List.of("a"), List.of("a", "b"), matrix,
+                        List.of(new MatrixCell(1, 2), new MatrixCell(0, 1), new MatrixCell(0, 0)),
+                        List.of(
+                                new DpTraceStep(new MatrixCell(0, 1), new MatrixCell(1, 1), DpOperationKind.MATCH),
+                                new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(0, 1), DpOperationKind.INSERTION))))
+                .withMessageContaining("operations");
+    }
+
+    @Test
+    void rejectsANonAdjacentOperationStep() {
+        double[][] matrix = {{0, 1, 2}, {1, 0, 1}};
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new DpMatrixTrace("levenshtein", List.of("a"), List.of("a", "b"), matrix,
+                        List.of(new MatrixCell(1, 2), new MatrixCell(0, 0)),
+                        List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 2), DpOperationKind.MATCH))))
+                .withMessageContaining("adjacent");
+    }
+
+    @Test
+    void acceptsATraceOnEmptyInputWithASingleCellPathAndNoOperations() {
+        double[][] matrix = {{0}};
+
+        DpMatrixTrace trace = new DpMatrixTrace("levenshtein", List.of(), List.of(), matrix,
+                List.of(new MatrixCell(0, 0)), List.of());
+
+        assertThat(trace.rowLabels()).isEmpty();
+        assertThat(trace.columnLabels()).isEmpty();
+        assertThat(trace.optimalPath()).containsExactly(new MatrixCell(0, 0));
+        assertThat(trace.operations()).isEmpty();
+    }
+
     private static DpMatrixTrace minimalTrace() {
         double[][] matrix = {{0, 1}, {1, 0}};
         return new DpMatrixTrace("levenshtein", List.of("a"), List.of("a"), matrix,

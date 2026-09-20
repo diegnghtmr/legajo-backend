@@ -15,7 +15,16 @@ import java.util.Objects;
  *
  * <p>{@code matrix} is defensively deep-copied on construction and on every read of
  * {@link #matrix()}, because a {@code double[][]} field is otherwise a mutable hole in an
- * immutable record.
+ * immutable record. {@code equals}/{@code hashCode} are overridden to compare {@code matrix}
+ * by content ({@link Arrays#deepEquals} / {@link Arrays#deepHashCode}) instead of the
+ * record-generated array reference comparison, which would otherwise report two traces with
+ * identical data as unequal whenever their {@code matrix} arrays are different instances.
+ *
+ * <p>{@code operations} is validated against {@code optimalPath}: one operation per path
+ * transition, in the same order (each {@code operations.get(i)} moves from
+ * {@code optimalPath.get(i + 1)} to {@code optimalPath.get(i)}), and every move stays within
+ * one row and one column of its neighbor (diagonal, up, or left), matching the fixed
+ * backtrace tie order (TRD §6.3).
  */
 public record DpMatrixTrace(
         String algorithmId,
@@ -65,11 +74,59 @@ public record DpMatrixTrace(
         if (!optimalPath.get(optimalPath.size() - 1).equals(origin)) {
             throw new IllegalArgumentException("optimalPath must end at (0,0)");
         }
+
+        int expectedOperations = optimalPath.size() - 1;
+        if (operations.size() != expectedOperations) {
+            throw new IllegalArgumentException(
+                    "operations must have one entry per optimalPath transition (%d), had %d"
+                            .formatted(expectedOperations, operations.size()));
+        }
+        for (int step = 0; step < operations.size(); step++) {
+            DpTraceStep operation = operations.get(step);
+            MatrixCell expectedTo = optimalPath.get(step);
+            MatrixCell expectedFrom = optimalPath.get(step + 1);
+            if (!operation.to().equals(expectedTo) || !operation.from().equals(expectedFrom)) {
+                throw new IllegalArgumentException(
+                        "operations[%d] must move from %s to %s to match optimalPath, was from %s to %s"
+                                .formatted(step, expectedFrom, expectedTo, operation.from(), operation.to()));
+            }
+            int rowDelta = expectedTo.row() - expectedFrom.row();
+            int colDelta = expectedTo.col() - expectedFrom.col();
+            boolean adjacent = rowDelta >= 0 && rowDelta <= 1 && colDelta >= 0 && colDelta <= 1
+                    && rowDelta + colDelta > 0;
+            if (!adjacent) {
+                throw new IllegalArgumentException(
+                        "operations[%d] must be adjacent (diagonal, up, or left), was from %s to %s"
+                                .formatted(step, expectedFrom, expectedTo));
+            }
+        }
     }
 
     @Override
     public double[][] matrix() {
         return deepCopy(matrix);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof DpMatrixTrace that)) {
+            return false;
+        }
+        return algorithmId.equals(that.algorithmId)
+                && rowLabels.equals(that.rowLabels)
+                && columnLabels.equals(that.columnLabels)
+                && Arrays.deepEquals(matrix, that.matrix)
+                && optimalPath.equals(that.optimalPath)
+                && operations.equals(that.operations);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(algorithmId, rowLabels, columnLabels, Arrays.deepHashCode(matrix), optimalPath,
+                operations);
     }
 
     private static double[][] deepCopy(double[][] source) {
