@@ -78,3 +78,20 @@ tasks.register<JavaExec>("precomputeEmbeddings") {
     // Java 25; this silences the resulting warning for this one-shot offline batch job.
     jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
+
+tasks.register<JavaExec>("precomputeApiEmbeddings") {
+    group = "ingestion"
+    description = "Runs the offline embedding-api precompute against Gemini's OpenAI-compatible " +
+            "layer (TRD §6.1, §6.3, §8, §9, ADR-015). Args: --corpus=data/corpus.json " +
+            "--output=data/embeddings-openai.json. Requires SPRING_AI_OPENAI_API_KEY, " +
+            "SPRING_AI_OPENAI_BASE_URL, LEGAJO_EMBEDDING_API_MODEL, LEGAJO_EMBEDDING_API_DIMENSION " +
+            "(and optionally SPRING_AI_OPENAI_EMBEDDING_EMBEDDINGS_PATH) in the environment."
+    mainClass.set("co.edu.uniquindio.legajo.PrecomputeApiEmbeddingsCli")
+    // Unlike precomputeEmbeddings (MiniLM), this CLI never loads ONNX Runtime or the
+    // HuggingFace tokenizer's native library — it only makes HTTP calls through Spring AI's
+    // OpenAI client — so the ordinary Spring-ful runtime classpath is safe here (no segfault
+    // risk from native libraries alongside actuator/micrometer, see
+    // PrecomputeMiniLmEmbeddingsCli's Javadoc for that unrelated interaction).
+    classpath = sourceSets["main"].runtimeClasspath
+    workingDir = rootProject.layout.projectDirectory.asFile
+}
