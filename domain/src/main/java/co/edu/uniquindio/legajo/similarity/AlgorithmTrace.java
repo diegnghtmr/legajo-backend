@@ -6,8 +6,9 @@ package co.edu.uniquindio.legajo.similarity;
  * computed, distinct from the numeric {@link SimilarityResult}. {@link DpMatrixTrace} is
  * shared by Levenshtein (S2) and Needleman–Wunsch (S3); {@link JaccardTrace} (S4) is the
  * set-based trace for Jaccard; {@link TfIdfCosineTrace} (S5) is the term-by-term trace for
- * TF-IDF cosine; later tasks add the two embedding-vector traces as new permitted records,
- * without changing this marker or any existing caller.
+ * TF-IDF cosine; {@link EmbeddingLocalTrace} (S6) is the vector-based trace for
+ * {@code embedding-local}; {@code embedding-api}'s trace joins later as its own permitted
+ * record, without changing this marker or any existing caller.
  */
-public sealed interface AlgorithmTrace permits DpMatrixTrace, JaccardTrace, TfIdfCosineTrace {
+public sealed interface AlgorithmTrace permits DpMatrixTrace, JaccardTrace, TfIdfCosineTrace, EmbeddingLocalTrace {
 }

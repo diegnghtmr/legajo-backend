@@ -47,4 +47,21 @@ class SimilarityInputTest {
     void rejectsNullTokens() {
         assertThatNullPointerException().isThrownBy(() -> new SimilarityInput("text", null));
     }
+
+    @Test
+    void theTwoArgConstructorLeavesEmbeddingVectorNull() {
+        SimilarityInput input = new SimilarityInput("Raw abstract.", List.of("raw", "abstract"));
+
+        assertThat(input.embeddingVector()).isNull();
+    }
+
+    @Test
+    void exposesAnExplicitlyProvidedEmbeddingVector() {
+        EmbeddingVector embeddingVector =
+                new EmbeddingVector("d01", "local", "all-MiniLM-L6-v2", 5.0, List.of(0.6, 0.8));
+
+        SimilarityInput input = new SimilarityInput("Raw abstract.", List.of(), embeddingVector);
+
+        assertThat(input.embeddingVector()).isEqualTo(embeddingVector);
+    }
 }

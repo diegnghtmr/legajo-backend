@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class SimilarityAlgorithmRegistryTest {
 
     private static final SimilarityAlgorithm LEVENSHTEIN = new Levenshtein();
+    private static final SimilarityAlgorithm EMBEDDING_LOCAL = new EmbeddingLocal();
 
     @Test
     void requireReturnsTheAlgorithmForItsId() {
@@ -56,6 +57,14 @@ class SimilarityAlgorithmRegistryTest {
 
         assertThat(registry.ofKind(AlgorithmKind.CLASSIC)).containsExactly(LEVENSHTEIN);
         assertThat(registry.ofKind(AlgorithmKind.AI)).isEmpty();
+    }
+
+    @Test
+    void ofKindReturnsAiCapabilitiesLikeEmbeddingLocal() {
+        SimilarityAlgorithmRegistry registry = new SimilarityAlgorithmRegistry(List.of(LEVENSHTEIN, EMBEDDING_LOCAL));
+
+        assertThat(registry.ofKind(AlgorithmKind.AI)).containsExactly(EMBEDDING_LOCAL);
+        assertThat(registry.require("embedding-local")).isSameAs(EMBEDDING_LOCAL);
     }
 
     @Test

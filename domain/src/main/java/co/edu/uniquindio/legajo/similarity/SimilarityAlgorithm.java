@@ -20,13 +20,14 @@ import java.util.Optional;
  * {@link AlgorithmKind} before invoking a capability.
  *
  * <p><b>Extensibility (TRD §4.4).</b> {@link Levenshtein} (S2), {@link NeedlemanWunsch}
- * (S3), {@link Jaccard} (S4), and {@link TfIdfCosine} (S5) are permitted so far. The two
- * embedding capabilities (S6) each join this permits list as their own class, with no
- * change to this interface or to any existing permitted implementation. The
- * {@code @Component} list injection that collects every permitted instance into a registry
- * lives in {@code infrastructure} — this package stays framework-free (ArchUnit-enforced).
+ * (S3), {@link Jaccard} (S4), {@link TfIdfCosine} (S5), and {@link EmbeddingLocal} (S6) are
+ * permitted so far. {@code embedding-api} (S6, second half) joins this permits list as its
+ * own class once the OpenAI key is available, with no change to this interface or to any
+ * existing permitted implementation. The {@code @Component} list injection that collects
+ * every permitted instance into a registry lives in {@code infrastructure} — this package
+ * stays framework-free (ArchUnit-enforced).
  */
-public sealed interface SimilarityAlgorithm permits Levenshtein, NeedlemanWunsch, Jaccard, TfIdfCosine {
+public sealed interface SimilarityAlgorithm permits Levenshtein, NeedlemanWunsch, Jaccard, TfIdfCosine, EmbeddingLocal {
 
     /** Stable identifier used by the API, cache keys, and the registry (e.g. "levenshtein"). */
     String id();
