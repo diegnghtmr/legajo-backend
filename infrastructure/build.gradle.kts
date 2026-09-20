@@ -22,6 +22,12 @@ dependencies {
 
     implementation(libs.jackson.databind)
     implementation(libs.pdfbox)
+    // MiniLM offline precompute (TRD S5.1, S6.3): the HuggingFace tokenizer is delegable
+    // under R-02; ONNX Runtime only runs the model's matrix inference, never the pooling or
+    // the metric, which stay hand-written in domain/EmbeddingLocal and this module's
+    // MiniLmEmbedder.
+    implementation(libs.djl.tokenizers)
+    implementation(libs.onnxruntime)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

@@ -12,6 +12,8 @@ jmh = "1.37"
 jmhGradlePlugin = "0.7.2"
 foojayResolver = "1.0.0"
 pdfbox = "3.0.8"
+djlTokenizers = "0.36.0"
+onnxruntime = "1.29.0"
 
 [libraries]
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "springBoot" }
@@ -26,6 +28,8 @@ jqwik = { module = "net.jqwik:jqwik", version.ref = "jqwik" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind" }
+djl-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djlTokenizers" }
+onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
