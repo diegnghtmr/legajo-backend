@@ -20,6 +20,13 @@ import java.util.Set;
  * gains no dependency on {@code corpus}. Whichever caller assembles the corpus's
  * preprocessed token streams (an application-layer concern) builds one instance via
  * {@link #from(List)} and reuses it for every pairwise comparison in that run.
+ *
+ * <p>{@code equals}/{@code hashCode} compare {@code documentFrequency} and {@code corpusSize}
+ * by content: this is a value type derived entirely from the corpus content it was built
+ * from, so two indexes built from equal token streams must compare equal, not just two
+ * references to the same instance. This also makes {@link SimilarityContext}, whose default
+ * (record-generated) equality delegates to this field, behave as the value type it documents
+ * itself to be.
  */
 public final class TfIdfCorpusIndex {
 
@@ -44,6 +51,7 @@ public final class TfIdfCorpusIndex {
             Objects.requireNonNull(tokens, "corpusTokenStreams must not contain a null token stream");
             Set<String> distinctTerms = new HashSet<>(tokens);
             for (String term : distinctTerms) {
+                Objects.requireNonNull(term, "corpusTokenStreams must not contain a null token");
                 documentFrequency.merge(term, 1, Integer::sum);
             }
         }
@@ -64,5 +72,21 @@ public final class TfIdfCorpusIndex {
     /** {@code idf(t) = ln((1 + N) / (1 + df(t))) + 1} (TRD §6.3, smoothed idf). */
     public double idf(String term) {
         return Math.log((1.0 + corpusSize) / (1.0 + documentFrequency(term))) + 1.0;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof TfIdfCorpusIndex that)) {
+            return false;
+        }
+        return corpusSize == that.corpusSize && documentFrequency.equals(that.documentFrequency);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(corpusSize, documentFrequency);
     }
 }

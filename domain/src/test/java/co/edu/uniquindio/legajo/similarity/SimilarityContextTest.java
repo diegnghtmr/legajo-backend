@@ -35,4 +35,15 @@ class SimilarityContextTest {
 
         assertThat(context.tfIdfIndex()).isSameAs(index);
     }
+
+    @Test
+    void contextsWrappingEqualButDistinctIndexesAreEqual() {
+        // SimilarityContext is a value type (a record); its default equals delegates to
+        // TfIdfCorpusIndex.equals(), so two contexts built from independently constructed but
+        // content-equal indexes must compare equal, not just two contexts sharing one instance.
+        TfIdfCorpusIndex first = TfIdfCorpusIndex.from(List.of(List.of("a")));
+        TfIdfCorpusIndex second = TfIdfCorpusIndex.from(List.of(List.of("a")));
+
+        assertThat(SimilarityContext.withTfIdfIndex(first)).isEqualTo(SimilarityContext.withTfIdfIndex(second));
+    }
 }

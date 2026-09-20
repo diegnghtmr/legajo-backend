@@ -132,6 +132,101 @@ class DpMatrixTraceTest {
     }
 
     @Test
+    void aTraceIsEqualToItself() {
+        DpMatrixTrace trace = minimalTrace();
+
+        assertThat(trace).isEqualTo(trace);
+    }
+
+    @Test
+    void aTraceIsNotEqualToNull() {
+        assertThat(minimalTrace()).isNotEqualTo(null);
+    }
+
+    @Test
+    void aTraceIsNotEqualToAnUnrelatedType() {
+        assertThat(minimalTrace()).isNotEqualTo("not a trace");
+    }
+
+    @Test
+    void tracesWithDifferentAlgorithmIdsAreNotEqual() {
+        DpMatrixTrace first = minimalTrace();
+        DpMatrixTrace second = new DpMatrixTrace("needleman-wunsch", List.of("a"), List.of("a"),
+                new double[][] {{0, 1}, {1, 0}},
+                List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.MATCH)));
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void tracesWithDifferentRowLabelsAreNotEqual() {
+        DpMatrixTrace first = minimalTrace();
+        DpMatrixTrace second = new DpMatrixTrace("levenshtein", List.of("z"), List.of("a"),
+                new double[][] {{0, 1}, {1, 0}},
+                List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.MATCH)));
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void tracesWithDifferentColumnLabelsAreNotEqual() {
+        DpMatrixTrace first = minimalTrace();
+        DpMatrixTrace second = new DpMatrixTrace("levenshtein", List.of("a"), List.of("z"),
+                new double[][] {{0, 1}, {1, 0}},
+                List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.MATCH)));
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void tracesWithDifferentOptimalPathsAreNotEqual() {
+        double[][] matrix = {{0, 1, 2}, {1, 0, 1}};
+        // First path: (1,2) -> (0,1) [diagonal, SUBSTITUTION] -> (0,0) [left, INSERTION].
+        DpMatrixTrace first = new DpMatrixTrace("levenshtein", List.of("a"), List.of("a", "b"), matrix,
+                List.of(new MatrixCell(1, 2), new MatrixCell(0, 1), new MatrixCell(0, 0)),
+                List.of(
+                        new DpTraceStep(new MatrixCell(0, 1), new MatrixCell(1, 2), DpOperationKind.SUBSTITUTION),
+                        new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(0, 1), DpOperationKind.INSERTION)));
+        // Second path: (1,2) -> (1,1) [left, INSERTION] -> (0,0) [diagonal, SUBSTITUTION].
+        DpMatrixTrace second = new DpMatrixTrace("levenshtein", List.of("a"), List.of("a", "b"), matrix,
+                List.of(new MatrixCell(1, 2), new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                List.of(
+                        new DpTraceStep(new MatrixCell(1, 1), new MatrixCell(1, 2), DpOperationKind.INSERTION),
+                        new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.SUBSTITUTION)));
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void tracesWithDifferentOperationsAreNotEqual() {
+        double[][] matrix = {{0, 1}, {1, 0}};
+        DpMatrixTrace first = minimalTrace();
+        DpMatrixTrace second = new DpMatrixTrace("levenshtein", List.of("a"), List.of("a"), matrix,
+                List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.SUBSTITUTION)));
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void hashCodeIsDifferentForTracesWithDifferentAlgorithmIds() {
+        // Not a strict requirement of the equals/hashCode contract (only equal objects must
+        // share a hash code, not the converse), but a useful sanity check that hashCode
+        // actually incorporates every field equals() does, matching the earlier matrix-based
+        // hashCode assertion (twoTracesWithEqualFieldsButDifferentMatrixInstancesAreEqual).
+        DpMatrixTrace first = minimalTrace();
+        DpMatrixTrace second = new DpMatrixTrace("needleman-wunsch", List.of("a"), List.of("a"),
+                new double[][] {{0, 1}, {1, 0}},
+                List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.MATCH)));
+
+        assertThat(first.hashCode()).isNotEqualTo(second.hashCode());
+    }
+
+    @Test
     void rejectsAnOperationsListWithTheWrongSize() {
         double[][] matrix = {{0, 1}, {1, 0}};
 
@@ -152,6 +247,63 @@ class DpMatrixTraceTest {
                                 new DpTraceStep(new MatrixCell(0, 1), new MatrixCell(1, 1), DpOperationKind.MATCH),
                                 new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(0, 1), DpOperationKind.INSERTION))))
                 .withMessageContaining("operations");
+    }
+
+    @Test
+    void rejectsAMatchOperationThatIsNotDiagonal() {
+        // rowLabels has 1 token, columnLabels is empty, so (0,0) -> (1,0) is the only
+        // possible move: an "up" move, not diagonal, so MATCH (diagonal-only) is invalid.
+        double[][] matrix = {{0}, {1}};
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new DpMatrixTrace("levenshtein", List.of("a"), List.of(), matrix,
+                        List.of(new MatrixCell(1, 0), new MatrixCell(0, 0)),
+                        List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 0), DpOperationKind.MATCH))))
+                .withMessageContaining("direction");
+    }
+
+    @Test
+    void rejectsADeletionOperationThatIsDiagonalInsteadOfUp() {
+        // (0,0) -> (1,1) is diagonal, but DELETION must be an "up" move (Levenshtein: a
+        // token consumed from A without consuming B).
+        double[][] matrix = {{0, 1}, {1, 0}};
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new DpMatrixTrace("levenshtein", List.of("a"), List.of("a"), matrix,
+                        List.of(new MatrixCell(1, 1), new MatrixCell(0, 0)),
+                        List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 1), DpOperationKind.DELETION))))
+                .withMessageContaining("direction");
+    }
+
+    @Test
+    void rejectsAnInsertionOperationThatIsUpInsteadOfLeft() {
+        // rowLabels has 1 token, columnLabels is empty, so (0,0) -> (1,0) is the only
+        // possible move: an "up" move, but INSERTION must be a "left" move (Levenshtein: a
+        // token consumed from B without consuming A).
+        double[][] matrix = {{0}, {1}};
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new DpMatrixTrace("levenshtein", List.of("a"), List.of(), matrix,
+                        List.of(new MatrixCell(1, 0), new MatrixCell(0, 0)),
+                        List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 0), DpOperationKind.INSERTION))))
+                .withMessageContaining("direction");
+    }
+
+    @Test
+    void acceptsAGapOperationInEitherUpOrLeftDirection() {
+        // GAP (Needleman-Wunsch) is direction-agnostic: both an "up" move and a "left" move
+        // are valid, unlike Levenshtein's directional DELETION/INSERTION.
+        double[][] upMatrix = {{0}, {-1}};
+        DpMatrixTrace upGap = new DpMatrixTrace("needleman-wunsch", List.of("a"), List.of(), upMatrix,
+                List.of(new MatrixCell(1, 0), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(1, 0), DpOperationKind.GAP)));
+        assertThat(upGap.operations()).hasSize(1);
+
+        double[][] leftMatrix = {{0, -1}};
+        DpMatrixTrace leftGap = new DpMatrixTrace("needleman-wunsch", List.of(), List.of("a"), leftMatrix,
+                List.of(new MatrixCell(0, 1), new MatrixCell(0, 0)),
+                List.of(new DpTraceStep(new MatrixCell(0, 0), new MatrixCell(0, 1), DpOperationKind.GAP)));
+        assertThat(leftGap.operations()).hasSize(1);
     }
 
     @Test

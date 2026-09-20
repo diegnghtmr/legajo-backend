@@ -81,9 +81,18 @@ final class NeedlemanWunschCore {
             } else if (i > 0 && matrix[i][j] == matrix[i - 1][j] + GAP_SCORE) {
                 i--;
                 operations.add(new DpTraceStep(new MatrixCell(i, j), to, DpOperationKind.GAP));
-            } else {
+            } else if (j > 0) {
                 j--;
                 operations.add(new DpTraceStep(new MatrixCell(i, j), to, DpOperationKind.GAP));
+            } else {
+                // Unreachable when matrix comes from matrix(a, b) above: at every visited
+                // cell one of the three backtrace rules always matches by construction. This
+                // guard only fires for a matrix that violates that invariant (hand-built or
+                // corrupted), and fails closed instead of silently decrementing j below 0.
+                throw new IllegalStateException(
+                        ("NeedlemanWunschCore backtrace reached an inconsistent state at (%d,%d): "
+                                + "no valid predecessor cell (diagonal, up, or left) matches the given matrix")
+                                        .formatted(i, j));
             }
             path.add(new MatrixCell(i, j));
         }

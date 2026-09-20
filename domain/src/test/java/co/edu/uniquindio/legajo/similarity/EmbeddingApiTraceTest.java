@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -127,6 +128,25 @@ class EmbeddingApiTraceTest {
                         "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0,
                         SUM_SQUARED_DIFF, nonFinite, NORMALIZED_SCORE, "cached"))
                 .withMessageContaining("distance");
+    }
+
+    // R3-expected-side-rejection-unproved: isOutOfTolerance already rejects when the
+    // *expected* (derived) side of a comparison is non-finite, not just the raw field value
+    // passed in — but that path was only ever exercised indirectly (by passing a non-finite
+    // field directly above). This proves the rejection when the field ITSELF is finite and
+    // plausible, but the vectors it is checked against make the derived expected value
+    // non-finite (a NaN component propagates through the squared-difference sum).
+
+    @Test
+    void rejectsWhenANaNVectorComponentMakesTheExpectedSumSquaredDiffNonFinite() {
+        List<Double> nanVectorA = new ArrayList<>(VECTOR_A);
+        nanVectorA.set(0, Double.NaN);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api", "gemini-embedding-2-preview", 3,
+                        nanVectorA, VECTOR_B, nanVectorA, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF, DISTANCE,
+                        NORMALIZED_SCORE, "cached"))
+                .withMessageContaining("sumSquaredDiff");
     }
 
     @ParameterizedTest

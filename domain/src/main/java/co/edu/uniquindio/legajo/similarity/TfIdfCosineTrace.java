@@ -31,9 +31,11 @@ import java.util.Objects;
  * {@code rawNormA}/{@code rawNormB} equal to the L2 norm of the terms' raw weights on that
  * side; {@code cosine == dotProduct}; and {@code angleDegrees == degrees(acos(clamp(cosine,
  * -1, 1)))}. An empty {@code terms} list is valid (the TF-IDF null-vector degenerate case,
- * TRD §6.3, "Vector nulo de TF-IDF") with {@code rawNormA}/{@code rawNormB} at 0 for the
- * empty side(s) and {@code cosine}/{@code angleDegrees} carrying the fixed convention value
- * (1.0/0° for both-empty, 0.0/90° for exactly-one-empty).
+ * TRD §6.3, "Vector nulo de TF-IDF") but is validated against the two fixed convention
+ * values instead of the per-term sums above (there is no per-term evidence to sum):
+ * {@code rawNormA}/{@code rawNormB} must both be exactly 0, and {@code dotProduct} (hence
+ * {@code cosine}/{@code angleDegrees}, still tied to it by the checks above) must equal 1.0
+ * (both-empty, angle 0°) or 0.0 (exactly-one-empty, angle 90°) — no other value is accepted.
  */
 public record TfIdfCosineTrace(
         String algorithmId,
@@ -76,12 +78,12 @@ public record TfIdfCosineTrace(
             }
         }
 
-        // These three checks tie the aggregate fields to the per-term evidence, so they only
-        // apply when there IS per-term evidence: an empty terms list is exclusively the
-        // TF-IDF null-vector degenerate case (TfIdfCosine's compute()/trace() never touch
-        // the corpus index in that case), whose dotProduct/cosine carry the fixed TRD §6.3
-        // convention value (1.0 both-empty, 0.0 one-empty) rather than a derived sum-over-
-        // zero-terms of 0.0.
+        // These checks tie the aggregate fields to the per-term evidence when there IS
+        // per-term evidence; an empty terms list is exclusively the TF-IDF null-vector
+        // degenerate case (TfIdfCosine's compute()/trace() never touch the corpus index in
+        // that case), whose dotProduct/cosine carry the fixed TRD §6.3 convention value
+        // (1.0 both-empty, 0.0 one-empty) rather than a derived sum-over-zero-terms of 0.0 —
+        // so the empty branch below checks against those two fixed values instead.
         if (!terms.isEmpty()) {
             double expectedDotProduct = terms.stream()
                     .mapToDouble(t -> t.normalizedWeightA() * t.normalizedWeightB())
@@ -105,6 +107,30 @@ public record TfIdfCosineTrace(
                 throw new IllegalArgumentException(
                         "rawNormB must equal the L2 norm of the terms' rawWeightB (%.12f), was %.12f"
                                 .formatted(expectedRawNormB, rawNormB));
+            }
+        } else {
+            // R3-tfidf-empty-terms-dotproduct: without this branch, an empty terms list left
+            // dotProduct/rawNormA/rawNormB entirely unconstrained by the per-term evidence
+            // (there is none), only internally consistent with each other (cosine==dotProduct,
+            // angleDegrees==degrees(acos(cosine))) — so e.g. dotProduct=0.5 with a matching
+            // cosine/angle passed the compact constructor despite not being one of the two
+            // fixed degenerate conventions TRD §6.3 defines.
+            if (NumericGuards.isOutOfTolerance(rawNormA, 0.0, TOLERANCE)) {
+                throw new IllegalArgumentException(
+                        "rawNormA must be 0 when terms is empty (the TF-IDF null-vector degenerate case), was %.12f"
+                                .formatted(rawNormA));
+            }
+            if (NumericGuards.isOutOfTolerance(rawNormB, 0.0, TOLERANCE)) {
+                throw new IllegalArgumentException(
+                        "rawNormB must be 0 when terms is empty (the TF-IDF null-vector degenerate case), was %.12f"
+                                .formatted(rawNormB));
+            }
+            boolean matchesBothEmptyConvention = !NumericGuards.isOutOfTolerance(dotProduct, 1.0, TOLERANCE);
+            boolean matchesOneEmptyConvention = !NumericGuards.isOutOfTolerance(dotProduct, 0.0, TOLERANCE);
+            if (!matchesBothEmptyConvention && !matchesOneEmptyConvention) {
+                throw new IllegalArgumentException(
+                        "dotProduct must equal the fixed TF-IDF null-vector convention (1.0 both-empty, 0.0 "
+                                + "one-empty, TRD §6.3) when terms is empty, was %.12f".formatted(dotProduct));
             }
         }
 

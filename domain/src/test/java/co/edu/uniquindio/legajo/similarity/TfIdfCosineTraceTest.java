@@ -116,6 +116,38 @@ class TfIdfCosineTraceTest {
     }
 
     @Test
+    void rejectsANonZeroRawNormAWhenTermsIsEmpty() {
+        // With no per-term evidence, both raw norms must be exactly 0 (sqrt of an empty
+        // sum) — this is currently unchecked whenever terms is empty.
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 0, List.of(), 1.0, 5.0, 0.0, 1.0, 0.0))
+                .withMessageContaining("rawNormA");
+    }
+
+    @Test
+    void rejectsANonZeroRawNormBWhenTermsIsEmpty() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 0, List.of(), 1.0, 0.0, 5.0, 1.0, 0.0))
+                .withMessageContaining("rawNormB");
+    }
+
+    @Test
+    void rejectsADotProductThatIsNotOneOfTheFixedDegenerateConventionValuesWhenTermsIsEmpty() {
+        // R3-tfidf-empty-terms-dotproduct: with terms empty, the dotProduct==sum-over-terms
+        // check is skipped entirely (there is nothing to sum), so dotProduct/cosine/
+        // angleDegrees were only checked against EACH OTHER for internal consistency, never
+        // against the two fixed TRD §6.3 convention values (1.0 both-empty, 0.0 one-empty).
+        // 0.5/60 degrees is internally consistent (cosine==dotProduct,
+        // angle==degrees(acos(cosine))) but is not a valid degenerate value.
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 0, List.of(), 0.5, 0.0, 0.0, 0.5, 60.0))
+                .withMessageContaining("dotProduct");
+    }
+
+    @Test
     void acceptsTheDegenerateExactlyOneEmptyConvention() {
         // No index is consulted for this short-circuited case (TfIdfCosine's degenerate
         // branches never touch the corpus index), so no genuine per-term evidence exists

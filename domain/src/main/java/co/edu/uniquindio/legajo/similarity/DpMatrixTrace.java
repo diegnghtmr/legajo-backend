@@ -24,7 +24,12 @@ import java.util.Objects;
  * transition, in the same order (each {@code operations.get(i)} moves from
  * {@code optimalPath.get(i + 1)} to {@code optimalPath.get(i)}), and every move stays within
  * one row and one column of its neighbor (diagonal, up, or left), matching the fixed
- * backtrace tie order (TRD §6.3).
+ * backtrace tie order (TRD §6.3). Each step's {@link DpOperationKind} must also match its
+ * actual geometric direction: {@link DpOperationKind#MATCH}/{@link DpOperationKind#SUBSTITUTION}/
+ * {@link DpOperationKind#MISMATCH} require a diagonal move; {@link DpOperationKind#DELETION}
+ * requires an up move; {@link DpOperationKind#INSERTION} requires a left move;
+ * {@link DpOperationKind#GAP} accepts either up or left (Needleman-Wunsch does not
+ * distinguish a gap's direction).
  */
 public record DpMatrixTrace(
         String algorithmId,
@@ -98,6 +103,21 @@ public record DpMatrixTrace(
                 throw new IllegalArgumentException(
                         "operations[%d] must be adjacent (diagonal, up, or left), was from %s to %s"
                                 .formatted(step, expectedFrom, expectedTo));
+            }
+
+            boolean diagonal = rowDelta == 1 && colDelta == 1;
+            boolean up = rowDelta == 1 && colDelta == 0;
+            boolean left = rowDelta == 0 && colDelta == 1;
+            boolean directionMatchesOperation = switch (operation.operation()) {
+                case MATCH, SUBSTITUTION, MISMATCH -> diagonal;
+                case DELETION -> up;
+                case INSERTION -> left;
+                case GAP -> up || left;
+            };
+            if (!directionMatchesOperation) {
+                throw new IllegalArgumentException(
+                        "operations[%d] has operation kind %s inconsistent with its direction, was from %s to %s"
+                                .formatted(step, operation.operation(), expectedFrom, expectedTo));
             }
         }
     }

@@ -52,6 +52,13 @@ public record TfIdfTermTrace(
             throw new IllegalArgumentException(
                     "a term row requires a positive frequency in A or B, term was '" + term + "'");
         }
+        // R3-tfidfterm-partial-migration: tfA/tfB/idf used to be validated only implicitly,
+        // through the rawWeight == tf*idf checks below (a non-finite one of these propagates
+        // into rawWeightA/rawWeightB and gets rejected there) — finishing the migration onto
+        // NumericGuards validates each field directly, with its own attributable message.
+        NumericGuards.requireFinite(tfA, "tfA");
+        NumericGuards.requireFinite(tfB, "tfB");
+        NumericGuards.requireFinite(idf, "idf");
         if ((frequencyA == 0) != (tfA == 0.0)) {
             throw new IllegalArgumentException(
                     "tfA must be 0 exactly when frequencyA is 0 (frequencyA=%d, tfA=%s)"

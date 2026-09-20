@@ -73,6 +73,41 @@ class TfIdfTermTraceTest {
                 .withMessageContaining("tfB");
     }
 
+    // R3-tfidfterm-partial-migration: rawWeightA/rawWeightB were already migrated onto
+    // NumericGuards (below), but tfA/tfB/idf themselves were only ever implicitly protected
+    // (a non-finite one of these propagates into rawWeightA/rawWeightB via tf*idf, which the
+    // rawWeight checks then reject) — finishing the migration validates each field directly,
+    // with its own attributable message, rather than relying on that indirection.
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteIdf(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfTermTrace(
+                        "cat", 1, 1, 3, 1.0, 1.0, nonFinite, 1.2231435513142097, 1.2231435513142097, 0.5, 0.5))
+                .withMessageContaining("idf must be finite");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteTfA(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfTermTrace(
+                        "cat", 1, 1, 3, nonFinite, 1.0, 1.2231435513142097, 1.2231435513142097,
+                        1.2231435513142097, 0.5, 0.5))
+                .withMessageContaining("tfA must be finite");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteTfB(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfTermTrace(
+                        "cat", 1, 1, 3, 1.0, nonFinite, 1.2231435513142097, 1.2231435513142097,
+                        1.2231435513142097, 0.5, 0.5))
+                .withMessageContaining("tfB must be finite");
+    }
+
     @ParameterizedTest
     @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
     void rejectsANonFiniteRawWeightA(double nonFinite) {

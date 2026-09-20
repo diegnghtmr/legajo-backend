@@ -2,9 +2,11 @@ package co.edu.uniquindio.legajo.similarity;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
@@ -63,6 +65,37 @@ class TfIdfCorpusIndexTest {
         assertThat(index.idf("mat")).isCloseTo(Math.log(5.0 / 2.0) + 1.0, within(TOLERANCE));
         // idf(unseen) = ln((1+4)/(1+0)) + 1 = ln(5) + 1
         assertThat(index.idf("unseen")).isCloseTo(Math.log(5.0) + 1.0, within(TOLERANCE));
+    }
+
+    @Test
+    void twoIndexesBuiltFromEqualTokenStreamsAreEqual() {
+        // TfIdfCorpusIndex carries no framework/no identity concept of its own; two indexes
+        // built from the same corpus content should compare equal, e.g. so a SimilarityContext
+        // wrapping either one also compares equal (SimilarityContext is a record whose default
+        // equals delegates to this field's equals).
+        TfIdfCorpusIndex first = TfIdfCorpusIndex.from(List.of(List.of("cat", "sat"), List.of("cat")));
+        TfIdfCorpusIndex second = TfIdfCorpusIndex.from(List.of(List.of("cat", "sat"), List.of("cat")));
+
+        assertThat(first).isEqualTo(second);
+        assertThat(first.hashCode()).isEqualTo(second.hashCode());
+    }
+
+    @Test
+    void indexesBuiltFromDifferentTokenStreamsAreNotEqual() {
+        TfIdfCorpusIndex first = TfIdfCorpusIndex.from(List.of(List.of("cat")));
+        TfIdfCorpusIndex second = TfIdfCorpusIndex.from(List.of(List.of("dog")));
+
+        assertThat(first).isNotEqualTo(second);
+    }
+
+    @Test
+    void rejectsANullTokenInsideADocumentsTokenStream() {
+        // A null token stream element (List.of(null, ...)) is already rejected; a null TOKEN
+        // *inside* an otherwise non-null stream was not, silently landing in the internal
+        // document-frequency map under a null key instead of failing closed.
+        assertThatNullPointerException()
+                .isThrownBy(() -> TfIdfCorpusIndex.from(List.of(Arrays.asList("cat", null, "sat"))))
+                .withMessageContaining("token");
     }
 
     @Test
