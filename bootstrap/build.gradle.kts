@@ -26,6 +26,10 @@ dependencies {
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.archunit.junit5)
+    // Test-only, on :bootstrap's test classpath so ArchitectureTest's @AnalyzeClasses can
+    // see :benchmarks' classes; without it the module escaped the architecture test suite
+    // entirely (it was never a dependency of the one module ArchUnit runs from).
+    testImplementation(project(":benchmarks"))
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
