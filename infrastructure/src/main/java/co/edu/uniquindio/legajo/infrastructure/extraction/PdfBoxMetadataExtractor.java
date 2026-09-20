@@ -35,6 +35,22 @@ public final class PdfBoxMetadataExtractor implements PdfMetadataExtractor {
     private static final Pattern AUTHOR_SEPARATOR = Pattern.compile(",|\\band\\b|&");
 
     /**
+     * Upper bound on how much text {@link #extractAbstract} captures after the
+     * "Abstract" heading when no {@link #NEXT_SECTION_HEADING} ever appears (the
+     * unbounded-capture advisory): without it, a document whose layout never renders a
+     * heading the regex recognizes — or one with none at all — would have its
+     * abstract capture run all the way to the end of the document. In the reference
+     * corpus, all 18 correctly extracted abstracts measure between 902 and 1817
+     * characters ({@link AbstractQualityCheck}'s own measurement); this bound is a
+     * little over twice the longest of those, generous enough to never truncate any
+     * real abstract this pipeline has seen, while still finite. A result cut off at
+     * this bound will almost always still be flagged {@link AbstractQualityCheck#assess
+     * suspicious} (no terminal punctuation), which is the intended outcome: surfaced
+     * for manual review rather than silently persisted, exactly like a truncated one.
+     */
+    static final int MAX_ABSTRACT_CAPTURE_LENGTH = 4000;
+
+    /**
      * Some journals render a section heading in a letter-spaced display style (a single
      * space between every letter, purely typographic — "K E Y W O R D S" instead of
      * "Keywords") that PDFBox reproduces literally. Matches a whole line made of four
@@ -92,7 +108,8 @@ public final class PdfBoxMetadataExtractor implements PdfMetadataExtractor {
         if (!firstLineRemainder.isBlank()) {
             abstractBuilder.append(firstLineRemainder).append('\n');
         }
-        for (int i = headingIndex + 1; i < rawLines.size(); i++) {
+        for (int i = headingIndex + 1; i < rawLines.size() && abstractBuilder.length() < MAX_ABSTRACT_CAPTURE_LENGTH;
+                i++) {
             String trimmed = rawLines.get(i).trim();
             if (trimmed.isBlank()) {
                 continue;

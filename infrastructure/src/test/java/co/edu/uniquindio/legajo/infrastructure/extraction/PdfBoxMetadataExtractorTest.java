@@ -134,6 +134,54 @@ class PdfBoxMetadataExtractorTest {
         assertThat(metadata.abstractText()).doesNotContain("must never appear");
     }
 
+    /**
+     * The unbounded-capture advisory: when the "Abstract" heading is found but no
+     * recognized next-section heading ever follows (a document with no "Keywords" or
+     * "Introduction" line the regex recognizes, or one whose OCR/layout never renders
+     * one cleanly), the heuristic used to capture every remaining line all the way to
+     * the end of the document. This test builds many pages of filler text after the
+     * heading, with no next-section heading anywhere, and pins that the captured
+     * abstract stays bounded well below the filler's total length instead of running
+     * to the end — {@link AbstractQualityCheck} is left to flag the (necessarily
+     * incomplete, unpunctuated) result as suspicious for manual review, exactly as it
+     * already does for a truncated abstract.
+     */
+    @Test
+    void boundsAbstractCaptureWhenNoNextSectionHeadingEverFollows(@TempDir Path tempDir) throws IOException {
+        Path pdf = tempDir.resolve("unbounded.pdf");
+        String farMarker = "THIS TEXT MUST NEVER BE REACHED BY A BOUNDED CAPTURE";
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage(PDRectangle.A4);
+            document.addPage(page);
+            writeAt(document, page, "A Tiny Paper With No Closing Heading", 50, 780);
+            writeAt(document, page, "Author One", 50, 760);
+            writeAt(document, page, "Abstract", 50, 740);
+
+            // Comfortably more filler text than any bound should ever allow through.
+            float y = 720;
+            for (int i = 0; i < 400; i++) {
+                writeAt(document, page,
+                        "filler abstract sentence number " + i + " keeps the body going without a heading",
+                        50, y);
+                y -= 15;
+                if (y < 40) {
+                    page = new PDPage(PDRectangle.A4);
+                    document.addPage(page);
+                    y = 780;
+                }
+            }
+            writeAt(document, page, farMarker, 50, Math.max(y, 20));
+
+            document.save(pdf.toFile());
+        }
+
+        ExtractedPdfMetadata metadata = new PdfBoxMetadataExtractor().extract(pdf);
+
+        assertThat(metadata.abstractText().length()).isLessThan(10_000);
+        assertThat(metadata.abstractText()).doesNotContain(farMarker);
+        assertThat(AbstractQualityCheck.assess(metadata.abstractText()).suspicious()).isTrue();
+    }
+
     private static void writeAt(PDDocument document, PDPage page, String text, float x, float y) throws IOException {
         try (PDPageContentStream stream = new PDPageContentStream(
                 document, page, PDPageContentStream.AppendMode.APPEND, true)) {
