@@ -158,6 +158,25 @@ class JaccardTest {
     }
 
     @Test
+    void computeAndTraceAgreeOnTheCoefficientForTheSameInputs() {
+        // compute() and trace() derive the coefficient independently; this pins both call
+        // paths to the exact same number for a representative spread of inputs (a
+        // characterization test ahead of removing that duplication).
+        assertCoefficientsAgree(input("the", "cat", "sat"), input("the", "cat", "sat", "down"));
+        assertCoefficientsAgree(input("a", "b", "c"), input("a", "x", "c"));
+        assertCoefficientsAgree(input("a", "b"), input("x", "y"));
+        assertCoefficientsAgree(input(), input());
+        assertCoefficientsAgree(input("a", "a", "b"), input("a"));
+    }
+
+    private void assertCoefficientsAgree(SimilarityInput a, SimilarityInput b) {
+        double computed = jaccard.compute(a, b, SimilarityContext.EMPTY).normalizedScore();
+        double traced = ((JaccardTrace) jaccard.trace(a, b, SimilarityContext.EMPTY).orElseThrow()).coefficient();
+
+        assertThat(computed).isEqualTo(traced);
+    }
+
+    @Test
     void traceOnDisjointSetsHasEmptyIntersectionAndFullUnion() {
         SimilarityInput a = input("a", "b");
         SimilarityInput b = input("x", "y");

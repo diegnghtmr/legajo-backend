@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -65,6 +66,24 @@ class SimilarityAlgorithmRegistryTest {
 
         assertThat(registry.ofKind(AlgorithmKind.AI)).containsExactly(EMBEDDING_LOCAL);
         assertThat(registry.require("embedding-local")).isSameAs(EMBEDDING_LOCAL);
+    }
+
+    @Test
+    void requireRejectsANullIdWithAClearMessage() {
+        SimilarityAlgorithmRegistry registry = new SimilarityAlgorithmRegistry(List.of(LEVENSHTEIN));
+
+        assertThatNullPointerException()
+                .isThrownBy(() -> registry.require(null))
+                .withMessageContaining("id");
+    }
+
+    @Test
+    void findRejectsANullIdWithAClearMessage() {
+        SimilarityAlgorithmRegistry registry = new SimilarityAlgorithmRegistry(List.of(LEVENSHTEIN));
+
+        assertThatNullPointerException()
+                .isThrownBy(() -> registry.find(null))
+                .withMessageContaining("id");
     }
 
     @Test

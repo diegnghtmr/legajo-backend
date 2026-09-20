@@ -74,7 +74,12 @@ public final class TfIdfCosine implements SimilarityAlgorithm {
         } else {
             TfIdfCorpusIndex index = requireIndex(context);
             Computation computation = computeVectors(tokensA, tokensB, index);
-            normalizedScore = computation.cosine();
+            // TF-IDF weights are always non-negative (idf >= 1, tf >= 0), so the cosine of
+            // two normalized vectors is mathematically bounded by [0,1]; clamp it explicitly
+            // instead of relying solely on SimilarityResult's downstream tolerance-based
+            // range guard to absorb any floating-point summation drift. rawValue keeps the
+            // unclamped computed cosine as evidence.
+            normalizedScore = clamp01(computation.cosine());
             rawValue = computation.cosine();
             degenerate = false;
         }
@@ -91,10 +96,10 @@ public final class TfIdfCosine implements SimilarityAlgorithm {
         boolean emptyB = tokensB.isEmpty();
 
         if (emptyA && emptyB) {
-            return Optional.of(new TfIdfCosineTrace(id(), 0, List.of(), 1.0, 0.0, 0.0, 1.0, 0.0));
+            return Optional.of(new TfIdfCosineTrace(id(), corpusSizeOf(context), List.of(), 1.0, 0.0, 0.0, 1.0, 0.0));
         }
         if (emptyA || emptyB) {
-            return Optional.of(new TfIdfCosineTrace(id(), 0, List.of(), 0.0, 0.0, 0.0, 0.0, 90.0));
+            return Optional.of(new TfIdfCosineTrace(id(), corpusSizeOf(context), List.of(), 0.0, 0.0, 0.0, 0.0, 90.0));
         }
 
         TfIdfCorpusIndex index = requireIndex(context);
@@ -108,6 +113,18 @@ public final class TfIdfCosine implements SimilarityAlgorithm {
     private static TfIdfCorpusIndex requireIndex(SimilarityContext context) {
         return Objects.requireNonNull(context.tfIdfIndex(),
                 "context.tfIdfIndex() is required for tfidf-cosine (TRD §6.3: df/N over the whole corpus)");
+    }
+
+    /**
+     * The corpus size to report on a degenerate trace (both-empty or exactly-one-empty
+     * token streams), where no per-term evidence exists and the corpus index is never
+     * consulted for df/N. {@code 0} only when the caller genuinely has no index to offer
+     * (e.g. {@link SimilarityContext#EMPTY}); otherwise the index's real {@code N}, so this
+     * field never misleadingly reads as "empty corpus" when the actual corpus is not.
+     */
+    private static int corpusSizeOf(SimilarityContext context) {
+        TfIdfCorpusIndex index = context.tfIdfIndex();
+        return index == null ? 0 : index.corpusSize();
     }
 
     /**
@@ -162,6 +179,17 @@ public final class TfIdfCosine implements SimilarityAlgorithm {
         double angleDegrees = Math.toDegrees(Math.acos(clampedCosine));
 
         return new Computation(terms, dotProduct, rawNormA, rawNormB, cosine, angleDegrees);
+    }
+
+    /**
+     * {@code clamp(cosine, 0, 1)}. Package-private (not {@code private}) so
+     * {@code TfIdfCosineTest} can exercise the boundary directly: the natural floating-point
+     * drift for a corpus-sized TF-IDF cosine is far too small (empirically ~1e-15 even at a
+     * million-term vocabulary) to trigger through the public API alone.
+     */
+    static double clamp01(double cosine) {
+        NumericGuards.requireFinite(cosine, "cosine");
+        return Math.max(0.0, Math.min(1.0, cosine));
     }
 
     /** {@code tf(t,d) = 1 + ln f(t,d)} when {@code f(t,d) > 0}, else {@code 0} (TRD §6.3). */

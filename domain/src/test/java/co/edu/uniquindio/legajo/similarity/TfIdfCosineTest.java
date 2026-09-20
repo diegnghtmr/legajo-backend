@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
@@ -134,6 +135,23 @@ class TfIdfCosineTest {
     }
 
     @Test
+    void computeThrowsAClearExceptionWhenTheContextCarriesNoTfIdfIndex() {
+        // Both streams non-empty means the degenerate short-circuits don't apply, so
+        // compute() must actually consult context.tfIdfIndex() (TRD §6.3: df/N are
+        // corpus-wide state this capability cannot derive from its own two inputs).
+        assertThatNullPointerException()
+                .isThrownBy(() -> tfIdfCosine.compute(input("a"), input("b"), SimilarityContext.EMPTY))
+                .withMessageContaining("tfIdfIndex");
+    }
+
+    @Test
+    void traceThrowsAClearExceptionWhenTheContextCarriesNoTfIdfIndex() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> tfIdfCosine.trace(input("a"), input("b"), SimilarityContext.EMPTY))
+                .withMessageContaining("tfIdfIndex");
+    }
+
+    @Test
     void computedNanosIsMeasuredAndNonNegative() {
         SimilarityContext context = corpusContext(List.of("a"), List.of("b"));
 
@@ -194,6 +212,51 @@ class TfIdfCosineTest {
     }
 
     @Test
+    void traceOnBothEmptyInputsReportsTheActualCorpusSizeWhenAnIndexIsAvailable() {
+        // The degenerate branches never consult the corpus index for df/N (there is no
+        // per-term evidence to weigh), but the corpus size itself is still meaningful
+        // metadata when an index IS available — hardcoding it to 0 would misleadingly look
+        // like an empty corpus even when the real corpus has documents.
+        SimilarityInput a = input();
+        SimilarityInput b = input();
+        SimilarityContext context = corpusContext(
+                List.of("cat", "sat", "mat"),
+                List.of("cat", "sat", "dog"),
+                List.of("dog", "runs"),
+                List.of("cat", "runs"));
+
+        TfIdfCosineTrace trace = (TfIdfCosineTrace) tfIdfCosine.trace(a, b, context).orElseThrow();
+
+        assertThat(trace.corpusSize()).isEqualTo(4);
+    }
+
+    @Test
+    void traceOnExactlyOneEmptyInputReportsTheActualCorpusSizeWhenAnIndexIsAvailable() {
+        SimilarityInput a = input();
+        SimilarityInput b = input("the", "cat");
+        SimilarityContext context = corpusContext(List.of("cat", "sat"), List.of("cat", "dog"));
+
+        TfIdfCosineTrace trace = (TfIdfCosineTrace) tfIdfCosine.trace(a, b, context).orElseThrow();
+
+        assertThat(trace.corpusSize()).isEqualTo(2);
+    }
+
+    @Test
+    void normalizedScoreNeverExceedsOneEvenAtTheIdenticalDocumentBoundary() {
+        // Regression guard for the clamp: TF-IDF weights are always non-negative (idf >= 1,
+        // tf >= 0), so the cosine of two normalized vectors is mathematically bounded by
+        // [0,1]; the returned score must never read as strictly greater than 1.0, unlike
+        // relying solely on SimilarityResult's downstream +-1e-9 tolerance to absorb drift.
+        SimilarityInput a = input("cat", "sat", "mat", "cat", "dog");
+        SimilarityContext context = corpusContext(List.of("cat", "sat", "mat", "cat", "dog"), List.of("dog"));
+
+        SimilarityResult result = tfIdfCosine.compute(a, a, context);
+
+        assertThat(result.normalizedScore()).isLessThanOrEqualTo(1.0);
+        assertThat(result.normalizedScore()).isCloseTo(1.0, within(TOLERANCE));
+    }
+
+    @Test
     void traceOnBothEmptyInputsHasNoTermsAndTheDegenerateCosineConvention() {
         SimilarityInput a = input();
         SimilarityInput b = input();
@@ -219,6 +282,21 @@ class TfIdfCosineTest {
         assertThat(trace.terms()).isEmpty();
         assertThat(trace.cosine()).isCloseTo(0.0, within(TOLERANCE));
         assertThat(trace.angleDegrees()).isCloseTo(90.0, within(TOLERANCE));
+    }
+
+    @Test
+    void clamp01BoundsAnOvershootingCosineToOne() {
+        assertThat(TfIdfCosine.clamp01(1.0000000005)).isEqualTo(1.0);
+    }
+
+    @Test
+    void clamp01BoundsAnUndershootingCosineToZero() {
+        assertThat(TfIdfCosine.clamp01(-0.0000000005)).isEqualTo(0.0);
+    }
+
+    @Test
+    void clamp01LeavesAnInRangeCosineUnchanged() {
+        assertThat(TfIdfCosine.clamp01(0.5622829957377211)).isEqualTo(0.5622829957377211);
     }
 
     private static SimilarityInput input(String... tokens) {

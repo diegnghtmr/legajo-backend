@@ -46,19 +46,7 @@ public final class Jaccard implements SimilarityAlgorithm {
     public SimilarityResult compute(SimilarityInput a, SimilarityInput b, SimilarityContext context) {
         long start = System.nanoTime();
 
-        TreeSet<String> setA = new TreeSet<>(a.tokens());
-        TreeSet<String> setB = new TreeSet<>(b.tokens());
-        TreeSet<String> union = new TreeSet<>(setA);
-        union.addAll(setB);
-
-        double coefficient;
-        if (union.isEmpty()) {
-            coefficient = 1.0;
-        } else {
-            TreeSet<String> intersection = new TreeSet<>(setA);
-            intersection.retainAll(setB);
-            coefficient = (double) intersection.size() / union.size();
-        }
+        double coefficient = setsOf(a, b).coefficient();
 
         long computedNanos = System.nanoTime() - start;
         return new SimilarityResult(coefficient, coefficient, computedNanos);
@@ -66,24 +54,35 @@ public final class Jaccard implements SimilarityAlgorithm {
 
     @Override
     public Optional<AlgorithmTrace> trace(SimilarityInput a, SimilarityInput b, SimilarityContext context) {
-        TreeSet<String> setA = new TreeSet<>(a.tokens());
-        TreeSet<String> setB = new TreeSet<>(b.tokens());
-        TreeSet<String> intersection = new TreeSet<>(setA);
-        intersection.retainAll(setB);
-        TreeSet<String> union = new TreeSet<>(setA);
-        union.addAll(setB);
-
-        int unionSize = union.size();
-        double coefficient = unionSize == 0 ? 1.0 : (double) intersection.size() / unionSize;
-
-        List<String> setAList = new ArrayList<>(setA);
-        List<String> setBList = new ArrayList<>(setB);
-        List<String> intersectionList = new ArrayList<>(intersection);
-        List<String> unionList = new ArrayList<>(union);
+        Sets sets = setsOf(a, b);
 
         AlgorithmTrace trace = new JaccardTrace(
-                id(), setAList, setBList, intersectionList.size(), unionSize, intersectionList, unionList,
-                coefficient);
+                id(), new ArrayList<>(sets.setA()), new ArrayList<>(sets.setB()), sets.intersection().size(),
+                sets.union().size(), new ArrayList<>(sets.intersection()), new ArrayList<>(sets.union()),
+                sets.coefficient());
         return Optional.of(trace);
+    }
+
+    /**
+     * Builds both token sets, their intersection and union, and the resulting coefficient in
+     * one place, so {@code compute()} and {@code trace()} never derive the coefficient
+     * independently (they used to, duplicating the {@code |S_A ∩ S_B| / |S_A ∪ S_B|} formula
+     * and its both-empty convention).
+     */
+    private static Sets setsOf(SimilarityInput a, SimilarityInput b) {
+        TreeSet<String> setA = new TreeSet<>(a.tokens());
+        TreeSet<String> setB = new TreeSet<>(b.tokens());
+        TreeSet<String> union = new TreeSet<>(setA);
+        union.addAll(setB);
+        TreeSet<String> intersection = new TreeSet<>(setA);
+        intersection.retainAll(setB);
+
+        double coefficient = union.isEmpty() ? 1.0 : (double) intersection.size() / union.size();
+        return new Sets(setA, setB, intersection, union, coefficient);
+    }
+
+    private record Sets(
+            TreeSet<String> setA, TreeSet<String> setB, TreeSet<String> intersection, TreeSet<String> union,
+            double coefficient) {
     }
 }

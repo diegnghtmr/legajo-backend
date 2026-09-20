@@ -35,6 +35,7 @@ public final class SimilarityAlgorithmRegistry {
 
     /** Returns the algorithm registered under {@code id}, or throws if none matches. */
     public SimilarityAlgorithm require(String id) {
+        Objects.requireNonNull(id, "id");
         SimilarityAlgorithm algorithm = byId.get(id);
         if (algorithm == null) {
             throw new NoSuchElementException("no similarity algorithm registered with id: " + id);
@@ -44,6 +45,7 @@ public final class SimilarityAlgorithmRegistry {
 
     /** Returns the algorithm registered under {@code id}, if any. */
     public Optional<SimilarityAlgorithm> find(String id) {
+        Objects.requireNonNull(id, "id");
         return Optional.ofNullable(byId.get(id));
     }
 
