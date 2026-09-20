@@ -53,13 +53,15 @@ import java.util.List;
  *       wide or narrow) or three-or-more segments (unsupported multi-column punctuation
  *       like a piped author line, or 3+ real columns) contributes no evidence either
  *       way and is simply not counted.</li>
- *   <li>If at least {@value #MIN_LINES_PER_COLUMN} such two-segment rows are found, the
- *       column boundary is the midpoint between the widest reach of every row's left
- *       segment and the narrowest reach of every row's right segment, and the page's
- *       column body starts at the topmost such row. Fewer than that many rows keeps
- *       today's exact single-pass extraction, per the task's hard-stop instruction to
- *       fail honestly rather than trust a single fluke row (a stray page number next to
- *       a footnote, for instance).</li>
+ *   <li>A candidate split is only trusted once it clears both: at least
+ *       {@value #MIN_LINES_PER_COLUMN} two-segment rows, and either those rows agreeing
+ *       on the boundary x within {@value #MAX_BOUNDARY_SPREAD} points or forming a
+ *       consecutive vertical run of at least {@value #MIN_CONSECUTIVE_TWO_SEGMENT_ROWS}
+ *       rows (see {@link #hasStrongColumnEvidence}), so a page with one or two
+ *       coincidental wide-gap rows stays single-column (R3-column-false-positive). The
+ *       boundary is then the midpoint between the widest reach of every qualifying row's
+ *       left segment and the narrowest reach of every row's right segment, and the column
+ *       body starts at the topmost such row.</li>
  *   <li>Everything above that topmost row is re-emitted once, spanning the full page
  *       width, ahead of the two columns, using {@link PDFTextStripperByArea} so each
  *       block keeps its own natural reading order.</li>
@@ -97,10 +99,27 @@ final class ColumnAwareTextExtractor {
 
     /**
      * A candidate column split is only trusted once at least this many rows split into
-     * exactly two segments, so a single stray two-segment row (a page number next to a
-     * footnote, for instance) cannot masquerade as a whole two-column layout.
+     * exactly two segments. Two was not enough: an ordinary page can hold two isolated
+     * wide-gap rows (a running head, right-flushed equation numbers, a two-row table)
+     * without being two-column at all (R3-column-false-positive).
      */
-    private static final int MIN_LINES_PER_COLUMN = 2;
+    private static final int MIN_LINES_PER_COLUMN = 3;
+
+    /**
+     * Alternative evidence #1: the qualifying rows agree on the boundary x within this
+     * many points. A real column gutter sits at (near) the same x on every row; unrelated
+     * wide-gap rows tend to disagree. 50pt comes from the reference corpus's own
+     * two-column PDF, whose varying sidebar line length moves the boundary by up to ~42pt.
+     * A "share of the page's rows" gate was tried and dropped: that same page has only 6
+     * two-segment rows out of 49, so it would reject the layout this class exists for.
+     */
+    private static final float MAX_BOUNDARY_SPREAD = 50f;
+
+    /**
+     * Alternative evidence #2: a run of this many consecutive two-segment rows. A real
+     * two-column body reads as an unbroken run; scattered false positives do not.
+     */
+    private static final int MIN_CONSECUTIVE_TWO_SEGMENT_ROWS = 3;
 
     /** Below this header height, in points, there is nothing worth extracting as a separate header block. */
     private static final float MIN_HEADER_HEIGHT = 1f;
@@ -175,12 +194,21 @@ final class ColumnAwareTextExtractor {
             return null;
         }
 
-        List<TwoSegmentRow> pairs = groupIntoRows(glyphs).stream()
-                .map(ColumnAwareTextExtractor::splitRowIntoSegments)
-                .filter(segments -> segments.size() == 2)
-                .map(segments -> new TwoSegmentRow(segments.get(0), segments.get(1)))
-                .toList();
-        if (pairs.size() < MIN_LINES_PER_COLUMN) {
+        List<List<Glyph>> rows = groupIntoRows(glyphs);
+        List<TwoSegmentRow> pairs = new ArrayList<>();
+        int longestConsecutiveRun = 0;
+        int currentRun = 0;
+        for (List<Glyph> row : rows) {
+            List<LineExtent> segments = splitRowIntoSegments(row);
+            if (segments.size() == 2) {
+                pairs.add(new TwoSegmentRow(segments.get(0), segments.get(1)));
+                currentRun++;
+                longestConsecutiveRun = Math.max(longestConsecutiveRun, currentRun);
+            } else {
+                currentRun = 0;
+            }
+        }
+        if (!hasStrongColumnEvidence(pairs, longestConsecutiveRun)) {
             return null;
         }
 
@@ -207,6 +235,28 @@ final class ColumnAwareTextExtractor {
             return null;
         }
         return new ColumnLayout(bodyStartY, columnBoundaryX, box.getWidth(), box.getHeight());
+    }
+
+    /**
+     * Requires several two-segment rows plus at least one of: the rows agree on the
+     * boundary x, or they form a long consecutive vertical run. The row count alone can be
+     * fooled by a few coincidental wide-gap rows (R3-column-false-positive).
+     */
+    private static boolean hasStrongColumnEvidence(List<TwoSegmentRow> pairs, int longestConsecutiveRun) {
+        if (pairs.size() < MIN_LINES_PER_COLUMN) {
+            return false;
+        }
+        if (longestConsecutiveRun >= MIN_CONSECUTIVE_TWO_SEGMENT_ROWS) {
+            return true;
+        }
+        float minBoundaryX = Float.MAX_VALUE;
+        float maxBoundaryX = -Float.MAX_VALUE;
+        for (TwoSegmentRow pair : pairs) {
+            float boundaryX = (pair.left().xEnd() + pair.right().xStart()) / 2f;
+            minBoundaryX = Math.min(minBoundaryX, boundaryX);
+            maxBoundaryX = Math.max(maxBoundaryX, boundaryX);
+        }
+        return maxBoundaryX - minBoundaryX <= MAX_BOUNDARY_SPREAD;
     }
 
     private static List<Glyph> collectGlyphs(PDDocument document, int pageIndex) throws IOException {
