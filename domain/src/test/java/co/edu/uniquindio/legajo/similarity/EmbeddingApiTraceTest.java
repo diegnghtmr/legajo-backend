@@ -1,0 +1,106 @@
+package co.edu.uniquindio.legajo.similarity;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
+
+/**
+ * Validated invariants of {@link EmbeddingApiTrace} (TRD §6.3's embedding-api trace row):
+ * {@code vectorA}/{@code vectorB} must match {@code dimension}; the excerpts must be exactly
+ * the first {@code min(8, dimension)} components of the corresponding full vector;
+ * {@code sumSquaredDiff} must equal the hand-computed sum of squared differences of the two
+ * vectors; {@code distance} must equal {@code sqrt(sumSquaredDiff)}; {@code normalizedScore}
+ * must equal {@code clamp(1 - distance/sqrt(2), 0, 1)}.
+ */
+class EmbeddingApiTraceTest {
+
+    private static final List<Double> VECTOR_A = List.of(0.6, 0.8, 0.0);
+    private static final List<Double> VECTOR_B = List.of(0.0, 0.6, 0.8);
+    private static final double SUM_SQUARED_DIFF = 1.04;
+    private static final double DISTANCE = 1.019803902718557;
+    private static final double NORMALIZED_SCORE = 0.2788897449072022;
+
+    private static EmbeddingApiTrace validTrace() {
+        return new EmbeddingApiTrace("embedding-api", "api", "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B,
+                VECTOR_A, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF, DISTANCE, NORMALIZED_SCORE, "cached");
+    }
+
+    @Test
+    void acceptsAConsistentTrace() {
+        validTrace();
+    }
+
+    @Test
+    void rejectsANullAlgorithmId() {
+        assertThatNullPointerException().isThrownBy(() -> new EmbeddingApiTrace(null, "api",
+                "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF,
+                DISTANCE, NORMALIZED_SCORE, "cached"));
+    }
+
+    @Test
+    void rejectsABlankProviderStatus() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF,
+                DISTANCE, NORMALIZED_SCORE, "  "));
+    }
+
+    @Test
+    void rejectsAVectorASizeMismatchWithDimension() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 4, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF,
+                DISTANCE, NORMALIZED_SCORE, "cached"));
+    }
+
+    @Test
+    void rejectsAnExcerptThatIsNotAPrefixOfTheFullVector() {
+        List<Double> wrongExcerpt = List.of(9.0, 9.0, 9.0);
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 3, wrongExcerpt, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0,
+                SUM_SQUARED_DIFF, DISTANCE, NORMALIZED_SCORE, "cached"));
+    }
+
+    @Test
+    void rejectsASumSquaredDiffThatDoesNotMatchTheVectors() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, 99.0, DISTANCE,
+                NORMALIZED_SCORE, "cached"));
+    }
+
+    @Test
+    void rejectsADistanceThatDiffersFromTheSquareRootOfSumSquaredDiff() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF,
+                99.0, NORMALIZED_SCORE, "cached"));
+    }
+
+    @Test
+    void rejectsANegativeDistance() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF,
+                -1.0, NORMALIZED_SCORE, "cached"));
+    }
+
+    @Test
+    void rejectsANormalizedScoreThatIsNotTheClampedMapping() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, SUM_SQUARED_DIFF,
+                DISTANCE, 0.99, "cached"));
+    }
+
+    @Test
+    void rejectsANegativePreNormL2() {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, -1.0, 1.0, SUM_SQUARED_DIFF,
+                DISTANCE, NORMALIZED_SCORE, "cached"));
+    }
+
+    @Test
+    void aDistanceBeyondSqrt2ClampsTheNormalizedScoreToZero() {
+        List<Double> opposite = List.of(-0.6, -0.8, 0.0);
+        new EmbeddingApiTrace("embedding-api", "api", "gemini-embedding-2-preview", 3, VECTOR_A, opposite, VECTOR_A,
+                opposite, 1.0, 1.0, 4.0, 2.0, 0.0, "cached");
+    }
+}
