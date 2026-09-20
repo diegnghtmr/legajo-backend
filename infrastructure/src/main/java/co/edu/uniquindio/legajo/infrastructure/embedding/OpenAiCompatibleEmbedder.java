@@ -34,6 +34,14 @@ import java.util.Objects;
  * or fabricated cache entry. A successful call whose returned vector does not have the
  * configured dimension is treated the same way — the provider silently changed its output
  * shape (TR-10: the model is in preview) — rather than being cached wrong.
+ *
+ * <p><b>Verified Gemini/openai-java compatibility gaps.</b> {@link GeminiEmbeddingsCompatibilityInterceptor}
+ * is registered on the underlying HTTP client to work around two real, reproduced
+ * incompatibilities: Gemini's OpenAI-compatible endpoint omits the per-embedding {@code index}
+ * field whenever it would be {@code 0} (a proto3 JSON default-omission quirk) and omits the
+ * top-level {@code usage} object entirely, while the official OpenAI Java SDK treats both as
+ * required, throwing before this class's own code ever runs. See that class's Javadoc for the
+ * verified request/response evidence.
  */
 public final class OpenAiCompatibleEmbedder implements AutoCloseable {
 
@@ -71,6 +79,7 @@ public final class OpenAiCompatibleEmbedder implements AutoCloseable {
         this.embeddingModel = OpenAiEmbeddingModel.builder()
                 .options(options)
                 .metadataMode(MetadataMode.EMBED)
+                .httpClientBuilderCustomizer(clientBuilder -> clientBuilder.interceptor(new GeminiEmbeddingsCompatibilityInterceptor()))
                 .build();
     }
 

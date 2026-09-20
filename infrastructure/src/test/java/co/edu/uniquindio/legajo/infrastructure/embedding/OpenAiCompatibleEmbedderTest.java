@@ -18,11 +18,12 @@ import static org.assertj.core.api.Assertions.within;
 
 /**
  * {@link OpenAiCompatibleEmbedder} against a stubbed OpenAI-compatible embeddings endpoint
- * (TRD §13, "Adaptador remoto"): success, a 5xx response, and a client-side timeout, all
- * mapped through {@link EmbeddingApiException} rather than reaching the caller as raw SDK
- * exceptions. No test in this class talks to the real network — Gemini's endpoint is
- * exercised separately by the offline precompute run (task S6b), never by {@code ./gradlew
- * test}.
+ * (TRD §13, "Adaptador remoto"): success (including Gemini's real, index/usage-omitting
+ * response shape — see {@link GeminiEmbeddingsCompatibilityInterceptor}), a 5xx response, a
+ * 401, a client-side timeout, and a dimension mismatch, all mapped through
+ * {@link EmbeddingApiException} rather than reaching the caller as raw SDK exceptions. No test
+ * in this class talks to the real network — Gemini's endpoint is exercised separately by the
+ * offline precompute run (task S6b), never by {@code ./gradlew test}.
  */
 class OpenAiCompatibleEmbedderTest {
 
@@ -69,6 +70,33 @@ class OpenAiCompatibleEmbedderTest {
             assertThat(vector.preNormL2()).isCloseTo(2.0, within(1e-9)); // ||(1,1,1,1)|| = 2
             assertThat(EmbeddingVector.l2Norm(vector.values())).isCloseTo(1.0, within(1e-9));
             assertThat(vector.values()).containsExactly(0.5, 0.5, 0.5, 0.5);
+        }
+    }
+
+    @Test
+    void embedsSuccessfullyAgainstGeminisRealResponseShapeWhereIndexIsOmittedForTheFirstItem() {
+        // Reproduces the exact shape observed against the real Gemini endpoint (verified with
+        // a raw curl call, TRD §8): data[0] has no "index" key at all — Gemini's OpenAI-compat
+        // layer omits int32 fields left at their default value (proto3 JSON semantics), and
+        // index 0 is that default. Without GeminiEmbeddingsCompatibilityInterceptor, the OpenAI Java
+        // SDK's Embedding.index() throws OpenAIInvalidDataException("index is not set")
+        // before this method ever returns.
+        String body = """
+                {
+                  "object": "list",
+                  "data": [ { "object": "embedding", "embedding": [1.0, 1.0, 1.0, 1.0] } ],
+                  "model": "%s"
+                }
+                """.formatted(MODEL);
+        wireMockServer.stubFor(post(urlEqualTo("/embeddings"))
+                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody(body)));
+
+        try (OpenAiCompatibleEmbedder embedder =
+                new OpenAiCompatibleEmbedder("test-key", wireMockServer.baseUrl(), MODEL, DIMENSION)) {
+            EmbeddingVector vector = embedder.embed("d01", "an abstract");
+
+            assertThat(vector.dimension()).isEqualTo(DIMENSION);
+            assertThat(EmbeddingVector.l2Norm(vector.values())).isCloseTo(1.0, within(1e-9));
         }
     }
 
