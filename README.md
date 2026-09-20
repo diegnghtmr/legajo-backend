@@ -41,7 +41,8 @@ warns Gradle 9.0 rejects JDK 25, so 9.1.0+ is required). Two ways to build repro
    Toolchains Resolver, so a plain `./gradlew build` auto-downloads a JDK 25 toolchain
    if none is available locally, independent of the JDK running Gradle itself.
 
-CI always uses `actions/setup-java@v4` with `distribution: temurin`, `java-version: "25"`.
+CI always uses `actions/setup-java` (pinned to a commit SHA, currently v4.9.1) with
+`distribution: temurin`, `java-version: "25"`.
 
 ## Build & test
 
@@ -61,9 +62,27 @@ Health check: `GET /actuator/health`.
 
 ## Environment variables
 
-See `.env.example`: `LEGAJO_EMBEDDING_PROVIDER`, `LEGAJO_CORS_ORIGINS`,
-`SPRING_AI_OPENAI_BASE_URL`, `SPRING_AI_OPENAI_API_KEY`. Values never go in git; use a
-local `.env` or the hosting provider's secret panel.
+`.env.example` is the declared list of variables this backend reads; copy it to `.env`
+for local runs and fill in the values there (`.env` is git-ignored, values never go in
+git — use the hosting provider's secret panel in production).
+
+| Variable | Read by | Required | Notes |
+|---|---|---|---|
+| `LEGAJO_EMBEDDING_PROVIDER` | `application.yml` (`legajo.embedding-provider`) | No, defaults to `cached` | `cached` reads `data/embeddings-*.json`, no network needed |
+| `LEGAJO_CORS_ORIGINS` | `application.yml` (`legajo.cors-origins`) | No, defaults to empty | Comma-separated browser origins allowed by CORS (TRD §14.4) |
+| `SPRING_AI_OPENAI_BASE_URL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | OpenAI-compatible embeddings endpoint (Gemini, TRD §8) |
+| `SPRING_AI_OPENAI_API_KEY` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Read from the environment only; never logged or included in an exception message |
+| `LEGAJO_EMBEDDING_API_MODEL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | e.g. `gemini-embedding-2-preview` |
+| `LEGAJO_EMBEDDING_API_DIMENSION` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Must be a positive integer |
+| `SPRING_AI_OPENAI_EMBEDDING_EMBEDDINGS_PATH` | `PrecomputeApiEmbeddingsCli` | No | Optional, warn-only: Spring AI 2.0.x has no override point to route it to, so this CLI only warns if it is set to something other than `/embeddings`; see the class's Javadoc for the full history |
+
+**`LEGAJO_GROBID_URL` is declared in `.env.example` but not actually read from the
+environment.** `IngestCli` only accepts the GROBID endpoint as the `--grobid-url`
+command-line argument (default `http://localhost:8070`); grepping the codebase for
+`LEGAJO_GROBID_URL` finds no `System.getenv`/`environment.apply` call anywhere, only the
+`.env.example` line and the TRD §8 GROBID row that both assume it configures the CLI.
+Until that gap is closed (either wire the CLI to read it, or correct `.env.example`/the
+TRD), setting it in `.env` has no effect — pass `--grobid-url` instead.
 
 ## Ingestion, validation and verification (TRD §6.1)
 
