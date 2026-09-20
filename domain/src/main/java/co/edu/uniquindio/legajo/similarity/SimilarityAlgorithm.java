@@ -20,13 +20,13 @@ import java.util.Optional;
  * {@link AlgorithmKind} before invoking a capability.
  *
  * <p><b>Extensibility (TRD §4.4).</b> {@link Levenshtein} (S2), {@link NeedlemanWunsch}
- * (S3), and {@link Jaccard} (S4) are permitted so far. TF-IDF cosine (S5) and the two
+ * (S3), {@link Jaccard} (S4), and {@link TfIdfCosine} (S5) are permitted so far. The two
  * embedding capabilities (S6) each join this permits list as their own class, with no
  * change to this interface or to any existing permitted implementation. The
  * {@code @Component} list injection that collects every permitted instance into a registry
  * lives in {@code infrastructure} — this package stays framework-free (ArchUnit-enforced).
  */
-public sealed interface SimilarityAlgorithm permits Levenshtein, NeedlemanWunsch, Jaccard {
+public sealed interface SimilarityAlgorithm permits Levenshtein, NeedlemanWunsch, Jaccard, TfIdfCosine {
 
     /** Stable identifier used by the API, cache keys, and the registry (e.g. "levenshtein"). */
     String id();

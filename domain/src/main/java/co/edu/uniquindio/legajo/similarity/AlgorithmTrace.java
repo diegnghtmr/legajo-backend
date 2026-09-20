@@ -5,9 +5,9 @@ package co.edu.uniquindio.legajo.similarity;
  * {@code trace(a, b, context)} (TRD §6.3): a human/UI-auditable record of how a result was
  * computed, distinct from the numeric {@link SimilarityResult}. {@link DpMatrixTrace} is
  * shared by Levenshtein (S2) and Needleman–Wunsch (S3); {@link JaccardTrace} (S4) is the
- * set-based trace for Jaccard; later tasks add the TF-IDF term-by-term trace and the two
- * embedding-vector traces as new permitted records, without changing this marker or any
- * existing caller.
+ * set-based trace for Jaccard; {@link TfIdfCosineTrace} (S5) is the term-by-term trace for
+ * TF-IDF cosine; later tasks add the two embedding-vector traces as new permitted records,
+ * without changing this marker or any existing caller.
  */
-public sealed interface AlgorithmTrace permits DpMatrixTrace, JaccardTrace {
+public sealed interface AlgorithmTrace permits DpMatrixTrace, JaccardTrace, TfIdfCosineTrace {
 }
