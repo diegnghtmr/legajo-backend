@@ -45,10 +45,12 @@ class PearsonCorrelationTest {
     @Test
     void matchesTheHandComputedValueForTheNEqualsFiveFixture() {
         // The exact pairs cophenetic-vs-D produces for LanceWilliamsEngineTest's n=5
-        // single-linkage golden (see CopheneticCorrelationTest for the derivation of these
-        // ten off-diagonal pairs). Independently recomputed with Python's plain arithmetic
-        // (no library): r = (10*461 - 62*52) / sqrt((10*554-62^2)*(10*388-52^2))
-        // = 1386 / sqrt(1696*1176) = 0.9814013373262034.
+        // single-linkage golden (five points on a line at 0,1,2,10,11), ten off-diagonal
+        // pairs. The expected value was computed independently in Python with the raw
+        // one-pass form: r = (10*461 - 62*52) / sqrt((10*554-62^2)*(10*388-52^2))
+        // = 1386 / sqrt(1696*1176) = 0.9814013373262034. That the two-pass centered
+        // implementation reproduces a value derived from the algebraically different one-pass
+        // form is the point of this test, not an accident.
         double[] d = {1, 2, 10, 11, 1, 9, 10, 8, 9, 1};
         double[] cophenetic = {1, 1, 8, 8, 1, 8, 8, 8, 8, 1};
 

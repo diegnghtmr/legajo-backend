@@ -9,10 +9,14 @@ import java.util.Objects;
  * general-purpose primitive {@link CopheneticCorrelation} builds on to compare a tree's
  * cophenetic distances against D (TRD §6.5).
  *
- * <p>Uses the sum-of-products form
- * {@code r = (n*Sxy - Sx*Sy) / sqrt((n*Sxx - Sx^2) * (n*Syy - Sy^2))}, algebraically
- * equivalent to the textbook covariance/standard-deviation definition but computed in one
- * pass over each array instead of two (no separate mean-then-deviation pass).
+ * <p>Uses the two-pass centered form: take each array's mean, then accumulate the centered
+ * products and squares. The one-pass {@code r = (n*Sxy - Sx*Sy) / sqrt(...)} form is
+ * algebraically equivalent but unusable here for two reasons. Its variance term scales with
+ * the data, so a zero-variance guard against any absolute epsilon rejects legitimate
+ * small-magnitude input — and cophenetic correlation is fed cosine distances that get that
+ * small when the corpus holds near-duplicate abstracts. It also subtracts two large nearly
+ * equal quantities, losing precision to cancellation. Centering first removes both problems
+ * and makes zero variance an exact algebraic test rather than a thresholded one.
  */
 public final class PearsonCorrelation {
 
@@ -80,6 +84,12 @@ public final class PearsonCorrelation {
 
         double denominator = Math.sqrt(centeredSquaresX) * Math.sqrt(centeredSquaresY);
         NumericGuards.requireFinite(denominator, "denominator");
-        return sumOfProducts / denominator;
+
+        // Guard the quotient itself, not just its operands: a denormal denominator can still
+        // overflow a finite numerator to infinity, and the house rule is that no derived
+        // double escapes this package unchecked (the NumericGuards contract).
+        double correlation = sumOfProducts / denominator;
+        NumericGuards.requireFinite(correlation, "correlation");
+        return correlation;
     }
 }

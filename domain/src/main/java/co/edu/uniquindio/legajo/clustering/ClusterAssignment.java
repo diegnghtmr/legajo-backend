@@ -31,7 +31,7 @@ public record ClusterAssignment(List<Integer> labels, int k) {
             used[label] = true;
         }
         // Range alone is not the invariant this record advertises. labels=(0,0) with k=5 sits
-        // inside [0, k) yet describes five clusters of which three are empty, and every
+        // inside [0, k) yet describes five clusters of which four are empty, and every
         // fixed-k consumer downstream — mean silhouette, Davies-Bouldin, the ranking rule
         // (TRD §6.5) — iterates 0..k-1 and would divide by an empty cluster's size. The
         // labelling must therefore be surjective onto [0, k-1], which also forces
