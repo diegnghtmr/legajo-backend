@@ -66,10 +66,19 @@ class CopheneticCorrelationTest {
         LinkageMatrix onD = engine.agglomerate(d, new WardLinkage());
         LinkageMatrix onDoubledD = engine.agglomerate(dDoubled, new WardLinkage());
 
+        // Both sides correlate against the SAME reference D. Scaling the reference too would
+        // scale both Pearson operands at once, which is invariant for any correlation and so
+        // proves nothing about Ward: the case RF2 actually runs is Ward's doubled heights
+        // measured against the same unscaled D the other three linkages are measured against.
         double correlationOnD = CopheneticCorrelation.of(onD, d);
-        double correlationOnDoubledD = CopheneticCorrelation.of(onDoubledD, dDoubled);
+        double correlationOnDoubledD = CopheneticCorrelation.of(onDoubledD, d);
 
         assertThat(correlationOnDoubledD).isCloseTo(correlationOnD, within(TOLERANCE));
+
+        // And the doubled-reference form still agrees, which is what lets the ranking rule
+        // put all four linkages on one scale.
+        assertThat(CopheneticCorrelation.of(onDoubledD, dDoubled))
+                .isCloseTo(correlationOnD, within(TOLERANCE));
     }
 
     @Test
