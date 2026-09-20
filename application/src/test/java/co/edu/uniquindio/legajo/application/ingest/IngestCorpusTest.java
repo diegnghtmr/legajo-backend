@@ -46,16 +46,24 @@ class IngestCorpusTest {
         assertThat(corpus.sourceCount()).isEqualTo(2);
         assertThat(corpus.documents()).hasSize(2);
 
+        // IngestCorpus always normalizes the source path to forward slashes
+        // (inputFolder.toString().replace('\\', '/') + "/" + fileName), regardless of
+        // the host platform's own separator; the expected value below applies the same
+        // normalization instead of relying on `inputFolder + "/01.pdf"` happening to
+        // match only because this test runs on a platform whose separator is already
+        // "/" (a hardcoded-path-separator assertion that a Windows CI would fail even
+        // though production behavior is correct there).
+        String normalizedInputFolder = inputFolder.toString().replace('\\', '/');
         assertThat(corpus.documents().get(0).id()).isEqualTo("d01");
         assertThat(corpus.documents().get(0).title()).isEqualTo("Title for 01.pdf");
-        assertThat(corpus.documents().get(0).source()).isEqualTo(inputFolder + "/01.pdf");
+        assertThat(corpus.documents().get(0).source()).isEqualTo(normalizedInputFolder + "/01.pdf");
         assertThat(corpus.documents().get(0).extractedBy()).isEqualTo("FAKE");
         assertThat(corpus.documents().get(0).manuallyValidated()).isFalse();
         assertThat(corpus.documents().get(0).abstractSha256())
                 .isEqualTo(CorpusHasher.abstractSha256("Abstract for 01.pdf"));
 
         assertThat(corpus.documents().get(1).id()).isEqualTo("d02");
-        assertThat(corpus.documents().get(1).source()).isEqualTo(inputFolder + "/02.pdf");
+        assertThat(corpus.documents().get(1).source()).isEqualTo(normalizedInputFolder + "/02.pdf");
 
         assertThat(corpus.corpusSha256()).isEqualTo(CorpusHasher.corpusSha256(corpus.documents()));
         assertThat(repository.saved()).isEqualTo(corpus);
@@ -100,6 +108,29 @@ class IngestCorpusTest {
         Corpus corpus = new IngestCorpus(FAKE_EXTRACTOR, new InMemoryCorpusRepository()).ingest(inputFolder, "1.0");
 
         assertThat(corpus.documents()).extracting(doc -> doc.id()).startsWith("d001", "d002").endsWith("d100");
+    }
+
+    /**
+     * Proves the {@code \} → {@code /} source-path normalization deterministically,
+     * without depending on the host platform's own path separator (unlike a plain
+     * assertion against {@code inputFolder + "/01.pdf"}, which only exercises the
+     * normalization on a platform whose separator is already {@code /}). A backslash
+     * is a perfectly legal filename character on POSIX filesystems — only {@code /}
+     * and NUL are forbidden — so a folder segment literally named with one exercises
+     * {@code IngestCorpus}'s normalization on this Linux CI exactly as it would on
+     * Windows, where the folder path itself is backslash-separated.
+     */
+    @Test
+    void normalizesBackslashesInTheSourcePathToForwardSlashes(@TempDir Path tempDir) throws IOException {
+        Path inputFolder = tempDir.resolve("weird\\segment");
+        Files.createDirectories(inputFolder);
+        Files.createFile(inputFolder.resolve("01.pdf"));
+
+        Corpus corpus = new IngestCorpus(FAKE_EXTRACTOR, new InMemoryCorpusRepository()).ingest(inputFolder, "1.0");
+
+        assertThat(corpus.documents().get(0).source())
+                .doesNotContain("\\")
+                .endsWith("weird/segment/01.pdf");
     }
 
     /**

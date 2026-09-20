@@ -66,6 +66,48 @@ class JsonCorpusRepositoryTest {
                 .hasCauseInstanceOf(NoSuchFileException.class);
     }
 
+    /**
+     * The unproved-UTF-8-claim advisory: {@code savesAndLoadsAnEquivalentCorpus} only
+     * proves that {@code save} then {@code load} round-trips to an equal {@link
+     * Corpus}, which cannot distinguish "written as UTF-8" from "written and read back
+     * with the same, possibly wrong, charset" — a repository that consistently used
+     * ISO-8859-1 (or the JVM's platform default charset) for both writing and reading
+     * would round-trip correctly too. This test instead inspects the raw bytes on disk
+     * independently of {@code load}: {@code 'é'} (U+00E9) encodes as the two bytes
+     * {@code 0xC3 0xA9} in UTF-8 but as a single {@code 0xE9} byte in ISO-8859-1, so
+     * finding that exact two-byte sequence in the file proves the encoding actually
+     * used, not merely that reading and writing agree with each other.
+     */
+    @Test
+    void writesNonAsciiTextAsGenuineUtf8Bytes(@TempDir Path tempDir) throws IOException {
+        Path corpusPath = tempDir.resolve("corpus.json");
+        JsonCorpusRepository repository = new JsonCorpusRepository(corpusPath);
+        CorpusDocument document = new CorpusDocument("d01", "Título con acentos: café, niño",
+                List.of("Andrés Muñoz"), "Resumen en español con eñes y tildes: educación, investigación.",
+                "data/pdfs/01.pdf", "GROBID", true,
+                "8b7df143d91c716ecfa5fc1730022f6b421b05cedee8fd52b1fc65a96030ad52");
+        repository.save(new Corpus("1.0", 1, "corpus-hash-placeholder", List.of(document)));
+
+        byte[] rawBytes = Files.readAllBytes(corpusPath);
+
+        assertThat(containsSubsequence(rawBytes, (byte) 0xC3, (byte) 0xA9)).as("raw UTF-8 bytes for 'é'").isTrue();
+        assertThat(new String(rawBytes, StandardCharsets.UTF_8))
+                .contains("café", "niño", "Andrés Muñoz", "educación", "investigación");
+    }
+
+    private static boolean containsSubsequence(byte[] haystack, byte... needle) {
+        outer:
+        for (int i = 0; i <= haystack.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
     @Test
     void leavesNoTemporaryFileBehindAfterASuccessfulSave(@TempDir Path tempDir) throws IOException {
         Path corpusPath = tempDir.resolve("corpus.json");
