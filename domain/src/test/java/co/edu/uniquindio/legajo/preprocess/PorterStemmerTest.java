@@ -1,9 +1,11 @@
 package co.edu.uniquindio.legajo.preprocess;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * Known word pairs illustrating each step of Porter's original 1980 algorithm ("An
@@ -184,6 +186,23 @@ class PorterStemmerTest {
     })
     void wordsOfLengthTwoOrLessAreUnchanged(String word, String expected) {
         assertThat(stemmer.stem(word)).isEqualTo(expected);
+    }
+
+    /**
+     * {@code isConsonant}'s Y case ({@code i == 0 || !isConsonant(sb, i - 1)}) recurses one
+     * position to the left per call, so its recursion depth scales with the position being
+     * tested inside the word — every real English word (a few dozen letters at most) keeps
+     * that depth trivial, but nothing enforces a bound. This proves an all-Y "word" many
+     * orders of magnitude longer than any real token (2,000 characters, well past every
+     * genuine word this stemmer sees, e.g. from {@code containsVowel}'s scan or a malformed
+     * PDF-extraction artifact reaching the preprocessor) neither throws
+     * {@code StackOverflowError} nor any other exception.
+     */
+    @Test
+    void stemDoesNotOverflowTheStackOnALongRunOfConsonantYs() {
+        String longYRun = "y".repeat(2000);
+
+        assertThatNoException().isThrownBy(() -> stemmer.stem(longYRun));
     }
 
     private static String applyStep(java.util.function.Consumer<StringBuilder> step, String word) {

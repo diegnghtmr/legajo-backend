@@ -59,6 +59,50 @@ class NeedlemanWunschTest {
     }
 
     @Test
+    void oneEmptySideScoresZeroWhenAIsEmpty() {
+        // Only "both empty" was previously tested; a single empty side is a genuinely
+        // different code path (m=0 but M>0), asymmetric in which argument is empty.
+        SimilarityInput a = input();
+        SimilarityInput b = input("the", "cat");
+
+        SimilarityResult result = needlemanWunsch.compute(a, b, SimilarityContext.EMPTY);
+
+        // S = 2 gaps * GAP_SCORE(-1) = -2; m=0, M=2; normalized = (S+M)/(2M) = 0/4 = 0.0.
+        assertThat(result.rawValue()).isEqualTo(-2.0);
+        assertThat(result.normalizedScore()).isCloseTo(0.0, within(TOLERANCE));
+        assertThat(result.degenerate()).isFalse();
+    }
+
+    @Test
+    void oneEmptySideScoresZeroWhenBIsEmpty() {
+        // The other order: A non-empty, B empty. Distinct from the case above because
+        // NeedlemanWunschCore.backtrace's up/left branches are direction-specific code
+        // paths even though both are classified GAP.
+        SimilarityInput a = input("the", "cat");
+        SimilarityInput b = input();
+
+        SimilarityResult result = needlemanWunsch.compute(a, b, SimilarityContext.EMPTY);
+
+        assertThat(result.rawValue()).isEqualTo(-2.0);
+        assertThat(result.normalizedScore()).isCloseTo(0.0, within(TOLERANCE));
+        assertThat(result.degenerate()).isFalse();
+    }
+
+    @Test
+    void traceOnOneEmptySideIsAllGapMovesWithNoDiagonalStep() {
+        SimilarityInput a = input();
+        SimilarityInput b = input("the", "cat");
+
+        DpMatrixTrace trace = (DpMatrixTrace) needlemanWunsch.trace(a, b, SimilarityContext.EMPTY).orElseThrow();
+
+        assertThat(trace.rowLabels()).isEmpty();
+        assertThat(trace.columnLabels()).containsExactly("the", "cat");
+        assertThat(trace.operations()).hasSize(2);
+        assertThat(trace.operations()).extracting(DpTraceStep::operation)
+                .containsExactly(DpOperationKind.GAP, DpOperationKind.GAP);
+    }
+
+    @Test
     void differingLengthsHandComputedAlignmentMatchesBothNormalizationForms() {
         // A = [a,b] (m=2), B = [a,b,c] (M=3). Hand-computed matrix (see class javadoc):
         //      ""   a   b   c
@@ -86,12 +130,11 @@ class NeedlemanWunschTest {
         assertThat(result.normalizedScore()).isCloseTo(2.0 / 3.0, within(TOLERANCE));
     }
 
-    @Test
-    void computedNanosIsMeasuredAndNonNegative() {
-        SimilarityResult result = needlemanWunsch.compute(input("a"), input("b"), SimilarityContext.EMPTY);
-
-        assertThat(result.computedNanos()).isGreaterThanOrEqualTo(0L);
-    }
+    // computedNanosIsMeasuredAndNonNegative() was removed: `computedNanos >= 0` cannot fail.
+    // SimilarityResult's own compact constructor already rejects a negative computedNanos
+    // (SimilarityResultTest covers that), and `System.nanoTime() - start` on the same thread
+    // is a long that satisfies `>= 0` for any value that isn't rejected there already — the
+    // assertion never exercised compute()'s actual timing measurement.
 
     @Test
     void traceMatrixHasExpectedDimensionsAndValues() {

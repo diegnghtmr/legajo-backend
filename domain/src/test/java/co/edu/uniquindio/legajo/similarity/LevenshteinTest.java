@@ -131,6 +131,25 @@ class LevenshteinTest {
     }
 
     @Test
+    void traceClassifiesADeletionWhenASideHasAnExtraToken() {
+        // A = [the, cat, sat, down] (extra "down"), B = [the, cat, sat]: the optimal
+        // backtrace consumes A's trailing "down" via an "up" move, classified DELETION
+        // (Levenshtein distinguishes "extra token in A" from "extra token in B", unlike
+        // Needleman-Wunsch's direction-agnostic GAP) — this operation kind was otherwise
+        // never asserted by any existing golden test.
+        SimilarityInput a = input("the", "cat", "sat", "down");
+        SimilarityInput b = input("the", "cat", "sat");
+
+        DpMatrixTrace trace = (DpMatrixTrace) levenshtein.trace(a, b, SimilarityContext.EMPTY).orElseThrow();
+
+        assertThat(trace.operations()).extracting(DpTraceStep::operation).contains(DpOperationKind.DELETION);
+        DpTraceStep firstStep = trace.operations().get(0);
+        assertThat(firstStep.operation()).isEqualTo(DpOperationKind.DELETION);
+        assertThat(firstStep.to()).isEqualTo(new MatrixCell(4, 3));
+        assertThat(firstStep.from()).isEqualTo(new MatrixCell(3, 3));
+    }
+
+    @Test
     void traceBacktraceBreaksATieInFavorOfTheDiagonal() {
         // "ab" vs "ba": at cell (2,2) diagonal (substitution, cost 2), up (deletion, cost 2)
         // and left (insertion, cost 2) all reach the same minimal value; the fixed order
