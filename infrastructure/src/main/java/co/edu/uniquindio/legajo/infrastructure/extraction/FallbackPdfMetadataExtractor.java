@@ -40,26 +40,28 @@ public final class FallbackPdfMetadataExtractor implements PdfMetadataExtractor 
     public ExtractedPdfMetadata extract(Path pdfPath) {
         Objects.requireNonNull(pdfPath, "pdfPath");
 
-        ExtractedPdfMetadata primaryResult = tryExtract(primary, pdfPath);
-        boolean primaryUsable = isUsable(primaryResult);
-        if (primaryUsable && !isSuspicious(primaryResult)) {
-            return primaryResult;
+        Attempt primaryAttempt = tryExtract(primary, pdfPath, "primary");
+        if (primaryAttempt.usable() && !isSuspicious(primaryAttempt.result())) {
+            return primaryAttempt.result();
         }
 
-        ExtractedPdfMetadata fallbackResult = tryExtract(fallback, pdfPath);
-        boolean fallbackUsable = isUsable(fallbackResult);
+        Attempt fallbackAttempt = tryExtract(fallback, pdfPath, "fallback");
 
-        if (!primaryUsable && !fallbackUsable) {
-            throw new PdfExtractionException(
-                    "Both the primary and the fallback PDF extractor failed (or returned a blank abstract) for " + pdfPath);
+        if (!primaryAttempt.usable() && !fallbackAttempt.usable()) {
+            PdfExtractionException failure = new PdfExtractionException(
+                    "Both the primary and the fallback PDF extractor failed (or returned a blank abstract) for "
+                            + pdfPath);
+            primaryAttempt.attachTo(failure);
+            fallbackAttempt.attachTo(failure);
+            throw failure;
         }
-        if (!primaryUsable) {
-            return fallbackResult;
+        if (!primaryAttempt.usable()) {
+            return fallbackAttempt.result();
         }
-        if (!fallbackUsable) {
-            return primaryResult;
+        if (!fallbackAttempt.usable()) {
+            return primaryAttempt.result();
         }
-        return AbstractQualityCheck.pickBetter(primaryResult, fallbackResult);
+        return AbstractQualityCheck.pickBetter(primaryAttempt.result(), fallbackAttempt.result());
     }
 
     private static boolean isUsable(ExtractedPdfMetadata result) {
@@ -70,11 +72,36 @@ public final class FallbackPdfMetadataExtractor implements PdfMetadataExtractor 
         return AbstractQualityCheck.assess(result.abstractText()).suspicious();
     }
 
-    private static ExtractedPdfMetadata tryExtract(PdfMetadataExtractor extractor, Path pdfPath) {
+    private static Attempt tryExtract(PdfMetadataExtractor extractor, Path pdfPath, String role) {
         try {
-            return extractor.extract(pdfPath);
+            return new Attempt(role, extractor.extract(pdfPath), null);
         } catch (RuntimeException e) {
-            return null;
+            return new Attempt(role, null, e);
+        }
+    }
+
+    /**
+     * The outcome of trying one extractor, kept instead of discarding it (the
+     * undiagnosable-failure advisory): when both extractors ultimately fail, {@link
+     * #attachTo} records each attempt's cause — either the exception it threw or a
+     * note that it returned a blank abstract — as a {@linkplain
+     * Throwable#addSuppressed(Throwable) suppressed exception} on the final fail-closed
+     * {@link PdfExtractionException}, so a real ingestion failure stays diagnosable
+     * instead of collapsing into one generic message.
+     */
+    private record Attempt(String role, ExtractedPdfMetadata result, RuntimeException failure) {
+
+        boolean usable() {
+            return isUsable(result);
+        }
+
+        void attachTo(PdfExtractionException finalFailure) {
+            if (failure != null) {
+                finalFailure.addSuppressed(failure);
+            } else if (!usable()) {
+                finalFailure.addSuppressed(
+                        new PdfExtractionException(role + " extractor returned a blank abstract"));
+            }
         }
     }
 }

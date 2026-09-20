@@ -125,6 +125,54 @@ class FallbackPdfMetadataExtractorTest {
                 .isInstanceOf(PdfExtractionException.class);
     }
 
+    /**
+     * The undiagnosable-failure advisory: before this fix, both underlying failures
+     * were caught and discarded (returning {@code null}), so the final fail-closed
+     * exception carried only a generic "both failed" message with no way to tell why
+     * either extractor actually failed. Both original exceptions must now be
+     * recoverable from the thrown exception.
+     */
+    @Test
+    void attachesBothUnderlyingFailuresWhenBothExtractorsThrow(@TempDir Path tempDir) {
+        Path pdf = tempDir.resolve("01.pdf");
+        PdfExtractionException primaryFailure = new PdfExtractionException("primary failed: corrupt header");
+        PdfExtractionException fallbackFailure = new PdfExtractionException("fallback failed: not a PDF");
+        PdfMetadataExtractor primary = path -> {
+            throw primaryFailure;
+        };
+        PdfMetadataExtractor fallback = path -> {
+            throw fallbackFailure;
+        };
+
+        assertThatThrownBy(() -> new FallbackPdfMetadataExtractor(primary, fallback).extract(pdf))
+                .isInstanceOf(PdfExtractionException.class)
+                .satisfies(thrown -> assertThat(thrown.getSuppressed()).contains(primaryFailure, fallbackFailure));
+    }
+
+    /**
+     * Same diagnosability requirement when neither extractor throws but both return a
+     * blank abstract: the final exception must still name which extractor produced
+     * which (non-exceptional) outcome.
+     */
+    @Test
+    void namesEachExtractorWhenBothReturnABlankAbstract(@TempDir Path tempDir) {
+        Path pdf = tempDir.resolve("01.pdf");
+        PdfMetadataExtractor primary = path -> metadata("GROBID", "");
+        PdfMetadataExtractor fallback = path -> metadata("PDFBox", "   ");
+
+        assertThatThrownBy(() -> new FallbackPdfMetadataExtractor(primary, fallback).extract(pdf))
+                .isInstanceOf(PdfExtractionException.class)
+                .satisfies(thrown -> {
+                    List<String> suppressedMessages = java.util.Arrays.stream(thrown.getSuppressed())
+                            .map(Throwable::getMessage)
+                            .toList();
+                    assertThat(suppressedMessages).anyMatch(message -> message.contains("primary")
+                            && message.contains("blank"));
+                    assertThat(suppressedMessages).anyMatch(message -> message.contains("fallback")
+                            && message.contains("blank"));
+                });
+    }
+
     private static ExtractedPdfMetadata metadata(String extractedBy, String abstractText) {
         return new ExtractedPdfMetadata("Title", List.of("Author"), abstractText, extractedBy);
     }
