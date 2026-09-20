@@ -1,6 +1,8 @@
 package co.edu.uniquindio.legajo.similarity;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -91,5 +93,45 @@ class EmbeddingLocalTraceTest {
         List<Double> opposite = List.of(-0.6, -0.8, 0.0);
         new EmbeddingLocalTrace("embedding-local", "local", "all-MiniLM-L6-v2", 3, VECTOR_A, opposite, VECTOR_A,
                 opposite, 1.0, 1.0, -1.0, -1.0, 180.0, 0.0);
+    }
+
+    // Each tolerance-comparison invariant below used to accept a NaN in the checked field
+    // silently: Math.abs(NaN - expected) > tolerance is false, so the old bare comparison
+    // never rejected it.
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteDotProduct(double nonFinite) {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingLocalTrace("embedding-local", "local",
+                        "all-MiniLM-L6-v2", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, nonFinite, 0.48,
+                        61.31459798588108, 0.48))
+                .withMessageContaining("dotProduct");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteCosine(double nonFinite) {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingLocalTrace("embedding-local", "local",
+                        "all-MiniLM-L6-v2", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, 0.48, nonFinite,
+                        61.31459798588108, 0.48))
+                .withMessageContaining("cosine");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteAngleDegrees(double nonFinite) {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingLocalTrace("embedding-local", "local",
+                        "all-MiniLM-L6-v2", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, 0.48, 0.48,
+                        nonFinite, 0.48))
+                .withMessageContaining("angleDegrees");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteNormalizedScore(double nonFinite) {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingLocalTrace("embedding-local", "local",
+                        "all-MiniLM-L6-v2", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, 0.48, 0.48,
+                        61.31459798588108, nonFinite))
+                .withMessageContaining("normalizedScore");
     }
 }

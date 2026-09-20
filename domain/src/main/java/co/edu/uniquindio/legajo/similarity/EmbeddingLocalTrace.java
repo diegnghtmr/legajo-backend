@@ -75,40 +75,36 @@ public record EmbeddingLocalTrace(
                     "vectorBExcerpt must be exactly the first %d dimensions of vectorB".formatted(expectedExcerptSize));
         }
 
-        if (!Double.isFinite(preNormL2A) || preNormL2A < 0) {
-            throw new IllegalArgumentException(
-                    "preNormL2A must be a non-negative finite number, was " + preNormL2A);
-        }
-        if (!Double.isFinite(preNormL2B) || preNormL2B < 0) {
-            throw new IllegalArgumentException(
-                    "preNormL2B must be a non-negative finite number, was " + preNormL2B);
-        }
+        NumericGuards.requireNonNegativeFinite(preNormL2A, "preNormL2A");
+        NumericGuards.requireNonNegativeFinite(preNormL2B, "preNormL2B");
 
         double expectedDotProduct = 0.0;
         for (int i = 0; i < dimension; i++) {
             expectedDotProduct += vectorA.get(i) * vectorB.get(i);
         }
-        if (Math.abs(dotProduct - expectedDotProduct) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(dotProduct, expectedDotProduct, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "dotProduct must equal the dot product of vectorA and vectorB (%.12f), was %.12f"
                             .formatted(expectedDotProduct, dotProduct));
         }
-        if (Math.abs(cosine - dotProduct) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(cosine, dotProduct, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "cosine must equal dotProduct for unit vectors (TRD §6.3), dotProduct was %.12f, cosine was %.12f"
                             .formatted(dotProduct, cosine));
         }
 
+        // cosine is guaranteed finite by the check above, so this bare clamp cannot receive
+        // a NaN here.
         double clampedForAngle = Math.max(-1.0, Math.min(1.0, cosine));
         double expectedAngle = Math.toDegrees(Math.acos(clampedForAngle));
-        if (Math.abs(angleDegrees - expectedAngle) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(angleDegrees, expectedAngle, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "angleDegrees must equal degrees(acos(clamp(cosine, -1, 1))) (%.12f), was %.12f"
                             .formatted(expectedAngle, angleDegrees));
         }
 
         double expectedNormalizedScore = Math.max(0.0, Math.min(1.0, cosine));
-        if (Math.abs(normalizedScore - expectedNormalizedScore) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(normalizedScore, expectedNormalizedScore, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "normalizedScore must equal clamp(cosine, 0, 1) (%.12f), was %.12f"
                             .formatted(expectedNormalizedScore, normalizedScore));

@@ -1,6 +1,8 @@
 package co.edu.uniquindio.legajo.similarity;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -121,5 +123,54 @@ class TfIdfCosineTraceTest {
         // terms list, exactly like the both-empty case below.
         assertThatNoException().isThrownBy(() -> new TfIdfCosineTrace(
                 "tfidf-cosine", 1, List.of(), 0.0, 0.0, 0.0, 0.0, 90.0));
+    }
+
+    // Each of the five tolerance-comparison invariants below used to accept a NaN in the
+    // checked field silently: Math.abs(NaN - expected) > tolerance is false, so the old
+    // bare comparison never rejected it.
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteDotProduct(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 2, List.of(CAT_SINGLE), nonFinite, 1.0, 1.0, 1.0, 0.0))
+                .withMessageContaining("dotProduct");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteRawNormA(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 2, List.of(CAT_SINGLE), 1.0, nonFinite, 1.0, 1.0, 0.0))
+                .withMessageContaining("rawNormA");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteRawNormB(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 2, List.of(CAT_SINGLE), 1.0, 1.0, nonFinite, 1.0, 0.0))
+                .withMessageContaining("rawNormB");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteCosine(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 2, List.of(CAT_SINGLE), 1.0, 1.0, 1.0, nonFinite, 0.0))
+                .withMessageContaining("cosine");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteAngleDegrees(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfCosineTrace(
+                        "tfidf-cosine", 2, List.of(CAT_SINGLE), 1.0, 1.0, 1.0, 1.0, nonFinite))
+                .withMessageContaining("angleDegrees");
     }
 }

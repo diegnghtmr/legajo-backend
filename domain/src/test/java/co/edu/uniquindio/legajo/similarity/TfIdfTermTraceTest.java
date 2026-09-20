@@ -1,6 +1,8 @@
 package co.edu.uniquindio.legajo.similarity;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -69,5 +71,27 @@ class TfIdfTermTraceTest {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new TfIdfTermTrace("cat", 1, 0, 1, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0))
                 .withMessageContaining("tfB");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteRawWeightA(double nonFinite) {
+        // Math.abs(NaN - expected) > tolerance is false, so the old guard let a NaN
+        // rawWeightA through silently instead of failing closed.
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfTermTrace(
+                        "cat", 1, 1, 3, 1.0, 1.0, 1.2231435513142097,
+                        nonFinite, 1.2231435513142097, 0.5, 0.5))
+                .withMessageContaining("rawWeightA");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteRawWeightB(double nonFinite) {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new TfIdfTermTrace(
+                        "cat", 1, 1, 3, 1.0, 1.0, 1.2231435513142097,
+                        1.2231435513142097, nonFinite, 0.5, 0.5))
+                .withMessageContaining("rawWeightB");
     }
 }

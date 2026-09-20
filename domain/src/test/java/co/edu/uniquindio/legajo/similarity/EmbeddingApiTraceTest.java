@@ -1,6 +1,8 @@
 package co.edu.uniquindio.legajo.similarity;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -102,5 +104,39 @@ class EmbeddingApiTraceTest {
         List<Double> opposite = List.of(-0.6, -0.8, 0.0);
         new EmbeddingApiTrace("embedding-api", "api", "gemini-embedding-2-preview", 3, VECTOR_A, opposite, VECTOR_A,
                 opposite, 1.0, 1.0, 4.0, 2.0, 0.0, "cached");
+    }
+
+    // sumSquaredDiff and distance were already guarded by an explicit Double.isFinite check
+    // before their tolerance comparison (unlike normalizedScore below); these characterize
+    // that existing behavior ahead of migrating both checks onto the shared NumericGuards
+    // helper, so a refactor cannot silently regress it.
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteSumSquaredDiff(double nonFinite) {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                        "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0, nonFinite,
+                        DISTANCE, NORMALIZED_SCORE, "cached"))
+                .withMessageContaining("sumSquaredDiff");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteDistance(double nonFinite) {
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                        "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0,
+                        SUM_SQUARED_DIFF, nonFinite, NORMALIZED_SCORE, "cached"))
+                .withMessageContaining("distance");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteNormalizedScore(double nonFinite) {
+        // Math.abs(NaN - expected) > tolerance is false, so the old guard let a NaN
+        // normalizedScore through silently instead of failing closed.
+        assertThatIllegalArgumentException().isThrownBy(() -> new EmbeddingApiTrace("embedding-api", "api",
+                        "gemini-embedding-2-preview", 3, VECTOR_A, VECTOR_B, VECTOR_A, VECTOR_B, 1.0, 1.0,
+                        SUM_SQUARED_DIFF, DISTANCE, nonFinite, "cached"))
+                .withMessageContaining("normalizedScore");
     }
 }

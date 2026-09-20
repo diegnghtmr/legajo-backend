@@ -20,7 +20,10 @@ public record SimilarityResult(double normalizedScore, @Nullable Double rawValue
     private static final double RANGE_TOLERANCE = 1e-9;
 
     public SimilarityResult {
-        if (normalizedScore < -RANGE_TOLERANCE || normalizedScore > 1.0 + RANGE_TOLERANCE) {
+        // NumericGuards.isOutOfRange rejects a non-finite normalizedScore explicitly: a bare
+        // range comparison (normalizedScore < min || normalizedScore > max) is false for NaN
+        // on both sides, so it would otherwise let a NaN score through silently.
+        if (NumericGuards.isOutOfRange(normalizedScore, 0.0, 1.0, RANGE_TOLERANCE)) {
             throw new IllegalArgumentException(
                     "normalizedScore must be within [0,1] (±%.0e tolerance), was %s"
                             .formatted(RANGE_TOLERANCE, normalizedScore));

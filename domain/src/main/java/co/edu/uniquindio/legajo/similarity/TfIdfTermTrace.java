@@ -63,12 +63,12 @@ public record TfIdfTermTrace(
                             .formatted(frequencyB, tfB));
         }
         double expectedRawWeightA = tfA * idf;
-        if (Math.abs(rawWeightA - expectedRawWeightA) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(rawWeightA, expectedRawWeightA, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "rawWeightA must equal tfA * idf (%.12f), was %.12f".formatted(expectedRawWeightA, rawWeightA));
         }
         double expectedRawWeightB = tfB * idf;
-        if (Math.abs(rawWeightB - expectedRawWeightB) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(rawWeightB, expectedRawWeightB, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "rawWeightB must equal tfB * idf (%.12f), was %.12f".formatted(expectedRawWeightB, rawWeightB));
         }

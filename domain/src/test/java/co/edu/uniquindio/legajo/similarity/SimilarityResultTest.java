@@ -1,6 +1,8 @@
 package co.edu.uniquindio.legajo.similarity;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -49,6 +51,16 @@ class SimilarityResultTest {
 
         assertThat(belowZero.normalizedScore()).isEqualTo(-1e-10);
         assertThat(aboveOne.normalizedScore()).isEqualTo(1.0 + 1e-10);
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteNormalizedScore(double nonFinite) {
+        // Math.abs(NaN - x) > tolerance is false, so the range guard used to let a NaN
+        // normalizedScore through silently instead of failing closed.
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new SimilarityResult(nonFinite, 0.0, 0L, false))
+                .withMessageContaining("normalizedScore");
     }
 
     @Test

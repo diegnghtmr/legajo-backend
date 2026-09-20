@@ -77,7 +77,7 @@ public record JaccardTrace(
         }
 
         double expectedCoefficient = unionSize == 0 ? 1.0 : (double) intersectionSize / unionSize;
-        if (Math.abs(coefficient - expectedCoefficient) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(coefficient, expectedCoefficient, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "coefficient must equal intersectionSize/unionSize (%.12f), was %.12f"
                             .formatted(expectedCoefficient, coefficient));

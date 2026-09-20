@@ -1,6 +1,8 @@
 package co.edu.uniquindio.legajo.similarity;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -90,6 +92,18 @@ class JaccardTraceTest {
                 .isThrownBy(() -> new JaccardTrace(
                         "jaccard", List.of("a", "b"), List.of("a"),
                         1, 2, List.of("a"), List.of("a", "b"), 0.9))
+                .withMessageContaining("coefficient");
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void rejectsANonFiniteCoefficient(double nonFinite) {
+        // Math.abs(NaN - expected) > tolerance is false, so the old guard let a NaN
+        // coefficient through silently instead of failing closed.
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new JaccardTrace(
+                        "jaccard", List.of("a", "b"), List.of("a"),
+                        1, 2, List.of("a"), List.of("a", "b"), nonFinite))
                 .withMessageContaining("coefficient");
     }
 }

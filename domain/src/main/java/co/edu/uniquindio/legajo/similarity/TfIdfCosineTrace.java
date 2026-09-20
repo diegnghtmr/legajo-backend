@@ -86,7 +86,7 @@ public record TfIdfCosineTrace(
             double expectedDotProduct = terms.stream()
                     .mapToDouble(t -> t.normalizedWeightA() * t.normalizedWeightB())
                     .sum();
-            if (Math.abs(dotProduct - expectedDotProduct) > TOLERANCE) {
+            if (NumericGuards.isOutOfTolerance(dotProduct, expectedDotProduct, TOLERANCE)) {
                 throw new IllegalArgumentException(
                         "dotProduct must equal the sum of normalizedWeightA*normalizedWeightB over terms (%.12f), was %.12f"
                                 .formatted(expectedDotProduct, dotProduct));
@@ -94,29 +94,31 @@ public record TfIdfCosineTrace(
 
             double expectedRawNormA =
                     Math.sqrt(terms.stream().mapToDouble(t -> t.rawWeightA() * t.rawWeightA()).sum());
-            if (Math.abs(rawNormA - expectedRawNormA) > TOLERANCE) {
+            if (NumericGuards.isOutOfTolerance(rawNormA, expectedRawNormA, TOLERANCE)) {
                 throw new IllegalArgumentException(
                         "rawNormA must equal the L2 norm of the terms' rawWeightA (%.12f), was %.12f"
                                 .formatted(expectedRawNormA, rawNormA));
             }
             double expectedRawNormB =
                     Math.sqrt(terms.stream().mapToDouble(t -> t.rawWeightB() * t.rawWeightB()).sum());
-            if (Math.abs(rawNormB - expectedRawNormB) > TOLERANCE) {
+            if (NumericGuards.isOutOfTolerance(rawNormB, expectedRawNormB, TOLERANCE)) {
                 throw new IllegalArgumentException(
                         "rawNormB must equal the L2 norm of the terms' rawWeightB (%.12f), was %.12f"
                                 .formatted(expectedRawNormB, rawNormB));
             }
         }
 
-        if (Math.abs(cosine - dotProduct) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(cosine, dotProduct, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "cosine must equal dotProduct (TRD §6.3: coseno = producto punto de los vectores normalizados), "
                             + "dotProduct was %.12f, cosine was %.12f".formatted(dotProduct, cosine));
         }
 
+        // cosine is guaranteed finite by the check above, so this bare clamp cannot receive
+        // a NaN here.
         double clampedCosine = Math.max(-1.0, Math.min(1.0, cosine));
         double expectedAngle = Math.toDegrees(Math.acos(clampedCosine));
-        if (Math.abs(angleDegrees - expectedAngle) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(angleDegrees, expectedAngle, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "angleDegrees must equal degrees(acos(clamp(cosine))) (%.12f), was %.12f"
                             .formatted(expectedAngle, angleDegrees));

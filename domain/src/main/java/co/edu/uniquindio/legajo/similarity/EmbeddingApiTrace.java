@@ -78,42 +78,33 @@ public record EmbeddingApiTrace(
                     "vectorBExcerpt must be exactly the first %d dimensions of vectorB".formatted(expectedExcerptSize));
         }
 
-        if (!Double.isFinite(preNormL2A) || preNormL2A < 0) {
-            throw new IllegalArgumentException(
-                    "preNormL2A must be a non-negative finite number, was " + preNormL2A);
-        }
-        if (!Double.isFinite(preNormL2B) || preNormL2B < 0) {
-            throw new IllegalArgumentException(
-                    "preNormL2B must be a non-negative finite number, was " + preNormL2B);
-        }
+        NumericGuards.requireNonNegativeFinite(preNormL2A, "preNormL2A");
+        NumericGuards.requireNonNegativeFinite(preNormL2B, "preNormL2B");
 
         double expectedSumSquaredDiff = 0.0;
         for (int i = 0; i < dimension; i++) {
             double diff = vectorA.get(i) - vectorB.get(i);
             expectedSumSquaredDiff += diff * diff;
         }
-        if (!Double.isFinite(sumSquaredDiff) || sumSquaredDiff < 0) {
-            throw new IllegalArgumentException(
-                    "sumSquaredDiff must be a non-negative finite number, was " + sumSquaredDiff);
-        }
-        if (Math.abs(sumSquaredDiff - expectedSumSquaredDiff) > TOLERANCE) {
+        NumericGuards.requireNonNegativeFinite(sumSquaredDiff, "sumSquaredDiff");
+        if (NumericGuards.isOutOfTolerance(sumSquaredDiff, expectedSumSquaredDiff, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "sumSquaredDiff must equal the sum of squared differences of vectorA and vectorB (%.12f), was %.12f"
                             .formatted(expectedSumSquaredDiff, sumSquaredDiff));
         }
 
         double expectedDistance = Math.sqrt(expectedSumSquaredDiff);
-        if (!Double.isFinite(distance) || distance < 0) {
-            throw new IllegalArgumentException("distance must be a non-negative finite number, was " + distance);
-        }
-        if (Math.abs(distance - expectedDistance) > TOLERANCE) {
+        NumericGuards.requireNonNegativeFinite(distance, "distance");
+        if (NumericGuards.isOutOfTolerance(distance, expectedDistance, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "distance must equal sqrt(sumSquaredDiff) (%.12f), was %.12f"
                             .formatted(expectedDistance, distance));
         }
 
+        // distance is guaranteed finite by the check above, so this bare clamp cannot
+        // receive a NaN here.
         double expectedNormalizedScore = Math.max(0.0, Math.min(1.0, 1.0 - distance / SQRT_2));
-        if (Math.abs(normalizedScore - expectedNormalizedScore) > TOLERANCE) {
+        if (NumericGuards.isOutOfTolerance(normalizedScore, expectedNormalizedScore, TOLERANCE)) {
             throw new IllegalArgumentException(
                     "normalizedScore must equal clamp(1 - distance/sqrt(2), 0, 1) (%.12f), was %.12f"
                             .formatted(expectedNormalizedScore, normalizedScore));
