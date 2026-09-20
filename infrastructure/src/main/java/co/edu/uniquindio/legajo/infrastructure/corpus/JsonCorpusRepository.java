@@ -1,6 +1,7 @@
 package co.edu.uniquindio.legajo.infrastructure.corpus;
 
 import co.edu.uniquindio.legajo.corpus.Corpus;
+import co.edu.uniquindio.legajo.infrastructure.io.AtomicFileWriter;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
 import tools.jackson.core.util.DefaultIndenter;
 import tools.jackson.core.util.DefaultPrettyPrinter;
@@ -9,7 +10,6 @@ import tools.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -54,10 +54,6 @@ public final class JsonCorpusRepository implements CorpusRepository {
                 .withObjectIndenter(LF_INDENTER)
                 .withArrayIndenter(LF_INDENTER);
         String content = jsonMapper.writer().with(prettyPrinter).writeValueAsString(json);
-        try {
-            Files.writeString(corpusPath, content + "\n", StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to write corpus to " + corpusPath, e);
-        }
+        AtomicFileWriter.writeUtf8(corpusPath, content + "\n");
     }
 }

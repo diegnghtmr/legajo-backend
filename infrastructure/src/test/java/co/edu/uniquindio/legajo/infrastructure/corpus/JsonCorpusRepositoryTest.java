@@ -66,6 +66,46 @@ class JsonCorpusRepositoryTest {
                 .hasCauseInstanceOf(NoSuchFileException.class);
     }
 
+    @Test
+    void leavesNoTemporaryFileBehindAfterASuccessfulSave(@TempDir Path tempDir) throws IOException {
+        Path corpusPath = tempDir.resolve("corpus.json");
+        new JsonCorpusRepository(corpusPath).save(twoDocumentCorpus());
+
+        try (var entries = Files.list(tempDir)) {
+            assertThat(entries.toList()).containsExactly(corpusPath);
+        }
+    }
+
+    /**
+     * The destructive-write advisory: {@code save} used to open the target file with
+     * {@code TRUNCATE_EXISTING} directly, so a write that cannot complete still starts
+     * by discarding the previous content. This test proves the opposite for the fixed
+     * write-then-atomically-move implementation: making the corpus directory read-only
+     * (but leaving the existing file itself writable) blocks creating a new temporary
+     * file next to it — the same permission shape that, before this fix, still let
+     * {@code Files.writeString} truncate and overwrite the existing file in place,
+     * because overwriting a file's content only needs file-level write permission, not
+     * directory write permission. With the fix, no temporary file can be created, save
+     * fails, and the previously committed file is provably untouched.
+     */
+    @Test
+    void preservesThePreviousFileWhenTheReplacementCannotBeWritten(@TempDir Path tempDir) throws IOException {
+        Path corpusPath = tempDir.resolve("corpus.json");
+        JsonCorpusRepository repository = new JsonCorpusRepository(corpusPath);
+        repository.save(twoDocumentCorpus());
+        String originalContent = Files.readString(corpusPath, StandardCharsets.UTF_8);
+
+        assertThat(tempDir.toFile().setWritable(false)).isTrue();
+        try {
+            assertThatThrownBy(() -> repository.save(twoDocumentCorpus()))
+                    .isInstanceOf(UncheckedIOException.class);
+        } finally {
+            assertThat(tempDir.toFile().setWritable(true)).isTrue();
+        }
+
+        assertThat(Files.readString(corpusPath, StandardCharsets.UTF_8)).isEqualTo(originalContent);
+    }
+
     private static Corpus twoDocumentCorpus() {
         CorpusDocument d1 = new CorpusDocument("d01", "Title One", List.of("Author One"),
                 "Abstract one.", "data/pdfs/01.pdf", "GROBID", true,

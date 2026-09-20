@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.infrastructure.embedding;
 
+import co.edu.uniquindio.legajo.infrastructure.io.AtomicFileWriter;
 import co.edu.uniquindio.legajo.port.EmbeddingRepository;
 import co.edu.uniquindio.legajo.similarity.EmbeddingCache;
 import co.edu.uniquindio.legajo.similarity.EmbeddingVector;
@@ -12,7 +13,6 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.lang.System.Logger;
 import java.lang.System.Logger.Level;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -95,11 +95,7 @@ public final class JsonEmbeddingRepository implements EmbeddingRepository {
                 .withObjectIndenter(LF_INDENTER)
                 .withArrayIndenter(LF_INDENTER);
         String content = jsonMapper.writer().with(prettyPrinter).writeValueAsString(json);
-        try {
-            Files.writeString(embeddingsPath, content + "\n", StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            throw new UncheckedIOException("Failed to write embedding cache to " + embeddingsPath, e);
-        }
+        AtomicFileWriter.writeUtf8(embeddingsPath, content + "\n");
     }
 
     private EmbeddingCacheJson readJson() {

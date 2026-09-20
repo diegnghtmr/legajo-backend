@@ -195,6 +195,43 @@ class JsonEmbeddingRepositoryTest {
     }
 
     @Test
+    void leavesNoTemporaryFileBehindAfterASuccessfulSave(@TempDir Path tempDir) throws IOException {
+        Path path = tempDir.resolve("embeddings-minilm.json");
+        new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256).save(twoVectorCache());
+
+        try (var entries = Files.list(tempDir)) {
+            assertThat(entries.toList()).containsExactly(path);
+        }
+    }
+
+    /**
+     * Mirrors {@code JsonCorpusRepositoryTest}'s destructive-write proof: a directory
+     * made read-only (but whose existing file remains file-level writable) still let
+     * the old {@code Files.writeString(..., TRUNCATE_EXISTING)} implementation
+     * overwrite the cache in place, because truncating a file's content needs only
+     * file-level write permission. The fixed write-to-temp-then-move implementation
+     * cannot create the temporary file under a read-only directory, so it fails before
+     * touching the target, and the previously committed cache survives untouched.
+     */
+    @Test
+    void preservesThePreviousFileWhenTheReplacementCannotBeWritten(@TempDir Path tempDir) throws IOException {
+        Path path = tempDir.resolve("embeddings-minilm.json");
+        JsonEmbeddingRepository repository = new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256);
+        repository.save(twoVectorCache());
+        String originalContent = Files.readString(path, StandardCharsets.UTF_8);
+
+        assertThat(tempDir.toFile().setWritable(false)).isTrue();
+        try {
+            assertThatThrownBy(() -> repository.save(twoVectorCache()))
+                    .isInstanceOf(UncheckedIOException.class);
+        } finally {
+            assertThat(tempDir.toFile().setWritable(true)).isTrue();
+        }
+
+        assertThat(Files.readString(path, StandardCharsets.UTF_8)).isEqualTo(originalContent);
+    }
+
+    @Test
     void loadingAnAlreadyUnitVectorLogsNoProvenanceWarning(@TempDir Path tempDir) {
         Path path = tempDir.resolve("embeddings-minilm.json");
         JsonEmbeddingRepository writer = new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256);
