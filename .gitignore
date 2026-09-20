@@ -42,3 +42,6 @@ data/pdfs/
 
 # jqwik property-test seed database (local run cache, never versioned)
 .jqwik-database
+
+# Generated review aid for manual corpus validation (regenerate as needed)
+data/corpus-review.md
