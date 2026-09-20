@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
@@ -150,5 +151,14 @@ class EmbeddingLocalTest {
 
     private static SimilarityInput inputFor(EmbeddingVector vector) {
         return new SimilarityInput("raw abstract for " + vector.documentId(), List.of(), vector);
+    }
+
+    @Test
+    void clamp01FailsClosedOnANonFiniteCosineInsteadOfSilentlyReturningNaN() {
+        // Math.max(0.0, Math.min(1.0, NaN)) is NaN: a bare clamp does not reject a
+        // non-finite cosine, it just propagates it as a NaN similarity to callers.
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> EmbeddingLocal.clamp01(Double.NaN))
+                .withMessageContaining("finite");
     }
 }

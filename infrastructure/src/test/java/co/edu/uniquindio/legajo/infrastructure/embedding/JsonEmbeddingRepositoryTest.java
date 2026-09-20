@@ -105,6 +105,61 @@ class JsonEmbeddingRepositoryTest {
     }
 
     @Test
+    void loadingAnAllZeroVectorFailsClosedAndNamesThePrecomputeCommand(@TempDir Path tempDir) throws IOException {
+        // A truncated or half-written cache file can leave a vector's values all zero;
+        // dividing by a zero norm would otherwise silently yield NaN per component.
+        Path path = tempDir.resolve("embeddings-minilm.json");
+        Files.writeString(path, cacheJsonWithValues("d01", "0.0, 0.0"), StandardCharsets.UTF_8);
+        JsonEmbeddingRepository repository = new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256);
+
+        assertThatIllegalStateException()
+                .isThrownBy(repository::load)
+                .withMessageContaining("d01")
+                .withMessageContaining("precomputeEmbeddings");
+    }
+
+    @Test
+    void loadingANonFiniteComponentFailsClosedAndNamesThePrecomputeCommand(@TempDir Path tempDir) throws IOException {
+        Path path = tempDir.resolve("embeddings-minilm.json");
+        Files.writeString(path, cacheJsonWithValues("d02", "\"NaN\", 0.8"), StandardCharsets.UTF_8);
+        JsonEmbeddingRepository repository = new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256);
+
+        assertThatIllegalStateException()
+                .isThrownBy(repository::load)
+                .withMessageContaining("d02")
+                .withMessageContaining("precomputeEmbeddings");
+    }
+
+    @Test
+    void loadingAnInfiniteComponentFailsClosedAndNamesThePrecomputeCommand(@TempDir Path tempDir) throws IOException {
+        Path path = tempDir.resolve("embeddings-minilm.json");
+        Files.writeString(path, cacheJsonWithValues("d03", "\"Infinity\", 0.8"), StandardCharsets.UTF_8);
+        JsonEmbeddingRepository repository = new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256);
+
+        assertThatIllegalStateException()
+                .isThrownBy(repository::load)
+                .withMessageContaining("d03")
+                .withMessageContaining("precomputeEmbeddings");
+    }
+
+    private static String cacheJsonWithValues(String documentId, String values) {
+        return """
+                {
+                  "version" : "1.0",
+                  "corpusVersion" : "1.0",
+                  "corpusSha256" : "%s",
+                  "model" : "all-MiniLM-L6-v2",
+                  "dimension" : 2,
+                  "vectors" : [ {
+                    "id" : "%s",
+                    "preNormL2" : 5.814322,
+                    "values" : [ %s ]
+                  } ]
+                }
+                """.formatted(EXPECTED_CORPUS_SHA_256, documentId, values);
+    }
+
+    @Test
     void loadingRenormalizesEveryVectorUnconditionallyAndWarnsOnDeviation(@TempDir Path tempDir) throws IOException {
         // A stored vector deviating from unit length by more than 1e-6 (TRD §6.3): raw
         // (0.6, 0.8) scaled by 1.000002, norm = 1.000002, |norm - 1| = 2e-6 > 1e-6.

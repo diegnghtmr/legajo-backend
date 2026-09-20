@@ -31,7 +31,10 @@ import java.util.function.Consumer;
  * L2-renormalized, regardless of how close to unit length they already are; a stored norm
  * that deviates from 1 by more than 1e-6 is reported to {@code provenanceWarningSink} — a
  * warning only, never a load failure — while {@code preNormL2} stays exactly the
- * precompute-time value recorded on disk, never recomputed here.
+ * precompute-time value recorded on disk, never recomputed here. A stored vector with a
+ * non-finite component, or a zero/non-finite norm (e.g. a truncated or hand-edited cache
+ * left it all-zero), fails closed with {@link IllegalStateException} instead of silently
+ * renormalizing into a vector of NaN.
  *
  * <p><b>Fails closed on a corpus mismatch (TRD §6.1).</b> {@code load()} compares the
  * cache's {@code corpusSha256} against {@code expectedCorpusSha256} (the corpus this
@@ -116,7 +119,16 @@ public final class JsonEmbeddingRepository implements EmbeddingRepository {
      */
     private EmbeddingVector renormalizeOnLoad(EmbeddingVectorJson vectorJson, String model) {
         List<Double> storedValues = vectorJson.values();
+        for (double component : storedValues) {
+            if (!Double.isFinite(component)) {
+                throw failClosed(vectorJson.id(), "a non-finite component (%s)".formatted(component));
+            }
+        }
+
         double loadedNorm = EmbeddingVector.l2Norm(storedValues);
+        if (loadedNorm == 0.0 || !Double.isFinite(loadedNorm)) {
+            throw failClosed(vectorJson.id(), "a zero or non-finite norm (%s)".formatted(loadedNorm));
+        }
 
         if (Math.abs(loadedNorm - 1.0) > UNIT_NORM_DEVIATION_WARNING_THRESHOLD) {
             provenanceWarningSink.accept(
@@ -132,6 +144,19 @@ public final class JsonEmbeddingRepository implements EmbeddingRepository {
             renormalized.add(component / loadedNorm);
         }
         return new EmbeddingVector(vectorJson.id(), provider, model, vectorJson.preNormL2(), renormalized);
+    }
+
+    /**
+     * Fails closed (TRD §6.1 posture) on a corrupted cache entry — a truncated, hand-edited,
+     * or half-written cache file — naming the offending document id and the precompute
+     * command to re-run, consistent with the {@code corpusSha256} mismatch path above.
+     */
+    private IllegalStateException failClosed(String documentId, String problem) {
+        return new IllegalStateException(
+                ("embedding cache at %s: vector for document '%s' has %s. The cache file may be truncated, "
+                        + "hand-edited, or half-written. Re-run the offline precompute command: "
+                        + "./gradlew :bootstrap:precomputeEmbeddings")
+                        .formatted(embeddingsPath, documentId, problem));
     }
 
     private static EmbeddingCacheJson toJson(EmbeddingCache cache) {

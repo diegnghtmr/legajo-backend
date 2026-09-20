@@ -59,6 +59,17 @@ class EmbeddingVectorTest {
     }
 
     @Test
+    void constructorRejectsAVectorWithANonFiniteNorm() {
+        // A cache corrupted to all-zero components renormalizes to 0.0/0.0 = NaN per
+        // component; l2Norm of an all-NaN vector is itself NaN, and the old guard
+        // (Math.abs(NaN - 1.0) > 1e-9) is false for NaN, so it used to let this through.
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new EmbeddingVector("d01", "local", "model", 1.0,
+                        List.of(Double.NaN, Double.NaN)))
+                .withMessageContaining("unit");
+    }
+
+    @Test
     void constructorRejectsANegativePreNormL2() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> new EmbeddingVector("d01", "local", "model", -1.0, List.of(0.6, 0.8)));

@@ -42,7 +42,11 @@ public record EmbeddingVector(String documentId, String provider, String model, 
         values = List.copyOf(values);
 
         double norm = l2Norm(values);
-        if (Math.abs(norm - 1.0) > UNIT_NORM_TOLERANCE) {
+        // Double.isFinite() is checked explicitly, never inferred from the tolerance
+        // comparison alone: Math.abs(NaN - 1.0) > UNIT_NORM_TOLERANCE is false, so a NaN
+        // norm (e.g. from a zero-norm cache renormalization, 0.0/0.0) would otherwise pass
+        // this guard silently instead of failing closed.
+        if (!Double.isFinite(norm) || Math.abs(norm - 1.0) > UNIT_NORM_TOLERANCE) {
             throw new IllegalArgumentException(
                     "values must be L2-normalized to unit length (within %.0e), norm was %.15f for document '%s'"
                             .formatted(UNIT_NORM_TOLERANCE, norm, documentId));

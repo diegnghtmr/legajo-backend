@@ -101,8 +101,16 @@ public final class EmbeddingLocal implements SimilarityAlgorithm {
         return sum;
     }
 
-    /** {@code clamp(cos, 0, 1)} (TRD §6.3, "Capacidades de embedding (fijadas)"). */
+    /**
+     * {@code clamp(cos, 0, 1)} (TRD §6.3, "Capacidades de embedding (fijadas)"). Fails
+     * closed on a non-finite {@code cosine} instead of silently propagating it: a bare
+     * {@code Math.max}/{@code Math.min} clamp does not reject NaN, it returns NaN, which
+     * would otherwise reach callers as a NaN similarity score.
+     */
     static double clamp01(double cosine) {
+        if (!Double.isFinite(cosine)) {
+            throw new IllegalArgumentException("cosine must be finite, was " + cosine);
+        }
         return Math.max(0.0, Math.min(1.0, cosine));
     }
 
