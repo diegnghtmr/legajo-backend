@@ -5,6 +5,15 @@ plugins {
     alias(libs.plugins.spring.dependency.management)
 }
 
+// Resolved the ordinary Gradle way (a dependency declaration, not reaching into
+// :infrastructure's own configurations object) for the precomputeEmbeddings task below:
+// :infrastructure carries no Spring dependency at all, unlike this module's own
+// runtimeClasspath (see that task's comment for why this separate classpath exists).
+val precomputeRuntimeClasspath: Configuration by configurations.creating {
+    isCanBeResolved = true
+    isCanBeConsumed = false
+}
+
 dependencies {
     implementation(project(":domain"))
     implementation(project(":application"))
@@ -12,6 +21,8 @@ dependencies {
 
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.boot.starter.actuator)
+
+    precomputeRuntimeClasspath(project(":infrastructure"))
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.archunit.junit5)
@@ -54,7 +65,14 @@ tasks.register<JavaExec>("precomputeEmbeddings") {
             "Args: --corpus=data/corpus.json --output=data/embeddings-minilm.json " +
             "(tokenizer/model download to build/models/minilm/ on first run)"
     mainClass.set("co.edu.uniquindio.legajo.PrecomputeMiniLmEmbeddingsCli")
-    classpath = sourceSets["main"].runtimeClasspath
+    // Deliberately NOT sourceSets["main"].runtimeClasspath: that classpath carries Spring
+    // Boot's actuator/micrometer stack, which this plain-main CLI never uses, and which
+    // segfaults the JVM when loaded alongside both the tokenizers and ONNX Runtime native
+    // libraries in the same process (reproduced empirically; root cause not identified
+    // beyond "micrometer's jars present" — see PrecomputeMiniLmEmbeddingsCli's Javadoc).
+    // precomputeRuntimeClasspath carries domain+application+Jackson+PDFBox+the DJL
+    // tokenizer+ONNX Runtime, with no Spring dependency at all.
+    classpath = sourceSets["main"].output + precomputeRuntimeClasspath
     workingDir = rootProject.layout.projectDirectory.asFile
     // ONNX Runtime loads its native library via System.load, a JEP 472 restricted method on
     // Java 25; this silences the resulting warning for this one-shot offline batch job.

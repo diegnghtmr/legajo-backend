@@ -32,6 +32,15 @@ import java.util.Map;
  * offline batch job needs no Spring context. The tokenizer and ONNX model files are
  * downloaded once into {@code build/models/minilm/} (never versioned — like the teacher PDFs,
  * these are large third-party binaries, not project data) and reused on later runs.
+ *
+ * <p><b>Run this only via the {@code precomputeEmbeddings} Gradle task</b>, not the plain
+ * {@code bootstrap} module runtime classpath: empirically, loading both the HuggingFace
+ * tokenizer's native library and ONNX Runtime's native library in the same JVM process
+ * segfaults the process when Spring Boot's actuator/micrometer jars are also present on the
+ * classpath (reproduced directly; root cause not identified beyond "micrometer's jars
+ * present" — plausibly a native symbol or memory-layout interaction, since no individual
+ * micrometer artifact reproduces it alone, only the full set together). The
+ * {@code precomputeEmbeddings} task's classpath is scoped to avoid this.
  */
 public final class PrecomputeMiniLmEmbeddingsCli {
 
