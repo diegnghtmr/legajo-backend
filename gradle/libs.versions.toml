@@ -1,5 +1,4 @@
 [versions]
-javaToolchain = "25"
 springBoot = "4.0.3"
 springDependencyManagement = "1.1.7"
 archunit = "1.4.1"
@@ -10,7 +9,6 @@ jqwik = "1.9.3"
 jacoco = "0.8.13"
 jmh = "1.37"
 jmhGradlePlugin = "0.7.2"
-foojayResolver = "1.0.0"
 pdfbox = "3.0.8"
 djlTokenizers = "0.36.0"
 onnxruntime = "1.29.0"
@@ -40,4 +38,3 @@ wiremock = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremoc
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
 spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }
 jmh = { id = "me.champeau.jmh", version.ref = "jmhGradlePlugin" }
-foojay-resolver = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojayResolver" }
