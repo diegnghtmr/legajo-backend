@@ -20,6 +20,8 @@ dependencies {
     api(project(":domain"))
     api(project(":application"))
 
+    implementation(platform(libs.spring.ai.bom))
+
     implementation(libs.jackson.databind)
     implementation(libs.pdfbox)
     // MiniLM offline precompute (TRD S5.1, S6.3): the HuggingFace tokenizer is delegable
@@ -28,9 +30,19 @@ dependencies {
     // MiniLmEmbedder.
     implementation(libs.djl.tokenizers)
     implementation(libs.onnxruntime)
+    // embedding-api offline precompute (TRD §6.3, §8, ADR-015): Spring AI's bare OpenAI
+    // module (not the Boot starter — this adapter builds OpenAiEmbeddingModel
+    // programmatically, the same plain-CLI style as MiniLmEmbedder) talks to Gemini's
+    // OpenAI-compatible embeddings endpoint. Model inference is delegable under R-02; the L2
+    // normalization and the Euclidean metric stay hand-written in domain/EmbeddingApi and
+    // this module's OpenAiCompatibleEmbedder.
+    implementation(libs.spring.ai.openai)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
+    // WireMock covers the OpenAiCompatibleEmbedder adapter: success/5xx/timeout mapping
+    // (TRD §13, "Adaptador remoto").
+    testImplementation(libs.wiremock)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

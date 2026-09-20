@@ -14,6 +14,8 @@ foojayResolver = "1.0.0"
 pdfbox = "3.0.8"
 djlTokenizers = "0.36.0"
 onnxruntime = "1.29.0"
+springAi = "2.0.0"
+wiremock = "3.10.0"
 
 [libraries]
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "springBoot" }
@@ -30,6 +32,9 @@ pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind" }
 djl-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djlTokenizers" }
 onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
+spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "springAi" }
+spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai" }
+wiremock = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremock" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
