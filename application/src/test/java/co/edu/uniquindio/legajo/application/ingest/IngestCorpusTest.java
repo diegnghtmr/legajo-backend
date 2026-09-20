@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link IngestCorpus} against a fake {@link PdfMetadataExtractor} and an in-memory
@@ -73,5 +74,51 @@ class IngestCorpusTest {
         assertThat(corpus.documents()).extracting(doc -> doc.id())
                 .startsWith("d01", "d02")
                 .endsWith("d10");
+    }
+
+    @Test
+    void neverPadsBelowTwoDigitsEvenForASingleDigitSourceCount(@TempDir Path tempDir) throws IOException {
+        Path inputFolder = tempDir.resolve("pdfs");
+        Files.createDirectories(inputFolder);
+        for (int i = 1; i <= 3; i++) {
+            Files.createFile(inputFolder.resolve(String.format("%02d.pdf", i)));
+        }
+
+        Corpus corpus = new IngestCorpus(FAKE_EXTRACTOR, new InMemoryCorpusRepository()).ingest(inputFolder, "1.0");
+
+        assertThat(corpus.documents()).extracting(doc -> doc.id()).containsExactly("d01", "d02", "d03");
+    }
+
+    @Test
+    void widensIdsPastTwoDigitsOnceSourceCountCrossesOneHundred(@TempDir Path tempDir) throws IOException {
+        Path inputFolder = tempDir.resolve("pdfs");
+        Files.createDirectories(inputFolder);
+        for (int i = 1; i <= 100; i++) {
+            Files.createFile(inputFolder.resolve(String.format("%03d.pdf", i)));
+        }
+
+        Corpus corpus = new IngestCorpus(FAKE_EXTRACTOR, new InMemoryCorpusRepository()).ingest(inputFolder, "1.0");
+
+        assertThat(corpus.documents()).extracting(doc -> doc.id()).startsWith("d001", "d002").endsWith("d100");
+    }
+
+    /**
+     * The most serious ingestion advisory: an input folder that yields zero PDFs (an
+     * empty folder, a wrong path, or one holding only non-PDF files) must never reach
+     * {@link co.edu.uniquindio.legajo.port.CorpusRepository#save}, because {@code save}
+     * unconditionally replaces whatever corpus is already there — including the
+     * committed, author-validated reference corpus. Ingestion must fail closed instead.
+     */
+    @Test
+    void refusesToWriteWhenTheInputFolderHasNoPdfs(@TempDir Path tempDir) throws IOException {
+        Path inputFolder = tempDir.resolve("empty");
+        Files.createDirectories(inputFolder);
+        Files.createFile(inputFolder.resolve("readme.txt"));
+        InMemoryCorpusRepository repository = new InMemoryCorpusRepository();
+
+        assertThatThrownBy(() -> new IngestCorpus(FAKE_EXTRACTOR, repository).ingest(inputFolder, "1.0"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(inputFolder.toString());
+        assertThat(repository.saved()).isNull();
     }
 }

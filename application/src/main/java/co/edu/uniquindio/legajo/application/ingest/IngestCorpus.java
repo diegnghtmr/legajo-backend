@@ -29,6 +29,33 @@ import java.util.stream.Stream;
  * makes manual validation "the only mandatory control", performed later and only by an
  * explicit call to {@link ValidateCorpus} (constraint reinforced in the feature doc:
  * "never set by the agent on its own").
+ *
+ * <p><b>Id width (explicit, deterministic rule).</b> Ids are {@code "d" + i} zero-padded
+ * to {@code max(2, digitCountOf(sourceCount))}, where {@code i} runs 1..{@code
+ * sourceCount} in sorted-filename order. The floor of 2 keeps the reference corpus (20
+ * documents) at {@code d01..d20} and never regresses to a single digit for a small
+ * folder; the width only grows past 2 once a folder yields more than 99 PDFs (100 PDFs
+ * → {@code d001..d100}), which is required so {@link CorpusHasher#corpusSha256}'s
+ * ascending-{@code id}-order convention stays a correct numeric order within that
+ * corpus (unpadded ids would sort {@code d1, d10, d2, ...} lexicographically). This
+ * rule has been in place since T4 and does not change any id in the committed
+ * {@code data/corpus.json} (20 documents → width 2, same as today).
+ *
+ * <p><b>Fails closed on an empty input (robustness advisory).</b> An input folder with
+ * zero PDFs is refused with {@link IllegalStateException} before {@link
+ * CorpusRepository#save} is ever called, because {@code save} unconditionally replaces
+ * the previous corpus — running ingestion against an empty or misspelled folder must
+ * never silently destroy a committed, author-validated {@code corpus.json}. This class
+ * intentionally does <b>not</b> also enforce the TRD §6.1 "at least 3 documents"
+ * minimum: that invariant is {@link co.edu.uniquindio.legajo.corpus.CorpusVerifier}'s
+ * {@code MINIMUM_DOCUMENT_COUNT} rule, the designated gate for whether a corpus is
+ * acceptable to use, run explicitly via {@code verify-corpus} after ingestion and
+ * before any consumer trusts the corpus. Duplicating it here would reject the very
+ * small folders this reusable, "any folder of PDFs" pipeline is legitimately exercised
+ * against in tests (see {@code IngestCorpusTest}, which ingests folders of 2 and 3
+ * PDFs) and would blur which layer owns the invariant, without closing any additional
+ * gap: nothing ever consumes a corpus without going through {@code verify-corpus} or
+ * an equivalent load-time check.
  */
 public final class IngestCorpus {
 
@@ -45,6 +72,14 @@ public final class IngestCorpus {
         Objects.requireNonNull(corpusVersion, "corpusVersion");
 
         List<Path> pdfFiles = listPdfsSortedByName(inputFolder);
+        if (pdfFiles.isEmpty()) {
+            throw new IllegalStateException(
+                    ("Refusing to ingest: input folder %s contains no PDF files. Writing a corpus with "
+                            + "sourceCount=0 and no documents would overwrite (CorpusRepository#save always "
+                            + "replaces) whatever corpus is already there, including a committed, "
+                            + "author-validated one. Check the folder path, or confirm it holds *.pdf files.")
+                            .formatted(inputFolder));
+        }
         int sourceCount = pdfFiles.size();
         int idWidth = Math.max(2, String.valueOf(sourceCount).length());
 
