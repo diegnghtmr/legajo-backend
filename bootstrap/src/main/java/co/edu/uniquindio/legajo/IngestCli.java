@@ -12,6 +12,7 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.UnaryOperator;
 
 /**
  * Entry point for {@code ./gradlew :bootstrap:ingest --args="--input=data/pdfs
@@ -52,12 +53,37 @@ public final class IngestCli {
     record Options(String input, String output, String grobidUrl) {
     }
 
+    /** The environment variable TRD §8 documents as the GROBID endpoint for the ingest profile. */
+    static final String GROBID_URL_VARIABLE = "LEGAJO_GROBID_URL";
+
+    private static final String DEFAULT_GROBID_URL = "http://localhost:8070";
+
     static Options resolveOptions(String[] args) {
+        return resolveOptions(args, System::getenv);
+    }
+
+    /**
+     * Resolves the options with the process environment passed in rather than read directly,
+     * so tests never depend on what happens to be exported on the machine running them.
+     *
+     * <p>The GROBID endpoint resolves as {@code --grobid-url}, then {@value #GROBID_URL_VARIABLE},
+     * then {@code http://localhost:8070}. The flag wins because it is the more specific
+     * instruction. A blank environment value counts as unset: a {@code .env} line written as
+     * {@code LEGAJO_GROBID_URL=} exports an empty string rather than removing the variable,
+     * and pointing ingestion at "" would fail with a confusing connection error instead of
+     * falling back to the documented default.
+     */
+    static Options resolveOptions(String[] args, UnaryOperator<String> environment) {
+        Objects.requireNonNull(environment, "environment");
         Map<String, String> options = CliArgs.parse(args);
+        String fromEnvironment = environment.apply(GROBID_URL_VARIABLE);
+        String grobidDefault = fromEnvironment == null || fromEnvironment.isBlank()
+                ? DEFAULT_GROBID_URL
+                : fromEnvironment.strip();
         return new Options(
                 options.getOrDefault("input", "data/pdfs"),
                 options.getOrDefault("output", "data/corpus.json"),
-                options.getOrDefault("grobid-url", "http://localhost:8070"));
+                options.getOrDefault("grobid-url", grobidDefault));
     }
 
     static int run(IngestCorpus ingestCorpus, Path input, String output, PrintStream out, PrintStream err) {
