@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.application.clustering;
 
+import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.corpus.Corpus;
@@ -85,6 +86,25 @@ class ClusteringServiceTest {
     void cutRejectsKOutsideTwoToNMinusOne() {
         assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", DOCS.size()))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    /**
+     * A4 requirement (feature doc {@code rest-api.md}, task A4): before this fix,
+     * {@code cut()} passed a bad {@code k} straight to {@code LinkageCut.cut}, which throws
+     * a <em>raw</em> {@link IllegalArgumentException} — since A3b's error-classification fix,
+     * a raw IAE is treated as a server fault and answers 500. A client-supplied {@code k}
+     * outside {@code [2, n-1]} is a request-validation failure, not a server bug, so this
+     * boundary must throw the dedicated {@link InvalidRequestException} subtype instead,
+     * *before* the domain ever sees the bad value.
+     */
+    @Test
+    void cutRejectsAnOutOfRangeKWithInvalidRequestExceptionNotARawOne() {
+        assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", DOCS.size()))
+                .isInstanceOf(InvalidRequestException.class);
+        assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", 1))
+                .isInstanceOf(InvalidRequestException.class);
+        assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", 0))
+                .isInstanceOf(InvalidRequestException.class);
     }
 
     @Test
