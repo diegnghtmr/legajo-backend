@@ -74,15 +74,8 @@ git — use the hosting provider's secret panel in production).
 | `SPRING_AI_OPENAI_API_KEY` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Read from the environment only; never logged or included in an exception message |
 | `LEGAJO_EMBEDDING_API_MODEL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | e.g. `gemini-embedding-2-preview` |
 | `LEGAJO_EMBEDDING_API_DIMENSION` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Must be a positive integer |
+| `LEGAJO_GROBID_URL` | `IngestCli` | Only for `:bootstrap:ingest` | GROBID endpoint for ingestion (TRD §8). Resolves as `--grobid-url`, then this variable, then `http://localhost:8070`; a blank value counts as unset |
 | `SPRING_AI_OPENAI_EMBEDDING_EMBEDDINGS_PATH` | `PrecomputeApiEmbeddingsCli` | No | Optional, warn-only: Spring AI 2.0.x has no override point to route it to, so this CLI only warns if it is set to something other than `/embeddings`; see the class's Javadoc for the full history |
-
-**`LEGAJO_GROBID_URL` is declared in `.env.example` but not actually read from the
-environment.** `IngestCli` only accepts the GROBID endpoint as the `--grobid-url`
-command-line argument (default `http://localhost:8070`); grepping the codebase for
-`LEGAJO_GROBID_URL` finds no `System.getenv`/`environment.apply` call anywhere, only the
-`.env.example` line and the TRD §8 GROBID row that both assume it configures the CLI.
-Until that gap is closed (either wire the CLI to read it, or correct `.env.example`/the
-TRD), setting it in `.env` has no effect — pass `--grobid-url` instead.
 
 ## Ingestion, validation and verification (TRD §6.1)
 

@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,9 +34,12 @@ class IngestCliTest {
             "Title for " + pdfPath.getFileName(), List.of("Author"), "Abstract for " + pdfPath.getFileName(),
             "FAKE");
 
+    /** No process environment at all, so these tests never depend on the machine they run on. */
+    private static final UnaryOperator<String> NO_ENVIRONMENT = name -> null;
+
     @Test
     void resolveOptionsAppliesDefaultsWhenNoArgumentsAreGiven() {
-        IngestCli.Options options = IngestCli.resolveOptions(new String[0]);
+        IngestCli.Options options = IngestCli.resolveOptions(new String[0], NO_ENVIRONMENT);
 
         assertThat(options.input()).isEqualTo("data/pdfs");
         assertThat(options.output()).isEqualTo("data/corpus.json");
@@ -44,11 +49,51 @@ class IngestCliTest {
     @Test
     void resolveOptionsHonorsExplicitOverrides() {
         IngestCli.Options options = IngestCli.resolveOptions(new String[] {
-                "--input=custom/pdfs", "--output=custom/corpus.json", "--grobid-url=http://grobid.example:9000"});
+                "--input=custom/pdfs", "--output=custom/corpus.json", "--grobid-url=http://grobid.example:9000"},
+                NO_ENVIRONMENT);
 
         assertThat(options.input()).isEqualTo("custom/pdfs");
         assertThat(options.output()).isEqualTo("custom/corpus.json");
         assertThat(options.grobidUrl()).isEqualTo("http://grobid.example:9000");
+    }
+
+    /**
+     * TRD §8 documents {@code LEGAJO_GROBID_URL} as the GROBID endpoint for the ingest
+     * profile, and {@code .env.example} declares it. It was read by nothing until now, so
+     * setting it in a real {@code .env} silently had no effect.
+     */
+    @Test
+    void resolveOptionsTakesTheGrobidUrlFromTheEnvironmentWhenNoArgumentIsGiven() {
+        IngestCli.Options options = IngestCli.resolveOptions(new String[0],
+                environment(Map.of("LEGAJO_GROBID_URL", "http://grobid.internal:8070")));
+
+        assertThat(options.grobidUrl()).isEqualTo("http://grobid.internal:8070");
+    }
+
+    /** An explicit flag is the more specific instruction, so it wins over the environment. */
+    @Test
+    void anExplicitGrobidUrlArgumentWinsOverTheEnvironment() {
+        IngestCli.Options options = IngestCli.resolveOptions(new String[] {"--grobid-url=http://from.flag:9000"},
+                environment(Map.of("LEGAJO_GROBID_URL", "http://from.env:8070")));
+
+        assertThat(options.grobidUrl()).isEqualTo("http://from.flag:9000");
+    }
+
+    /**
+     * A {@code .env} line written as {@code LEGAJO_GROBID_URL=} exports an empty string, not
+     * an absent variable. Treating that as a URL would point ingestion at "" and fail with a
+     * confusing connection error instead of falling back to the documented default.
+     */
+    @Test
+    void aBlankEnvironmentValueFallsBackToTheDefault() {
+        IngestCli.Options options = IngestCli.resolveOptions(new String[0],
+                environment(Map.of("LEGAJO_GROBID_URL", "   ")));
+
+        assertThat(options.grobidUrl()).isEqualTo("http://localhost:8070");
+    }
+
+    private static UnaryOperator<String> environment(Map<String, String> variables) {
+        return variables::get;
     }
 
     @Test
