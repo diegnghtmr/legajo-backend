@@ -2,6 +2,7 @@ package co.edu.uniquindio.legajo.infrastructure.rest.error;
 
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
+import co.edu.uniquindio.legajo.infrastructure.embedding.EmbeddingApiException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -45,11 +46,32 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  *   <li>{@link ResourceNotFoundException} → 404 — an unknown corpus, algorithm, or
  *       linkage id.</li>
  *   <li>{@link InvalidRequestException} → 400 — a validation failure (blank required
- *       field, an out-of-range matrix selection size, a duplicate document id).</li>
+ *       field, an out-of-range matrix selection size, a duplicate document id, an unknown
+ *       representation id, an out-of-range clustering cut {@code k}).</li>
+ *   <li>{@link EmbeddingApiException} → 503 — NFR-QA-12's live-embedding degradation: a
+ *       network failure or missing API key on a path that needs a live embedding refresh
+ *       must never look like a server bug (500) to the client, because the cached-mode demo
+ *       keeps working regardless. See this class's Javadoc addendum below for what this
+ *       mapping does and does not cover today.</li>
  *   <li>Anything else → 500 with a fixed, generic detail. The real exception is logged
  *       server-side only: a response body never carries a stack trace or an internal
  *       class name.</li>
  * </ul>
+ *
+ * <p><b>NFR-QA-12 finding (feature doc task A4, flagged for the author).</b> Today, no
+ * request path actually calls the live Gemini/OpenAI-compatible API: every clustering and
+ * similarity computation reads vectors from the versioned {@code embeddings-*.json} caches
+ * ({@code ClusteringService}/{@code SimilarityService}), and {@code OpenAiCompatibleEmbedder}
+ * — the only thing that ever throws {@link EmbeddingApiException} — is used solely by the
+ * offline precompute CLI ({@code PrecomputeApiEmbeddingsCli}), never at serve time. This
+ * mapping therefore has no live production trigger yet; it exists so that *if* a live
+ * serve-time embedding path is added later (out of this feature's scope — the TRD does not
+ * specify one, and inventing one here would be exactly the "arquitectura que el TRD no
+ * cubre" the workspace rule forbids), its failure is already correctly classified rather
+ * than silently falling through to the generic 500. {@code legajo.embedding-provider=live}
+ * (TRD §14.1) today only changes {@code EmbeddingProviderMode}'s serialized value on
+ * {@code GET /embeddings/status}'s {@code embedding-api} object — it does not change what
+ * any endpoint actually computes with, since nothing reads it to pick a code path yet.
  */
 @RestControllerAdvice
 public class ProblemDetailExceptionHandler extends ResponseEntityExceptionHandler {
@@ -64,6 +86,15 @@ public class ProblemDetailExceptionHandler extends ResponseEntityExceptionHandle
     @ExceptionHandler(InvalidRequestException.class)
     public ProblemDetail handleBadRequest(InvalidRequestException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+    }
+
+    /** NFR-QA-12: a live-embedding failure is a degraded dependency, not a client mistake
+     * or a server bug — 503, with the real cause logged server-side only. */
+    @ExceptionHandler(EmbeddingApiException.class)
+    public ProblemDetail handleEmbeddingApiUnavailable(EmbeddingApiException exception) {
+        log.warn("Live embedding API unavailable (NFR-QA-12 degradation)", exception);
+        return ProblemDetail.forStatusAndDetail(
+                HttpStatus.SERVICE_UNAVAILABLE, "The live embedding API is currently unavailable.");
     }
 
     @ExceptionHandler(Exception.class)
