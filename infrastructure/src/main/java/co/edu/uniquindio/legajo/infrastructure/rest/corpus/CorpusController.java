@@ -1,6 +1,7 @@
 package co.edu.uniquindio.legajo.infrastructure.rest.corpus;
 
 import co.edu.uniquindio.legajo.application.corpus.CorpusService;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,7 +39,8 @@ public class CorpusController {
     @GetMapping("/{id}")
     public CorpusDocumentResponse get(@PathVariable("id") String id) {
         CorpusDocument document = corpusService.findDocument(id)
-                .orElseThrow(() -> new ResourceNotFoundException("no corpus document with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        ProblemType.UNKNOWN_DOCUMENT, "no corpus document with id: " + id));
         return CorpusDocumentResponse.from(document);
     }
 }

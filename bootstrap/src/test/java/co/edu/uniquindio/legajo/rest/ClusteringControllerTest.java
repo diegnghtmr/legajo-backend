@@ -55,6 +55,8 @@ class ClusteringControllerTest {
                 .andExpect(jsonPath("$[0].evaluation.daviesBouldin").exists());
     }
 
+    /** TRD §6.6: {@code representation} lives in the body, so an unknown value is 400 with
+     * {@code unknown-representation}. */
     @Test
     void runAnswers400ForAnUnknownRepresentation() throws Exception {
         mockMvc.perform(post("/api/v1/clustering")
@@ -63,18 +65,25 @@ class ClusteringControllerTest {
                                 {"representation":"does-not-exist"}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-representation"));
     }
 
+    /**
+     * TRD 1.3.7 §6.6, task A7: {@code linkages} is a body field on every clustering endpoint
+     * (never a path segment, unlike a similarity algorithm id), so an unknown id is 400 with
+     * {@code unknown-linkage} — changed from 404, since the URI itself is never wrong here.
+     */
     @Test
-    void runAnswers404ForAnUnknownLinkageId() throws Exception {
+    void runAnswers400ForAnUnknownLinkageId() throws Exception {
         mockMvc.perform(post("/api/v1/clustering")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"linkages":["does-not-exist"]}
                                 """))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-linkage"));
     }
 
     /**
@@ -127,6 +136,8 @@ class ClusteringControllerTest {
                 .andExpect(jsonPath("$.labels").isArray());
     }
 
+    /** TRD §6.6: {@code /clustering/cut} is the only endpoint accepting a free {@code k}, and
+     * an out-of-range one is {@code invalid-cut}. */
     @Test
     void cutAnswers400ForAKOutsideTwoToNMinusOne() throws Exception {
         mockMvc.perform(post("/api/v1/clustering/cut")
@@ -135,9 +146,12 @@ class ClusteringControllerTest {
                                 {"representation":"tfidf-cosine","linkage":"average","k":9999}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-cut"));
     }
 
+    /** A missing {@code k} is this controller's own manual null check, not one of TRD §6.6's
+     * fixed-URN cases, so {@code type} stays absent ({@code about:blank}). */
     @Test
     void cutAnswers400WhenKIsMissing() throws Exception {
         mockMvc.perform(post("/api/v1/clustering/cut")
@@ -146,7 +160,8 @@ class ClusteringControllerTest {
                                 {"representation":"tfidf-cosine","linkage":"average"}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
     }
 
     @Test
@@ -157,17 +172,21 @@ class ClusteringControllerTest {
                                 {"representation":"does-not-exist","linkage":"average","k":3}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-representation"));
     }
 
+    /** TRD 1.3.7 §6.6, task A7: {@code linkage} is a body field here too, so an unknown one
+     * is 400 with {@code unknown-linkage} — changed from 404. */
     @Test
-    void cutAnswers404ForAnUnknownLinkageId() throws Exception {
+    void cutAnswers400ForAnUnknownLinkageId() throws Exception {
         mockMvc.perform(post("/api/v1/clustering/cut")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"representation":"tfidf-cosine","linkage":"does-not-exist","k":3}
                                 """))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-linkage"));
     }
 }

@@ -2,6 +2,7 @@ package co.edu.uniquindio.legajo.application.clustering;
 
 import co.edu.uniquindio.legajo.application.cache.FakeRequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.corpus.Corpus;
@@ -103,17 +104,32 @@ class ClusteringServiceTest {
     @Test
     void cutRejectsAnOutOfRangeKWithInvalidRequestExceptionNotARawOne() {
         assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", DOCS.size()))
-                .isInstanceOf(InvalidRequestException.class);
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.INVALID_CUT);
         assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", 1))
-                .isInstanceOf(InvalidRequestException.class);
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.INVALID_CUT);
         assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", 0))
-                .isInstanceOf(InvalidRequestException.class);
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.INVALID_CUT);
     }
 
+    /**
+     * Task A7 (TRD §6.6's fixed status-code rule): {@code linkage}/{@code linkages} is never
+     * a path segment on any clustering endpoint, so — unlike a similarity algorithm id — an
+     * unknown one has no ambiguous caller to defer to and is 400, not 404. Before this task
+     * this was {@link ResourceNotFoundException} (404); TRD 1.3.7 fixes 404 to path-identified
+     * resources only.
+     */
     @Test
     void runRejectsAnUnknownLinkageId() {
         assertThatThrownBy(() -> service.run(Representation.TFIDF_COSINE, List.of("does-not-exist")))
-                .isInstanceOf(ResourceNotFoundException.class);
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.UNKNOWN_LINKAGE);
     }
 
     /**

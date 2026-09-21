@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -42,6 +43,7 @@ class ProblemDetailServerErrorTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.type").doesNotExist())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred."))
                 .andExpect(jsonPath("$.detail", not(org.hamcrest.Matchers.containsString("simulated"))))
                 .andExpect(jsonPath("$.detail", not(org.hamcrest.Matchers.containsString("IllegalArgumentException"))));
@@ -53,8 +55,29 @@ class ProblemDetailServerErrorTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(500))
+                .andExpect(jsonPath("$.type").doesNotExist())
                 .andExpect(jsonPath("$.detail").value("An unexpected error occurred."))
                 .andExpect(jsonPath("$.detail", not(org.hamcrest.Matchers.containsString("simulated"))))
                 .andExpect(jsonPath("$.detail", not(org.hamcrest.Matchers.containsString("NoSuchElementException"))));
+    }
+
+    /**
+     * TRD §6.6, task A7: malformed JSON is one of the framework-detected cases the TRD
+     * explicitly keeps on Spring's standard {@code about:blank} handling — never one of this
+     * task's fixed URNs, whatever endpoint receives it. Spring MVC's own {@code
+     * HttpMessageNotReadableException} (mapped by the {@code ResponseEntityExceptionHandler}
+     * base class) never reaches this project's own {@code @ExceptionHandler} methods, so
+     * {@code type} is absent exactly as it is for a missing query parameter (checked in
+     * {@code SimilarityControllerTest}: Jackson omits the key rather than writing a literal
+     * {@code null}).
+     */
+    @Test
+    void malformedJsonIsA400WithAboutBlankTypeNotAFixedUrn() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{not-valid-json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
     }
 }

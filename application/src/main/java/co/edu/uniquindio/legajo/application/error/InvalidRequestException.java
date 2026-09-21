@@ -1,5 +1,8 @@
 package co.edu.uniquindio.legajo.application.error;
 
+import java.util.Objects;
+import java.util.Optional;
+
 /**
  * A {@code /api/v1/**} request failed validation the application layer is responsible for
  * performing before touching the domain — an out-of-range matrix selection size, a
@@ -25,10 +28,32 @@ package co.edu.uniquindio.legajo.application.error;
  * longer matches that handler and instead falls through to the generic 500, which is the
  * fix task A3b makes (advisory {@code R3-broad-exception-mapping}, feature doc
  * {@code rest-api.md}).
+ *
+ * <p><b>{@link ProblemType} (task A7, TRD §6.6's "Códigos de estado de error").</b> Every
+ * fixed-URN row of the TRD's table that answers 400 (unknown algorithm/document id in a body
+ * or query, unknown representation, unknown linkage, an out-of-range cut {@code k}, an
+ * invalid matrix selection) carries a {@link ProblemType} so {@code
+ * ProblemDetailExceptionHandler} can set the Problem Detail's {@code type}. A validation
+ * failure the TRD does not name with a fixed URN (a blank required field, a missing body
+ * field) uses the single-argument constructor and keeps {@code type} absent, which leaves
+ * the Problem Detail's {@code type} at Spring's own default ({@code about:blank}) — exactly
+ * the framework-error behavior the TRD reserves for cases it does not classify.
  */
 public class InvalidRequestException extends IllegalArgumentException {
 
+    private final ProblemType type;
+
     public InvalidRequestException(String message) {
-        super(message);
+        this(null, message);
+    }
+
+    public InvalidRequestException(ProblemType type, String message) {
+        super(Objects.requireNonNull(message, "message"));
+        this.type = type;
+    }
+
+    /** Absent for a validation failure the TRD's fixed-URN table does not name. */
+    public Optional<ProblemType> type() {
+        return Optional.ofNullable(type);
     }
 }
