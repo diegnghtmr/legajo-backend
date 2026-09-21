@@ -31,6 +31,17 @@ subprojects {
         useJUnitPlatform()
     }
 
+    // Feature doc `rest-api.md`, task A3b: without this flag, javac discards method
+    // parameter names, so an unnamed `@PathVariable`/`@RequestParam` throws
+    // IllegalArgumentException at request time instead of failing the build. Applied once
+    // here so every subproject's compiled classes carry parameter names (verified by
+    // infrastructure's CompilerParametersFlagTest via reflection), rather than relying on
+    // every controller author remembering to name every parameter explicitly on its
+    // annotation, as task A3 did as a workaround.
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-parameters")
+    }
+
     tasks.withType<JacocoReport>().configureEach {
         reports {
             xml.required.set(true)
