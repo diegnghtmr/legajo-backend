@@ -14,3 +14,12 @@ management:
 legajo:
   embedding-provider: ${LEGAJO_EMBEDDING_PROVIDER:cached}
   cors-origins: ${LEGAJO_CORS_ORIGINS:}
+
+# Task A6 (ADR-010): docs/openapi-legajo.yaml is the contract's source of truth, copied onto
+# this module's classpath as a static resource by :bootstrap's processResources task (see
+# build.gradle.kts). Swagger UI is pointed at that exact file rather than springdoc's own
+# generated document, so what a human (or a smoke test) opens in the browser can never
+# silently differ from the hand-written contract.
+springdoc:
+  swagger-ui:
+    url: /openapi-legajo.yaml
