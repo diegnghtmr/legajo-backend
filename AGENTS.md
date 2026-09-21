@@ -31,7 +31,7 @@ archivo, nunca una copia.
 | Build | Gradle 9.2.x, Kotlin DSL, multimódulo |
 | Arquitectura | Hexagonal: `domain` → `application` → `infrastructure` → `bootstrap`. ArchUnit la vigila y hace fallar el build |
 | Persistencia | Sin base de datos. `data/corpus.json` y `data/embeddings-*.json` versionados en git |
-| Embeddings | `all-MiniLM-L6-v2` local (DJL/ONNX, precómputo offline) y `text-embedding-3-small` por API (Spring AI). En la demo, ambos desde caché |
+| Embeddings | `all-MiniLM-L6-v2` local (DJL/ONNX, precómputo offline) y `gemini-embedding-2-preview` a 1536 dimensiones por API (Spring AI, capa compatible con OpenAI; ADR-015). En la demo, ambos desde caché; en modo `live`, `embedding-api` consulta la API en cada solicitud (TRD 1.3.7) |
 | Contrato | `docs/openapi-legajo.yaml` es la fuente de verdad; springdoc lo publica |
 | Imagen | `eclipse-temurin:25-jdk`, Docker Compose con perfiles `default` e `ingest` |
 
