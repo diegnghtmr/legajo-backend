@@ -22,6 +22,13 @@ dependencies {
 
     implementation(platform(libs.spring.ai.bom))
 
+    // REST adapters (A3/A4 of the rest-api feature) live in this module (TRD §6.6); exposed
+    // as `api` so the embedded servlet container it brings (Tomcat + spring-webmvc) also
+    // lands on :bootstrap's runtime classpath transitively, giving the composition root an
+    // actual HTTP port to answer /actuator/health on (A1). :bootstrap declares no direct
+    // dependency of its own on this starter for that reason.
+    api(libs.spring.boot.starter.web)
+
     implementation(libs.jackson.databind)
     implementation(libs.pdfbox)
     // MiniLM offline precompute (TRD S5.1, S6.3): the HuggingFace tokenizer is delegable

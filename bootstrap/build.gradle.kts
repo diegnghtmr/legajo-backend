@@ -33,6 +33,23 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
+// The Spring context this module now boots (A1 of the rest-api feature) reads
+// data/corpus.json and data/embeddings-*.json through relative paths, the same convention
+// the ingest/verify/validate/precompute JavaExec tasks above already use. Both `test` (so
+// @SpringBootTest can load the real, versioned demo corpus) and `bootRun` (so a developer
+// running `./gradlew :bootstrap:bootRun` from the backend root gets the same resolution as
+// the documented command in AGENTS.md) need the same fix: Gradle's default working directory
+// for a subproject's JavaExec-derived task is that subproject's own directory
+// (`backend/bootstrap`), not the directory the `gradlew` invocation started from, and
+// `data/` lives at the backend root, one level up.
+tasks.named<Test>("test") {
+    workingDir = rootProject.layout.projectDirectory.asFile
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    workingDir = rootProject.layout.projectDirectory.asFile
+}
+
 // TRD §6.1 ingestion entry points. Plain JavaExec tasks rather than Spring profiles: each
 // CLI is a one-shot offline batch job (see IngestCli's Javadoc), and JavaExec gets
 // `--args="..."` support from Gradle for free. Working directory is the backend project
