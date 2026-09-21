@@ -1,7 +1,9 @@
 package co.edu.uniquindio.legajo;
 
 import co.edu.uniquindio.legajo.application.cache.RequestCache;
+import co.edu.uniquindio.legajo.application.clustering.ClusteringCacheKey;
 import co.edu.uniquindio.legajo.application.clustering.ClusteringService;
+import co.edu.uniquindio.legajo.application.clustering.LinkageRunResult;
 import co.edu.uniquindio.legajo.application.corpus.CorpusService;
 import co.edu.uniquindio.legajo.application.embedding.EmbeddingProviderMode;
 import co.edu.uniquindio.legajo.application.embedding.EmbeddingsService;
@@ -28,10 +30,11 @@ import org.springframework.context.annotation.Configuration;
  * apiEmbeddingRepository}) — {@code SimilarityService} and {@code ClusteringService} both
  * need both caches, one per embedding-based capability/representation.
  *
- * <p>{@code similarityCache} (task A5) needs no {@code @Qualifier}: {@link
- * CacheConfiguration} declares its {@code @Bean} factory method with the full generic
- * {@code RequestCache<SimilarityCacheKey, SimilarityResult>} return type, and Spring
- * resolves this constructor parameter against that declared generic type.
+ * <p>{@code similarityCache}/{@code clusteringCache} (task A5) are disambiguated by their
+ * full generic type instead — {@link CacheConfiguration} declares each {@code @Bean}
+ * factory method with its own {@code RequestCache<K, V>} return type, and Spring resolves
+ * these constructor parameters against that declared generic type, not just the erased
+ * {@code RequestCache} type both beans share at runtime.
  */
 @Configuration
 public class ApplicationServicesConfiguration {
@@ -54,8 +57,10 @@ public class ApplicationServicesConfiguration {
     @Bean
     public ClusteringService clusteringService(CorpusRepository corpusRepository,
             @Qualifier("localEmbeddingRepository") EmbeddingRepository localEmbeddingRepository,
-            @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository) {
-        return new ClusteringService(corpusRepository, localEmbeddingRepository, apiEmbeddingRepository);
+            @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository,
+            RequestCache<ClusteringCacheKey, LinkageRunResult> clusteringCache) {
+        return new ClusteringService(
+                corpusRepository, localEmbeddingRepository, apiEmbeddingRepository, clusteringCache);
     }
 
     @Bean

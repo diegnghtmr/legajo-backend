@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.application.clustering;
 
+import co.edu.uniquindio.legajo.application.cache.RequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.clustering.AverageLinkage;
@@ -32,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalDouble;
 
 /**
@@ -54,6 +56,17 @@ import java.util.OptionalDouble;
  * comparable on the same axis (TRD §6.4/§6.5) — Pearson correlation is invariant to Ward's
  * positive 2x rescaling, so this is equivalent to correlating against D_w, never a
  * different number.
+ *
+ * <p><b>Request-keyed caching (task A5, TRD §9).</b> {@link #run}, {@link #evaluateOnly}
+ * (which delegates to {@code run}) and {@link #cut} all share one {@link RequestCache} keyed
+ * by {@link ClusteringCacheKey} {@code (representation, linkageId)}: the first of the three
+ * to ask for a given linkage computes it and stores the full {@link LinkageRunResult}; every
+ * later call for that same key, from any of the three endpoints, reuses it instead of
+ * recomputing — {@code cut} reconstructs a {@link LinkageMatrix} from the cached rows and
+ * cuts that tree, still validating its own {@code k} range on every call. This never lets a
+ * request depend on a *different* previous request's value (TRD §6.6's statelessness rule):
+ * the cached value for a key is always exactly what a fresh computation of that same key
+ * would produce.
  */
 public final class ClusteringService {
 
@@ -62,14 +75,16 @@ public final class ClusteringService {
     private final CorpusRepository corpusRepository;
     private final EmbeddingRepository localEmbeddingRepository;
     private final EmbeddingRepository apiEmbeddingRepository;
+    private final RequestCache<ClusteringCacheKey, LinkageRunResult> cache;
     private final TextPreprocessor textPreprocessor = new TextPreprocessor();
     private final LanceWilliamsEngine engine = new LanceWilliamsEngine();
 
     public ClusteringService(CorpusRepository corpusRepository, EmbeddingRepository localEmbeddingRepository,
-            EmbeddingRepository apiEmbeddingRepository) {
+            EmbeddingRepository apiEmbeddingRepository, RequestCache<ClusteringCacheKey, LinkageRunResult> cache) {
         this.corpusRepository = Objects.requireNonNull(corpusRepository, "corpusRepository");
         this.localEmbeddingRepository = Objects.requireNonNull(localEmbeddingRepository, "localEmbeddingRepository");
         this.apiEmbeddingRepository = Objects.requireNonNull(apiEmbeddingRepository, "apiEmbeddingRepository");
+        this.cache = Objects.requireNonNull(cache, "cache");
     }
 
     /**
@@ -81,14 +96,29 @@ public final class ClusteringService {
         Representation effectiveRepresentation = representation == null ? Representation.DEFAULT : representation;
         List<LinkageCriterion> criteria = resolveLinkages(linkageIds);
 
-        Corpus corpus = corpusRepository.load();
-        List<List<Double>> vectors = vectorsFor(effectiveRepresentation, corpus);
-        DistanceMatrix distances = DistanceMatrix.cosineDistance(vectors);
-        List<Integer> fixedKs = fixedKsFor(distances.size());
+        // Corpus/vectors/distances are representation-wide, not per-linkage; loaded lazily,
+        // at most once, and only if at least one requested linkage is actually a cache miss.
+        List<List<Double>> vectors = null;
+        DistanceMatrix distances = null;
+        List<Integer> fixedKs = null;
 
         List<LinkageRunResult> results = new ArrayList<>(criteria.size());
         for (LinkageCriterion criterion : criteria) {
-            results.add(computeLinkage(criterion, distances, vectors, fixedKs));
+            ClusteringCacheKey key = new ClusteringCacheKey(effectiveRepresentation, criterion.id());
+            Optional<LinkageRunResult> hit = cache.get(key);
+            if (hit.isPresent()) {
+                results.add(hit.get());
+                continue;
+            }
+            if (distances == null) {
+                Corpus corpus = corpusRepository.load();
+                vectors = vectorsFor(effectiveRepresentation, corpus);
+                distances = DistanceMatrix.cosineDistance(vectors);
+                fixedKs = fixedKsFor(distances.size());
+            }
+            LinkageRunResult result = computeLinkage(criterion, distances, vectors, fixedKs);
+            cache.put(key, result);
+            results.add(result);
         }
         return List.copyOf(results);
     }
@@ -124,11 +154,21 @@ public final class ClusteringService {
         Representation effectiveRepresentation = representation == null ? Representation.DEFAULT : representation;
         LinkageCriterion criterion = resolveLinkage(linkageId);
 
-        Corpus corpus = corpusRepository.load();
-        List<List<Double>> vectors = vectorsFor(effectiveRepresentation, corpus);
-        DistanceMatrix distances = DistanceMatrix.cosineDistance(vectors);
-        LinkageMatrix linkage = engine.agglomerate(engineInputFor(criterion, distances), criterion);
+        ClusteringCacheKey key = new ClusteringCacheKey(effectiveRepresentation, criterion.id());
+        LinkageRunResult cachedResult = cache.get(key).orElseGet(() -> {
+            Corpus corpus = corpusRepository.load();
+            List<List<Double>> vectors = vectorsFor(effectiveRepresentation, corpus);
+            DistanceMatrix distances = DistanceMatrix.cosineDistance(vectors);
+            List<Integer> fixedKs = fixedKsFor(distances.size());
+            LinkageRunResult result = computeLinkage(criterion, distances, vectors, fixedKs);
+            cache.put(key, result);
+            return result;
+        });
 
+        // Rebuilt from the cached rows rather than re-agglomerating: LinkageMatrix's compact
+        // constructor only re-validates the monotonicity invariant (cheap), it never
+        // recomputes anything.
+        LinkageMatrix linkage = new LinkageMatrix(cachedResult.rows());
         int n = linkage.size() + 1;
         if (k < 2 || k > n - 1) {
             throw new InvalidRequestException("k must be in [2, n-1] (n=%d), was %d".formatted(n, k));
