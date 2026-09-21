@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.application.clustering;
 
+import co.edu.uniquindio.legajo.application.cache.FakeRequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
@@ -39,8 +40,10 @@ class ClusteringServiceTest {
     private final EmbeddingRepository localEmbeddingRepository = new FakeEmbeddingRepository();
     private final EmbeddingRepository apiEmbeddingRepository = new FakeEmbeddingRepository();
 
+    private final FakeRequestCache<ClusteringCacheKey, LinkageRunResult> cache = new FakeRequestCache<>();
+
     private final ClusteringService service =
-            new ClusteringService(corpusRepository, localEmbeddingRepository, apiEmbeddingRepository);
+            new ClusteringService(corpusRepository, localEmbeddingRepository, apiEmbeddingRepository, cache);
 
     @Test
     void runDefaultsToTfIdfCosineAndAllFourLinkagesEachWithNMinusOneRows() {
@@ -111,6 +114,61 @@ class ClusteringServiceTest {
     void runRejectsAnUnknownLinkageId() {
         assertThatThrownBy(() -> service.run(Representation.TFIDF_COSINE, List.of("does-not-exist")))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    /**
+     * TRD §6.6 statelessness rule / task A5: "no endpoint may depend on a previous run" —
+     * request X's result must be identical whether or not another request ran before or
+     * after it. Caching does not violate this: it changes how fast X is computed, never
+     * what X computes. Running X, then a different request Y, then X again must yield a
+     * result for X equal to the very first X (here: literally the same cached instance).
+     */
+    @Test
+    void runningADifferentRequestBetweenTwoIdenticalRunsNeverChangesTheSecondResult() {
+        List<LinkageRunResult> firstX = service.run(Representation.TFIDF_COSINE, List.of("single"));
+        service.run(Representation.TFIDF_COSINE, List.of("ward"));
+        List<LinkageRunResult> secondX = service.run(Representation.TFIDF_COSINE, List.of("single"));
+
+        assertThat(secondX).isEqualTo(firstX);
+        assertThat(secondX.get(0)).as("must reuse the cached computation, not a fresh equal one")
+                .isSameAs(firstX.get(0));
+    }
+
+    /**
+     * Task A5 decision (feature doc {@code rest-api.md}): {@code cut} reuses the same
+     * per-linkage cache {@code run} populates, so cutting a tree {@code run} already computed
+     * must not recompute it, yet {@code cut}'s own {@code k} validation must still fire for
+     * an out-of-range {@code k} on that cached tree.
+     */
+    @Test
+    void cutAfterRunReusesTheCachedTreeAndStillValidatesK() {
+        service.run(Representation.TFIDF_COSINE, List.of("average"));
+        int cacheSizeAfterRun = cache.size();
+
+        ClusterAssignment assignment = service.cut(Representation.TFIDF_COSINE, "average", 3);
+
+        assertThat(cacheSizeAfterRun).isEqualTo(1);
+        assertThat(cache.size()).as("cut must not add a second entry for the same key").isEqualTo(1);
+        assertThat(assignment.k()).isEqualTo(3);
+
+        assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", DOCS.size()))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
+    /**
+     * Task A5 (feature doc {@code rest-api.md}): "cache immutable results only ... so a
+     * caller can never mutate a cached value." {@link LinkageRunResult}'s compact
+     * constructor already defensively copies its lists, so the cached value is immutable by
+     * construction with no extra wrapper needed — this proves that guarantee actually holds
+     * for what {@code run} hands back.
+     */
+    @Test
+    void theCachedLinkageResultRowsAndLeafOrderAreImmutable() {
+        List<LinkageRunResult> results = service.run(Representation.TFIDF_COSINE, List.of("single"));
+        LinkageRunResult cached = results.get(0);
+
+        assertThatThrownBy(() -> cached.rows().add(null)).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> cached.leafOrder().add(99)).isInstanceOf(UnsupportedOperationException.class);
     }
 
     /**

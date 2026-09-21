@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.infrastructure.rest.similarity;
 
+import co.edu.uniquindio.legajo.application.similarity.CachedSimilarityResult;
 import co.edu.uniquindio.legajo.similarity.SimilarityResult;
 import org.jspecify.annotations.Nullable;
 
@@ -10,23 +11,24 @@ import java.util.Objects;
  * {@code POST /similarity/matrix} (TRD §6.6): {@code normalizedScore}, {@code rawValue}
  * (nullable), {@code computedNanos}, {@code cached}, and {@code degenerate}.
  *
- * <p><b>{@code cached} is always {@code false} in A3.</b> The domain's {@link
- * SimilarityResult} (task A2's {@code SimilarityService} orchestrates over it) has no
- * {@code cached} field — every result A2 returns is freshly computed, and request-keyed
- * caching is a separate feature task, A5 (see {@code SimilarityService}'s own Javadoc on
- * this exact gap). Rather than inventing a cache here or reshaping the domain/application
- * layer to carry a flag nothing yet sets, this DTO adds the field at the REST boundary with
- * a fixed value: every response over this A3 slice reports {@code cached: false},
- * truthfully, because nothing caches yet. A5 is expected to make this field real by
- * threading an actual cache-hit flag through to this constructor (or an equivalent DTO
- * factory), not by touching {@link SimilarityResult}.
+ * <p><b>{@code cached} is real (task A5).</b> {@code SimilarityService} now looks up a
+ * request-keyed cache before computing (TRD §9); {@link #from(SimilarityResult, boolean)}
+ * threads that hit/miss flag straight through from the application layer, and {@link
+ * #from(CachedSimilarityResult)} does the same for a {@code POST /similarity/matrix} cell,
+ * which carries the same flag under a different application-layer shape (no
+ * {@code algorithmId} of its own).
  */
 public record SimilarityResultResponse(
         double normalizedScore, @Nullable Double rawValue, long computedNanos, boolean cached, boolean degenerate) {
 
-    public static SimilarityResultResponse from(SimilarityResult result) {
+    public static SimilarityResultResponse from(SimilarityResult result, boolean cached) {
         Objects.requireNonNull(result, "result");
         return new SimilarityResultResponse(
-                result.normalizedScore(), result.rawValue(), result.computedNanos(), false, result.degenerate());
+                result.normalizedScore(), result.rawValue(), result.computedNanos(), cached, result.degenerate());
+    }
+
+    public static SimilarityResultResponse from(CachedSimilarityResult cell) {
+        Objects.requireNonNull(cell, "cell");
+        return from(cell.result(), cell.cached());
     }
 }

@@ -30,6 +30,7 @@ dependencies {
     api(libs.spring.boot.starter.web)
 
     implementation(libs.jackson.databind)
+    implementation(libs.caffeine)
     implementation(libs.pdfbox)
     // MiniLM offline precompute (TRD S5.1, S6.3): the HuggingFace tokenizer is delegable
     // under R-02; ONNX Runtime only runs the model's matrix inference, never the pooling or

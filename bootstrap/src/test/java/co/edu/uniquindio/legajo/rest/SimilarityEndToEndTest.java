@@ -63,8 +63,32 @@ class SimilarityEndToEndTest {
         assertThat(compareResults).hasSize(6);
         for (JsonNode row : compareResults) {
             assertThat(row.get("result").has("degenerate")).isTrue();
-            assertThat(row.get("result").get("cached").asBoolean()).isFalse();
+            assertThat(row.get("result").has("cached")).isTrue();
         }
+    }
+
+    /**
+     * Task A5 (feature doc {@code rest-api.md}): {@code cached} must be real, not always
+     * {@code false}. This is deliberately its own test rather than folded into {@code
+     * tac01...} above: {@code SimilarityService}'s cache is a Spring singleton shared by
+     * every test in this class (and every other {@code @SpringBootTest} that boots the same
+     * {@code RANDOM_PORT} context), so asserting "the very first call for this exact
+     * (algorithm, pair) key is a miss" only holds for a key genuinely untouched by any other
+     * test — {@code d16}/{@code d20} is reserved for exactly that, unused by every other
+     * compare/matrix call in this test suite (checked by search, not assumed).
+     */
+    @Test
+    void cachedIsFalseOnAFreshPairAndTrueOnAnIdenticalRepeatedCompare() throws IOException, InterruptedException {
+        String body = "{\"documentIdA\":\"d16\",\"documentIdB\":\"d20\",\"algorithmIds\":[\"needleman-wunsch\"]}";
+
+        JsonNode first = postJson("/api/v1/similarity/compare", body);
+        assertThat(first.get(0).get("result").get("cached").asBoolean()).isFalse();
+
+        JsonNode second = postJson("/api/v1/similarity/compare", body);
+        assertThat(second.get(0).get("result").get("cached").asBoolean()).isTrue();
+        assertThat(second.get(0).get("result").get("computedNanos").asLong())
+                .as("a cache hit must report the original computation's measured time, not a fresh one")
+                .isEqualTo(first.get(0).get("result").get("computedNanos").asLong());
     }
 
     @Test
