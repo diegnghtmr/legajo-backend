@@ -1,5 +1,7 @@
 package co.edu.uniquindio.legajo.application.similarity;
 
+import co.edu.uniquindio.legajo.application.cache.FakeRequestCache;
+import co.edu.uniquindio.legajo.application.cache.NoOpRequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.corpus.Corpus;
@@ -62,8 +64,10 @@ class SimilarityServiceTest {
             new Levenshtein(), new NeedlemanWunsch(), new Jaccard(), new TfIdfCosine(),
             new EmbeddingLocal(), new EmbeddingApi()));
 
+    private final FakeRequestCache<SimilarityCacheKey, SimilarityResult> cache = new FakeRequestCache<>();
+
     private final SimilarityService service = new SimilarityService(
-            corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository);
+            corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository, cache);
 
     @Test
     void catalogueReturnsExactlyTheSixFixedAlgorithmsInRegistryOrder() {
@@ -107,7 +111,8 @@ class SimilarityServiceTest {
     @Test
     void aKnownDocumentMissingFromTheEmbeddingCacheIsAServerFaultNotANotFound() {
         SimilarityService withIncompleteCache = new SimilarityService(
-                corpusRepository, registry, new FakeEmbeddingRepository(List.of()), apiEmbeddingRepository);
+                corpusRepository, registry, new FakeEmbeddingRepository(List.of()), apiEmbeddingRepository,
+                new FakeRequestCache<>());
 
         assertThatThrownBy(() -> withIncompleteCache.compare("d01", "d02", List.of("embedding-local")))
                 .isInstanceOf(IllegalStateException.class)
@@ -122,12 +127,12 @@ class SimilarityServiceTest {
 
     @Test
     void matrixIsSquareOverTheSelectionWithADiagonalOfOne() {
-        List<List<SimilarityResult>> matrix = service.matrix(List.of("d01", "d02", "d03"), "jaccard");
+        List<List<CachedSimilarityResult>> matrix = service.matrix(List.of("d01", "d02", "d03"), "jaccard");
 
         assertThat(matrix).hasSize(3);
         for (int i = 0; i < 3; i++) {
             assertThat(matrix.get(i)).hasSize(3);
-            assertThat(matrix.get(i).get(i).normalizedScore()).isCloseTo(1.0, within(1e-9));
+            assertThat(matrix.get(i).get(i).result().normalizedScore()).isCloseTo(1.0, within(1e-9));
         }
     }
 
@@ -139,11 +144,76 @@ class SimilarityServiceTest {
 
     @Test
     void matrixWorksForBothEmbeddingCapabilitiesUsingTheirOwnCache() {
-        List<List<SimilarityResult>> local = service.matrix(List.of("d01", "d02", "d03"), "embedding-local");
-        List<List<SimilarityResult>> api = service.matrix(List.of("d01", "d02", "d03"), "embedding-api");
+        List<List<CachedSimilarityResult>> local = service.matrix(List.of("d01", "d02", "d03"), "embedding-local");
+        List<List<CachedSimilarityResult>> api = service.matrix(List.of("d01", "d02", "d03"), "embedding-api");
 
-        assertThat(local.get(0).get(0).normalizedScore()).isCloseTo(1.0, within(1e-9));
-        assertThat(api.get(0).get(0).normalizedScore()).isCloseTo(1.0, within(1e-9));
+        assertThat(local.get(0).get(0).result().normalizedScore()).isCloseTo(1.0, within(1e-9));
+        assertThat(api.get(0).get(0).result().normalizedScore()).isCloseTo(1.0, within(1e-9));
+    }
+
+    /**
+     * TRD §9 / task A5: a second identical compare must be a cache hit reporting the exact
+     * same result the first (fresh) call computed — including {@code computedNanos}, which
+     * is measured inside {@code compute()} and stored with the cached entry, never
+     * re-measured on a hit (a hit's lookup itself takes far less time than a real
+     * computation, so re-measuring would silently prove nothing).
+     */
+    @Test
+    void anIdenticalSecondCompareIsACacheHitWithTheExactSameResultAsTheFirst() {
+        List<AlgorithmSimilarity> first = service.compare("d01", "d02", List.of("levenshtein"));
+        List<AlgorithmSimilarity> second = service.compare("d01", "d02", List.of("levenshtein"));
+
+        assertThat(first).hasSize(1);
+        assertThat(second).hasSize(1);
+        assertThat(first.get(0).cached()).as("first call must be a fresh computation").isFalse();
+        assertThat(second.get(0).cached()).as("second identical call must be a cache hit").isTrue();
+        assertThat(second.get(0).result()).isEqualTo(first.get(0).result());
+    }
+
+    @Test
+    void aDifferentPairIsNeverACacheHitForAnAlreadyCachedPair() {
+        service.compare("d01", "d02", List.of("levenshtein"));
+
+        List<AlgorithmSimilarity> differentPair = service.compare("d01", "d03", List.of("levenshtein"));
+
+        assertThat(differentPair.get(0).cached()).isFalse();
+    }
+
+    @Test
+    void aDifferentAlgorithmOnTheSamePairIsNeverACacheHitForAnAlreadyCachedAlgorithm() {
+        service.compare("d01", "d02", List.of("levenshtein"));
+
+        List<AlgorithmSimilarity> differentAlgorithm = service.compare("d01", "d02", List.of("jaccard"));
+
+        assertThat(differentAlgorithm.get(0).cached()).isFalse();
+    }
+
+    /** NFR-QA-01: the benchmark harness disables caching by wiring {@code NoOpRequestCache}. */
+    @Test
+    void withTheNoOpCacheEveryCallIsAFreshComputationNeverCached() {
+        SimilarityService withNoCache = new SimilarityService(
+                corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository,
+                new NoOpRequestCache<>());
+
+        withNoCache.compare("d01", "d02", List.of("levenshtein"));
+        List<AlgorithmSimilarity> second = withNoCache.compare("d01", "d02", List.of("levenshtein"));
+
+        assertThat(second.get(0).cached()).isFalse();
+    }
+
+    @Test
+    void matrixCellsShareTheSameCacheAsCompareByAlgorithmAndDirectionalPair() {
+        // Pre-populate the cache exactly as compare() would for the (jaccard, d01, d02) key.
+        service.compare("d01", "d02", List.of("jaccard"));
+
+        List<List<CachedSimilarityResult>> matrix = service.matrix(List.of("d01", "d02", "d03"), "jaccard");
+
+        assertThat(matrix.get(0).get(1).cached())
+                .as("matrix cell (d01,d02) must reuse the entry compare() just populated")
+                .isTrue();
+        assertThat(matrix.get(0).get(0).cached())
+                .as("the self-pair (d01,d01) was never computed before, so it must still be a miss")
+                .isFalse();
     }
 
     @Test

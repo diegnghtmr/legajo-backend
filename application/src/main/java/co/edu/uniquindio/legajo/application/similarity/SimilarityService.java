@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.application.similarity;
 
+import co.edu.uniquindio.legajo.application.cache.RequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.corpus.Corpus;
@@ -30,18 +31,17 @@ import java.util.Optional;
  * POST /similarity/compare} (multi-algorithm, one pair), {@code POST /similarity/matrix}
  * (m×m, one algorithm), {@code GET /similarity/{algorithmId}/trace} (one algorithm, one
  * pair), and {@code GET /similarity/algorithms} (the catalogue). Pure orchestration — no
- * Spring, no HTTP, no DTO/JSON annotations, no caching (request-keyed caching is a separate
- * feature task, A5; every result this service returns is freshly computed).
+ * Spring, no HTTP, no DTO/JSON annotations.
  *
- * <p><b>Not represented here: the TRD's {@code cached} field.</b> TRD §6.6 says every
- * similarity result carries {@code normalizedScore}, {@code rawValue}, {@code computedNanos},
- * {@code cached}, and {@code degenerate" — but {@link SimilarityResult} (domain) has no
- * {@code cached} field, and this service never caches. Wrapping every result in a new
- * "cached" carrier here would bake in a shape before A5 designs the actual request-keyed
- * cache (its key granularity is not yet decided), risking a wrapper the REST layer or A5
- * then has to undo. This is flagged rather than silently invented: whichever of A3/A4/A5
- * introduces caching should decide where {@code cached} is attached (DTO-only after a cache
- * lookup at the REST boundary, most likely, rather than a new domain/application type).
+ * <p><b>Request-keyed caching (task A5).</b> {@code compare} and {@code matrix} look up a
+ * {@link RequestCache} keyed by {@link SimilarityCacheKey} {@code (algorithmId,
+ * documentIdA, documentIdB)}, directional, before calling {@link
+ * co.edu.uniquindio.legajo.similarity.SimilarityAlgorithm#compute}; a miss computes and
+ * stores the result, a hit returns the exact same {@link SimilarityResult} — including its
+ * {@code computedNanos}, measured once inside {@code compute()} and never re-measured on a
+ * hit. {@code trace} is never cached (the TRD's compare sequence diagram only covers
+ * compare/matrix). This service depends only on the {@link RequestCache} port, never on a
+ * concrete Caffeine implementation, so it stays framework-free.
  *
  * <p><b>Two embedding caches, resolved lazily.</b> {@code embedding-local} and {@code
  * embedding-api} each read a different {@link EmbeddingRepository} (the two beans
@@ -59,14 +59,17 @@ public final class SimilarityService {
     private final SimilarityAlgorithmRegistry registry;
     private final EmbeddingRepository localEmbeddingRepository;
     private final EmbeddingRepository apiEmbeddingRepository;
+    private final RequestCache<SimilarityCacheKey, SimilarityResult> cache;
     private final TextPreprocessor textPreprocessor = new TextPreprocessor();
 
     public SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
-            EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository) {
+            EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
+            RequestCache<SimilarityCacheKey, SimilarityResult> cache) {
         this.corpusRepository = Objects.requireNonNull(corpusRepository, "corpusRepository");
         this.registry = Objects.requireNonNull(registry, "registry");
         this.localEmbeddingRepository = Objects.requireNonNull(localEmbeddingRepository, "localEmbeddingRepository");
         this.apiEmbeddingRepository = Objects.requireNonNull(apiEmbeddingRepository, "apiEmbeddingRepository");
+        this.cache = Objects.requireNonNull(cache, "cache");
     }
 
     /** {@code GET /similarity/algorithms}: the catalogue, in registration order. */
@@ -97,7 +100,7 @@ public final class SimilarityService {
         for (SimilarityAlgorithm algorithm : algorithms) {
             SimilarityInput inputA = inputFor(documentA, algorithm, localVectors, apiVectors);
             SimilarityInput inputB = inputFor(documentB, algorithm, localVectors, apiVectors);
-            results.add(new AlgorithmSimilarity(algorithm.id(), algorithm.compute(inputA, inputB, context)));
+            results.add(computeCached(algorithm, inputA, inputB, context, documentIdA, documentIdB));
         }
         return List.copyOf(results);
     }
@@ -108,7 +111,7 @@ public final class SimilarityService {
      * ids (a "selection" of m distinct documents, an author reading of "tamaño de la
      * selección" the TRD does not spell out explicitly).
      */
-    public List<List<SimilarityResult>> matrix(List<String> documentIds, String algorithmId) {
+    public List<List<CachedSimilarityResult>> matrix(List<String> documentIds, String algorithmId) {
         Objects.requireNonNull(documentIds, "documentIds");
         Objects.requireNonNull(algorithmId, "algorithmId");
 
@@ -131,17 +134,39 @@ public final class SimilarityService {
         Map<String, EmbeddingVector> apiVectors =
                 loadVectorsIfNeeded(List.of(algorithm), "embedding-api", apiEmbeddingRepository);
 
-        List<List<SimilarityResult>> rows = new ArrayList<>(m);
+        List<List<CachedSimilarityResult>> rows = new ArrayList<>(m);
         for (int i = 0; i < m; i++) {
-            List<SimilarityResult> row = new ArrayList<>(m);
+            List<CachedSimilarityResult> row = new ArrayList<>(m);
             SimilarityInput inputI = inputFor(documents.get(i), algorithm, localVectors, apiVectors);
+            String documentIdI = documents.get(i).id();
             for (int j = 0; j < m; j++) {
                 SimilarityInput inputJ = inputFor(documents.get(j), algorithm, localVectors, apiVectors);
-                row.add(algorithm.compute(inputI, inputJ, context));
+                String documentIdJ = documents.get(j).id();
+                AlgorithmSimilarity cell = computeCached(algorithm, inputI, inputJ, context, documentIdI, documentIdJ);
+                row.add(new CachedSimilarityResult(cell.result(), cell.cached()));
             }
             rows.add(List.copyOf(row));
         }
         return List.copyOf(rows);
+    }
+
+    /**
+     * Looks up {@link SimilarityCacheKey}{@code (algorithm.id(), documentIdA, documentIdB)}
+     * before computing (task A5, TRD §9): a hit returns the exact same {@link
+     * SimilarityResult} a fresh computation produced, {@code computedNanos} included; a miss
+     * computes via {@link SimilarityAlgorithm#compute} and stores the result before
+     * returning it.
+     */
+    private AlgorithmSimilarity computeCached(SimilarityAlgorithm algorithm, SimilarityInput inputA,
+            SimilarityInput inputB, SimilarityContext context, String documentIdA, String documentIdB) {
+        SimilarityCacheKey key = new SimilarityCacheKey(algorithm.id(), documentIdA, documentIdB);
+        Optional<SimilarityResult> hit = cache.get(key);
+        if (hit.isPresent()) {
+            return new AlgorithmSimilarity(algorithm.id(), hit.get(), true);
+        }
+        SimilarityResult result = algorithm.compute(inputA, inputB, context);
+        cache.put(key, result);
+        return new AlgorithmSimilarity(algorithm.id(), result, false);
     }
 
     /** {@code GET /similarity/{algorithmId}/trace}: the complete trace, no truncation. */

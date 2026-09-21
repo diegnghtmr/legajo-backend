@@ -15,6 +15,6 @@ public record AlgorithmSimilarityResponse(String algorithmId, SimilarityResultRe
     public static AlgorithmSimilarityResponse from(AlgorithmSimilarity similarity) {
         Objects.requireNonNull(similarity, "similarity");
         return new AlgorithmSimilarityResponse(
-                similarity.algorithmId(), SimilarityResultResponse.from(similarity.result()));
+                similarity.algorithmId(), SimilarityResultResponse.from(similarity.result(), similarity.cached()));
     }
 }

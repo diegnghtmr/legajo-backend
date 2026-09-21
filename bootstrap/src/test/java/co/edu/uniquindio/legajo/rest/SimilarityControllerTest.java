@@ -94,6 +94,32 @@ class SimilarityControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
     }
 
+    /**
+     * Task A5 (feature doc {@code rest-api.md}): {@code cached} must be real. This class's
+     * {@code SimilarityService} bean is a Spring singleton shared by every test method in
+     * this class (and every other {@code @SpringBootTest(webEnvironment = MOCK)} +
+     * {@code @AutoConfigureMockMvc} test, which resolves to the same cached Spring test
+     * context), so this test reserves {@code d17}/{@code d19} — unused by every other
+     * similarity call in this suite (checked, not assumed) — instead of asserting on a pair
+     * another test might have already touched.
+     */
+    @Test
+    void compareTwiceReportsCachedFalseThenTrueForTheSamePairAndAlgorithm() throws Exception {
+        String body = """
+                {"documentIdA":"d17","documentIdB":"d19","algorithmIds":["needleman-wunsch"]}
+                """;
+
+        mockMvc.perform(post("/api/v1/similarity/compare").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].result.cached").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.is(false))));
+
+        mockMvc.perform(post("/api/v1/similarity/compare").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].result.cached").value(org.hamcrest.Matchers.everyItem(
+                        org.hamcrest.Matchers.is(true))));
+    }
+
     @Test
     void matrixReturnsAnMByMGridForOneAlgorithm() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/matrix")

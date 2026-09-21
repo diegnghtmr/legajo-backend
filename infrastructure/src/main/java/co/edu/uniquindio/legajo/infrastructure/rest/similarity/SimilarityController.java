@@ -3,9 +3,9 @@ package co.edu.uniquindio.legajo.infrastructure.rest.similarity;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.application.similarity.AlgorithmSimilarity;
+import co.edu.uniquindio.legajo.application.similarity.CachedSimilarityResult;
 import co.edu.uniquindio.legajo.application.similarity.SimilarityService;
 import co.edu.uniquindio.legajo.similarity.AlgorithmTrace;
-import co.edu.uniquindio.legajo.similarity.SimilarityResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -81,7 +81,7 @@ public class SimilarityController {
             throw new InvalidRequestException("documentIds must not be empty");
         }
 
-        List<List<SimilarityResult>> rows = similarityService.matrix(documentIds, request.algorithmId());
+        List<List<CachedSimilarityResult>> rows = similarityService.matrix(documentIds, request.algorithmId());
         return rows.stream()
                 .map(row -> row.stream().map(SimilarityResultResponse::from).toList())
                 .toList();
