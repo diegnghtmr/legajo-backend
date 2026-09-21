@@ -34,12 +34,15 @@ class ProblemDetailDegradedServiceTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /** TRD §6.6, task A7: 503 always carries the fixed {@code embedding-api-unavailable}
+     * URN — the only status/type pair in the table with no path-vs-body ambiguity at all. */
     @Test
     void anEmbeddingApiExceptionIsA503NotA500() throws Exception {
         mockMvc.perform(get("/api/v1/test-only/embedding-api-failure"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:embedding-api-unavailable"))
                 .andExpect(jsonPath("$.detail", not(org.hamcrest.Matchers.containsString("simulated"))))
                 .andExpect(jsonPath("$.detail", not(org.hamcrest.Matchers.containsString("EmbeddingApiException"))));
     }

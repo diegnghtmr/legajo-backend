@@ -45,12 +45,15 @@ class CorpusControllerTest {
                 .andExpect(jsonPath("$.abstract").isNotEmpty());
     }
 
+    /** TRD 1.3.7 §6.6, task A7: {@code id} is the path segment fixed by {@code
+     * GET /corpus/{id}}, so this is 404 with {@code urn:legajo:problem:unknown-document}. */
     @Test
     void detailAnswers404ProblemDetailForAnUnknownId() throws Exception {
         mockMvc.perform(get("/api/v1/corpus/{id}", "does-not-exist"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-document"))
                 .andExpect(jsonPath("$.detail").isNotEmpty())
                 .andExpect(jsonPath("$.detail", org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.containsString("Exception"))));

@@ -3,7 +3,9 @@ package co.edu.uniquindio.legajo.application.similarity;
 import co.edu.uniquindio.legajo.application.cache.FakeRequestCache;
 import co.edu.uniquindio.legajo.application.cache.NoOpRequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
+import co.edu.uniquindio.legajo.application.error.UnknownIdentifierException;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -97,10 +99,20 @@ class SimilarityServiceTest {
         assertThat(results).extracting(AlgorithmSimilarity::algorithmId).containsExactly("jaccard");
     }
 
+    /**
+     * Task A7 (TRD §6.6's fixed status-code rule): {@code algorithmIds} is a request-body
+     * field on {@code compare}, and {@link SimilarityService} cannot know that from inside
+     * {@code requireAlgorithm} (the same lookup is reused by {@code trace}'s path segment),
+     * so the service raises the location-agnostic {@link UnknownIdentifierException} and lets
+     * {@code SimilarityController} — which does know its own request shape — reclassify it.
+     * See {@code SimilarityControllerTest} for the REST-level 400 this becomes.
+     */
     @Test
     void compareRejectsAnUnknownAlgorithmId() {
         assertThatThrownBy(() -> service.compare("d01", "d02", List.of("does-not-exist")))
-                .isInstanceOf(ResourceNotFoundException.class);
+                .isInstanceOf(UnknownIdentifierException.class)
+                .extracting(t -> ((UnknownIdentifierException) t).type())
+                .isEqualTo(ProblemType.UNKNOWN_ALGORITHM);
     }
 
     /**
@@ -119,10 +131,17 @@ class SimilarityServiceTest {
                 .isNotInstanceOf(ResourceNotFoundException.class);
     }
 
+    /**
+     * Task A7: a document id is never a path segment anywhere in this service, so, unlike an
+     * algorithm id, {@code requireDocument} can throw the final {@link InvalidRequestException}
+     * (400, {@link ProblemType#UNKNOWN_DOCUMENT}) directly.
+     */
     @Test
     void compareRejectsAnUnknownDocumentId() {
         assertThatThrownBy(() -> service.compare("does-not-exist", "d02", List.of("jaccard")))
-                .isInstanceOf(ResourceNotFoundException.class);
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.UNKNOWN_DOCUMENT);
     }
 
     @Test
@@ -139,7 +158,30 @@ class SimilarityServiceTest {
     @Test
     void matrixRejectsASelectionSmallerThanThree() {
         assertThatThrownBy(() -> service.matrix(List.of("d01", "d02"), "jaccard"))
-                .isInstanceOf(InvalidRequestException.class);
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.INVALID_SELECTION);
+    }
+
+    /** TRD §6.6 (task A7): a matrix selection with a duplicate id is the same {@code
+     * invalid-selection} URN as an undersized one, just a different concrete reason. */
+    @Test
+    void matrixRejectsASelectionWithADuplicateDocumentId() {
+        assertThatThrownBy(() -> service.matrix(List.of("d01", "d01", "d02"), "jaccard"))
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.INVALID_SELECTION);
+    }
+
+    /** Task A7: {@code matrix}'s {@code algorithmId} is a request-body field, so an unknown
+     * one is the same location-agnostic {@link UnknownIdentifierException} {@code compare}
+     * raises, reclassified to 400 by {@code SimilarityController} (never 404 here). */
+    @Test
+    void matrixRejectsAnUnknownAlgorithmId() {
+        assertThatThrownBy(() -> service.matrix(List.of("d01", "d02", "d03"), "does-not-exist"))
+                .isInstanceOf(UnknownIdentifierException.class)
+                .extracting(t -> ((UnknownIdentifierException) t).type())
+                .isEqualTo(ProblemType.UNKNOWN_ALGORITHM);
     }
 
     @Test
@@ -222,6 +264,32 @@ class SimilarityServiceTest {
             Optional<?> trace = service.trace(algorithm.id(), "d01", "d02");
             assertThat(trace).as("trace for %s", algorithm.id()).isPresent();
         }
+    }
+
+    /**
+     * Task A7: {@code trace}'s {@code algorithmId} is a path segment on {@code GET
+     * /similarity/{algorithmId}/trace}, but this service method has no way to know that
+     * itself — {@code requireAlgorithm} is the exact same lookup {@code compare}/{@code
+     * matrix} use for a body id — so it raises the same location-agnostic {@link
+     * UnknownIdentifierException} either way; only {@code SimilarityController.trace}
+     * reclassifies it to 404, since only it knows the request shape.
+     */
+    @Test
+    void traceRejectsAnUnknownAlgorithmIdWithTheLocationAgnosticException() {
+        assertThatThrownBy(() -> service.trace("does-not-exist", "d01", "d02"))
+                .isInstanceOf(UnknownIdentifierException.class)
+                .extracting(t -> ((UnknownIdentifierException) t).type())
+                .isEqualTo(ProblemType.UNKNOWN_ALGORITHM);
+    }
+
+    /** Task A7: {@code documentIdA}/{@code documentIdB} are query parameters on {@code trace},
+     * never a path segment, so {@code requireDocument} throws the final 400 directly. */
+    @Test
+    void traceRejectsAnUnknownDocumentIdDirectlyAsInvalidRequest() {
+        assertThatThrownBy(() -> service.trace("levenshtein", "does-not-exist", "d02"))
+                .isInstanceOf(InvalidRequestException.class)
+                .extracting(t -> ((InvalidRequestException) t).type().orElseThrow())
+                .isEqualTo(ProblemType.UNKNOWN_DOCUMENT);
     }
 
     private static final class FakeCorpusRepository implements CorpusRepository {

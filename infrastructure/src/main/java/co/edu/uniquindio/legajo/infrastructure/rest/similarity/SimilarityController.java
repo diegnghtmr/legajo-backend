@@ -2,6 +2,8 @@ package co.edu.uniquindio.legajo.infrastructure.rest.similarity;
 
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
+import co.edu.uniquindio.legajo.application.error.UnknownIdentifierException;
 import co.edu.uniquindio.legajo.application.similarity.AlgorithmSimilarity;
 import co.edu.uniquindio.legajo.application.similarity.CachedSimilarityResult;
 import co.edu.uniquindio.legajo.application.similarity.SimilarityService;
@@ -22,10 +24,15 @@ import java.util.Objects;
  * POST /similarity/compare}, {@code POST /similarity/matrix}, {@code
  * GET /similarity/{algorithmId}/trace}, and {@code GET /similarity/algorithms}. Pure
  * adapter: every rule (algorithm defaulting, matrix selection bounds, unknown-id lookups)
- * lives in {@link SimilarityService} (application); this class only shapes requests/
- * responses and lets {@link ResourceNotFoundException} (unknown algorithm/document id) and
- * {@link InvalidRequestException} (validation, task A3b) bubble up to {@code
- * ProblemDetailExceptionHandler}.
+ * lives in {@link SimilarityService} (application); this class shapes requests/responses and
+ * classifies status by request location (TRD §6.6, task A7): a document/algorithm id or a
+ * matrix selection that fails validation is always {@link InvalidRequestException} (400)
+ * here, since every one of those values arrives in a body or query string. The one exception
+ * is {@code trace}'s path-segment {@code algorithmId}: {@link SimilarityService} cannot know
+ * that its caller is a path variable (the same lookup is reused by {@code compare}/{@code
+ * matrix}'s body ids), so it raises the location-agnostic {@link UnknownIdentifierException}
+ * and this class reclassifies it to {@link ResourceNotFoundException} (404) only in {@code
+ * trace}. See {@link UnknownIdentifierException}'s Javadoc for the full reasoning.
  *
  * <p><b>Trace pair identification — a TRD gap, resolved here.</b> TRD §6.6 fixes the path
  * {@code GET /similarity/{algorithmId}/trace} but never says how the two compared documents
@@ -63,8 +70,14 @@ public class SimilarityController {
         requireNonBlank(request.documentIdB(), "documentIdB");
 
         List<String> algorithmIds = request.algorithmIds() == null ? List.of() : request.algorithmIds();
-        List<AlgorithmSimilarity> results =
-                similarityService.compare(request.documentIdA(), request.documentIdB(), algorithmIds);
+        List<AlgorithmSimilarity> results;
+        try {
+            results = similarityService.compare(request.documentIdA(), request.documentIdB(), algorithmIds);
+        } catch (UnknownIdentifierException exception) {
+            // Every id compare() looks up (algorithmIds) is a request-body field here, so an
+            // unknown identifier of any kind is 400, never 404 (TRD §6.6, task A7).
+            throw asInvalidRequest(exception);
+        }
         return results.stream().map(AlgorithmSimilarityResponse::from).toList();
     }
 
@@ -78,10 +91,17 @@ public class SimilarityController {
         requireNonBlank(request.algorithmId(), "algorithmId");
         List<String> documentIds = request.documentIds();
         if (documentIds == null || documentIds.isEmpty()) {
-            throw new InvalidRequestException("documentIds must not be empty");
+            throw new InvalidRequestException(ProblemType.INVALID_SELECTION, "documentIds must not be empty");
         }
 
-        List<List<CachedSimilarityResult>> rows = similarityService.matrix(documentIds, request.algorithmId());
+        List<List<CachedSimilarityResult>> rows;
+        try {
+            rows = similarityService.matrix(documentIds, request.algorithmId());
+        } catch (UnknownIdentifierException exception) {
+            // matrix()'s algorithmId and documentIds are both request-body fields here, so an
+            // unknown identifier of any kind is 400, never 404 (TRD §6.6, task A7).
+            throw asInvalidRequest(exception);
+        }
         return rows.stream()
                 .map(row -> row.stream().map(SimilarityResultResponse::from).toList())
                 .toList();
@@ -95,8 +115,18 @@ public class SimilarityController {
     @GetMapping("/{algorithmId}/trace")
     public AlgorithmTraceResponse trace(@PathVariable("algorithmId") String algorithmId,
             @RequestParam("documentIdA") String documentIdA, @RequestParam("documentIdB") String documentIdB) {
-        AlgorithmTrace trace = similarityService.trace(algorithmId, documentIdA, documentIdB)
-                .orElseThrow(() -> new ResourceNotFoundException("no trace available for algorithm id: " + algorithmId));
+        AlgorithmTrace trace;
+        try {
+            // documentIdA/documentIdB failures reach here already classified as
+            // InvalidRequestException (400, requireDocument's calls are never path-based) and
+            // pass through unchanged; only algorithmId — this endpoint's path segment — needs
+            // reclassifying from the location-agnostic exception to a 404 (TRD §6.6, task A7).
+            trace = similarityService.trace(algorithmId, documentIdA, documentIdB)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "no trace available for algorithm id: " + algorithmId));
+        } catch (UnknownIdentifierException exception) {
+            throw new ResourceNotFoundException(exception.type(), exception.getMessage());
+        }
         return AlgorithmTraceMapper.toResponse(trace);
     }
 
@@ -104,5 +134,12 @@ public class SimilarityController {
         if (value == null || value.isBlank()) {
             throw new InvalidRequestException(fieldName + " must not be blank");
         }
+    }
+
+    /** compare()/matrix(): every id they look up is a request-body field, so any {@link
+     * UnknownIdentifierException} they raise is always 400, whatever its {@link
+     * co.edu.uniquindio.legajo.application.error.ProblemType} (TRD §6.6, task A7). */
+    private static InvalidRequestException asInvalidRequest(UnknownIdentifierException exception) {
+        return new InvalidRequestException(exception.type(), exception.getMessage());
     }
 }

@@ -62,27 +62,41 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$[0].algorithmId").value("jaccard"));
     }
 
+    /**
+     * TRD 1.3.7 §6.6, task A7: {@code algorithmIds} is a request-body field, so an unknown id
+     * is 400 with {@code urn:legajo:problem:unknown-algorithm} — not 404, since the URI
+     * {@code /api/v1/similarity/compare} itself exists (RFC 9110's 404 is about the target
+     * resource, not a value inside the request).
+     */
     @Test
-    void compareAnswers404ForAnUnknownAlgorithmId() throws Exception {
+    void compareAnswers400ForAnUnknownAlgorithmId() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/compare")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"documentIdA":"d01","documentIdB":"d02","algorithmIds":["does-not-exist"]}
                                 """))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
     }
 
+    /** TRD 1.3.7 §6.6, task A7: a body document id is 400 with {@code unknown-document}. */
     @Test
-    void compareAnswers404ForAnUnknownDocumentId() throws Exception {
+    void compareAnswers400ForAnUnknownDocumentId() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/compare")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"documentIdA":"d01","documentIdB":"does-not-exist"}
                                 """))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-document"));
     }
 
+    /** A blank required field is this controller's own manual check, not one of TRD §6.6's
+     * fixed-URN cases, so it keeps {@code type} absent — Jackson omits the key entirely,
+     * Spring's {@code about:blank} default (see {@code traceAnswers400WhenARequiredQuery...}
+     * for why {@code doesNotExist()}, not a literal null, is the right assertion). */
     @Test
     void compareAnswers400ForABlankDocumentId() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/compare")
@@ -91,7 +105,8 @@ class SimilarityControllerTest {
                                 {"documentIdA":"","documentIdB":"d02"}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
     }
 
     /**
@@ -136,6 +151,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$[0][0].cached").value(false));
     }
 
+    /** TRD §6.6: a selection under 3 documents is {@code invalid-selection}. */
     @Test
     void matrixAnswers400WhenTheSelectionIsSmallerThanThree() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/matrix")
@@ -144,9 +160,26 @@ class SimilarityControllerTest {
                                 {"algorithmId":"jaccard","documentIds":["d01","d02"]}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-selection"));
     }
 
+    /**
+     * An empty or missing selection is also smaller than three (TRD §6.6), so it carries the
+     * same {@code invalid-selection} URN instead of a type-less 400.
+     */
+    @Test
+    void matrixAnswers400WithInvalidSelectionForAnEmptySelection() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/matrix")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"algorithmId":"jaccard","documentIds":[]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-selection"));
+    }
+
+    /** TRD §6.6: a duplicate id in the selection is the same {@code invalid-selection} URN. */
     @Test
     void matrixAnswers400ForADuplicateDocumentIdInTheSelection() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/matrix")
@@ -154,17 +187,37 @@ class SimilarityControllerTest {
                         .content("""
                                 {"algorithmId":"jaccard","documentIds":["d01","d01","d02"]}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-selection"));
     }
 
+    /** TRD 1.3.7 §6.6, task A7: {@code matrix}'s {@code algorithmId} is a body field, so an
+     * unknown one is 400 with {@code unknown-algorithm} (never 404, unlike {@code trace}'s
+     * path segment). */
     @Test
-    void matrixAnswers404ForAnUnknownAlgorithmId() throws Exception {
+    void matrixAnswers400ForAnUnknownAlgorithmId() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/matrix")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"algorithmId":"does-not-exist","documentIds":["d01","d02","d03"]}
                                 """))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
+    }
+
+    /** TRD §6.6's unknown-document row names {@code matrix}'s body list explicitly too, not
+     * just {@code compare} and {@code trace}. */
+    @Test
+    void matrixAnswers400ForAnUnknownDocumentId() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/matrix")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"algorithmId":"jaccard","documentIds":["d01","does-not-exist","d03"]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-document"));
     }
 
     @Test
@@ -191,20 +244,54 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.coefficient").exists());
     }
 
+    /**
+     * A missing required query parameter is a framework-detected error (Spring MVC's own
+     * {@code MissingServletRequestParameterException}, mapped by the {@code
+     * ResponseEntityExceptionHandler} base class this project's handler extends), not a
+     * violation of one of TRD §6.6's fixed rules — so it keeps Spring's standard {@code
+     * about:blank} {@code type}, never one of the URNs this task adds. RFC 9457 defines
+     * {@code about:blank} as the default when {@code type} is omitted; Spring's {@code
+     * ProblemDetail} leaves the field unset in that case, and — checked empirically here,
+     * not assumed — {@code ProblemDetailJacksonMixin} serializes it by omitting the {@code
+     * type} key entirely rather than writing a literal JSON {@code null}, so {@code
+     * doesNotExist()} is the correct assertion for "absent" in the RFC 9457 sense.
+     */
     @Test
     void traceAnswers400WhenARequiredQueryParameterIsMissing() throws Exception {
         mockMvc.perform(get("/api/v1/similarity/{algorithmId}/trace", "levenshtein")
                         .param("documentIdA", "d01"))
                 .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON));
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
     }
 
+    /**
+     * TRD 1.3.7 §6.6, task A7: {@code algorithmId} is the path segment fixed by {@code
+     * GET /similarity/{algorithmId}/trace}, so it stays 404 — the one similarity case this
+     * task does not change — with {@code urn:legajo:problem:unknown-algorithm}.
+     */
     @Test
     void traceAnswers404ForAnUnknownAlgorithmId() throws Exception {
         mockMvc.perform(get("/api/v1/similarity/{algorithmId}/trace", "does-not-exist")
                         .param("documentIdA", "d01")
                         .param("documentIdB", "d02"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
+    }
+
+    /** TRD 1.3.7 §6.6, task A7: {@code documentIdA}/{@code documentIdB} are query parameters
+     * on {@code trace}, so an unknown one is 400 with {@code unknown-document} — the same
+     * URN {@code compare}/{@code matrix} use for a body id, but a different status because
+     * this value is not part of the path. */
+    @Test
+    void traceAnswers400ForAnUnknownDocumentId() throws Exception {
+        mockMvc.perform(get("/api/v1/similarity/{algorithmId}/trace", "levenshtein")
+                        .param("documentIdA", "does-not-exist")
+                        .param("documentIdB", "d02"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-document"));
     }
 
     @Test

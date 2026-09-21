@@ -2,7 +2,8 @@ package co.edu.uniquindio.legajo.application.similarity;
 
 import co.edu.uniquindio.legajo.application.cache.RequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
-import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
+import co.edu.uniquindio.legajo.application.error.UnknownIdentifierException;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -119,11 +120,12 @@ public final class SimilarityService {
         int n = corpus.documents().size();
         int m = documentIds.size();
         if (m < 3 || m > n) {
-            throw new InvalidRequestException(
+            throw new InvalidRequestException(ProblemType.INVALID_SELECTION,
                     "matrix selection size must be in [3, %d] (n=%d), was %d".formatted(n, n, m));
         }
         if (new HashSet<>(documentIds).size() != m) {
-            throw new InvalidRequestException("matrix selection must not contain duplicate document ids");
+            throw new InvalidRequestException(ProblemType.INVALID_SELECTION,
+                    "matrix selection must not contain duplicate document ids");
         }
 
         SimilarityAlgorithm algorithm = requireAlgorithm(algorithmId);
@@ -204,19 +206,35 @@ public final class SimilarityService {
      * the domain's own {@link java.util.NoSuchElementException} (task A3b): catching a broad
      * JDK exception type around a call risks swallowing one thrown by an unrelated bug in the
      * same try block, which is the exact mis-classification this task removes from the REST
-     * handler. Absence is translated directly into {@link ResourceNotFoundException} instead.
+     * handler.
+     *
+     * <p><b>Task A7: an unknown algorithm id is 404 for {@link #trace} but 400 for {@link
+     * #compare}/{@link #matrix}</b> — the same set of ids, looked up the same way, classified
+     * differently only by where the id sits in the request (path vs. body). This method has
+     * no way to tell which of its three callers is asking, so it throws the
+     * location-agnostic {@link UnknownIdentifierException} and leaves the choice to {@code
+     * SimilarityController}, which knows its own request shape per endpoint. See that
+     * exception's Javadoc for the full reasoning.
      */
     private SimilarityAlgorithm requireAlgorithm(String algorithmId) {
         return registry.find(algorithmId)
-                .orElseThrow(() -> new ResourceNotFoundException(
+                .orElseThrow(() -> new UnknownIdentifierException(ProblemType.UNKNOWN_ALGORITHM,
                         "no similarity algorithm registered with id: " + algorithmId));
     }
 
+    /**
+     * Unlike {@link #requireAlgorithm}, a document id is never a path segment anywhere in this
+     * service — {@link #compare} and {@link #matrix} read it from the request body, {@link
+     * #trace} from a query parameter — so every call site needs the same 400 (task A7,
+     * {@code urn:legajo:problem:unknown-document}) and this can throw the final, already
+     * classified exception directly with no controller-side reclassification needed.
+     */
     private CorpusDocument requireDocument(Corpus corpus, String id) {
         return corpus.documents().stream()
                 .filter(document -> document.id().equals(id))
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("no corpus document with id: " + id));
+                .orElseThrow(() -> new InvalidRequestException(ProblemType.UNKNOWN_DOCUMENT,
+                        "no corpus document with id: " + id));
     }
 
     private SimilarityContext buildContext(Corpus corpus, List<SimilarityAlgorithm> algorithms) {

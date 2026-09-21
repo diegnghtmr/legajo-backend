@@ -2,7 +2,7 @@ package co.edu.uniquindio.legajo.application.clustering;
 
 import co.edu.uniquindio.legajo.application.cache.RequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
-import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.clustering.AverageLinkage;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.clustering.CompleteLinkage;
@@ -171,7 +171,8 @@ public final class ClusteringService {
         LinkageMatrix linkage = new LinkageMatrix(cachedResult.rows());
         int n = linkage.size() + 1;
         if (k < 2 || k > n - 1) {
-            throw new InvalidRequestException("k must be in [2, n-1] (n=%d), was %d".formatted(n, k));
+            throw new InvalidRequestException(ProblemType.INVALID_CUT,
+                    "k must be in [2, n-1] (n=%d), was %d".formatted(n, k));
         }
         return LinkageCut.cut(linkage, k);
     }
@@ -250,16 +251,27 @@ public final class ClusteringService {
         return linkageIds.stream().map(this::resolveLinkage).toList();
     }
 
-    /** No registry exists for the four fixed {@link LinkageCriterion}s (unlike similarity's
+    /**
+     * No registry exists for the four fixed {@link LinkageCriterion}s (unlike similarity's
      * {@code SimilarityAlgorithmRegistry}); an exhaustive id switch mirrors
-     * {@code ClusteringRanking#declarationOrder}'s existing convention for this same closed set. */
+     * {@code ClusteringRanking#declarationOrder}'s existing convention for this same closed set.
+     *
+     * <p><b>Task A7: 400, not 404.</b> {@code linkage}/{@code linkages} is never a path
+     * segment on any {@code /clustering*} endpoint — it always arrives in the request body —
+     * so, unlike {@code SimilarityService.requireAlgorithm}, there is no ambiguous caller to
+     * defer to and this can throw the final classification directly (TRD §6.6,
+     * {@code urn:legajo:problem:unknown-linkage}). Before this task an unknown linkage id was
+     * {@link co.edu.uniquindio.legajo.application.error.ResourceNotFoundException} (404); TRD
+     * 1.3.7 fixes 404 to path-identified resources only, and a linkage id sent in a body is a
+     * request-validation failure, not a missing resource.
+     */
     private LinkageCriterion resolveLinkage(String id) {
         return switch (id) {
             case "single" -> new SingleLinkage();
             case "complete" -> new CompleteLinkage();
             case "average" -> new AverageLinkage();
             case "ward" -> new WardLinkage();
-            default -> throw new ResourceNotFoundException("unknown linkage id: " + id);
+            default -> throw new InvalidRequestException(ProblemType.UNKNOWN_LINKAGE, "unknown linkage id: " + id);
         };
     }
 }

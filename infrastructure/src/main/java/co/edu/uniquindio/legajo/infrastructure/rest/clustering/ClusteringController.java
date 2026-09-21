@@ -4,6 +4,7 @@ import co.edu.uniquindio.legajo.application.clustering.ClusteringService;
 import co.edu.uniquindio.legajo.application.clustering.LinkageEvaluationOnly;
 import co.edu.uniquindio.legajo.application.clustering.LinkageRunResult;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.similarity.Representation;
 import org.jspecify.annotations.Nullable;
@@ -21,26 +22,27 @@ import java.util.Objects;
  * adapter: every clustering rule (representation defaulting, linkage resolution, the
  * TAC-04 fixed-cut set, {@code cut}'s free-{@code k} range) lives in
  * {@link ClusteringService} (application); this class only parses the request DTOs, shapes
- * the responses, and lets {@link co.edu.uniquindio.legajo.application.error.ResourceNotFoundException}
- * (unknown linkage id) and {@link InvalidRequestException} (unknown representation id, a
- * missing or out-of-range {@code k}) bubble up to {@code ProblemDetailExceptionHandler}.
+ * the responses, and lets {@link InvalidRequestException} (unknown linkage id, unknown
+ * representation id, a missing or out-of-range {@code k} — all 400, task A7) bubble up to
+ * {@code ProblemDetailExceptionHandler}.
  *
- * <p><b>Classifying an unknown {@code representation} id — a deliberate call (feature doc
- * task A4).</b> {@link Representation#fromId} throws a raw {@link IllegalArgumentException}
- * that would otherwise fall through to a 500 (A3b's error-classification fix, correctly,
- * since a raw JDK exception is presumed a server bug). This class instead maps that failure
- * to {@link InvalidRequestException} (400), not
- * {@link co.edu.uniquindio.legajo.application.error.ResourceNotFoundException} (404):
- * unlike a corpus document id, a similarity algorithm id (catalogued at
- * {@code GET /similarity/algorithms}), or this same feature's {@code linkage} id (resolved,
- * unchanged since A2, against the closed set {@code ClusteringService.resolveLinkage}
- * mirrors from {@code SimilarityAlgorithmRegistry}'s registry-lookup convention),
- * {@code representation} is not looked up in any registry or catalogue — it is a plain
- * computation-mode selector, structurally the same kind of thing as a malformed enum value
- * in a request body, which RFC 9457/HTTP convention treats as "the request is invalid", not
- * "the resource does not exist". This intentionally does not disturb the existing {@code
- * linkage}-id classification (404, established and tested since A2); unifying the two is
- * left to the author if strict consistency across every closed-set id is wanted.
+ * <p><b>Classifying an unknown {@code representation} id.</b> {@link Representation#fromId}
+ * throws a raw {@link IllegalArgumentException} that would otherwise fall through to a 500
+ * (A3b's error-classification fix, correctly, since a raw JDK exception is presumed a server
+ * bug). This class instead maps that failure to {@link InvalidRequestException} (400,
+ * {@code urn:legajo:problem:unknown-representation}): {@code representation} is not looked up
+ * in any registry or catalogue — it is a plain computation-mode selector sent in the request
+ * body, and TRD 1.3.7 §6.6 (task A7) fixes 404 to path-identified resources only.
+ *
+ * <p><b>Task A7: {@code linkage} is 400 too, for the same reason.</b> Before A7 an unknown
+ * {@code linkage}/{@code linkages} id was 404; TRD 1.3.7 corrects this, since {@code linkage}
+ * is likewise never a path segment on any endpoint here — always a request-body field, so an
+ * unknown value is a request-validation failure, not a missing resource. {@code
+ * ClusteringService.resolveLinkage} now throws {@link InvalidRequestException} directly
+ * ({@code urn:legajo:problem:unknown-linkage}); this class does not need to intervene because,
+ * unlike a similarity algorithm id (which is 404 for {@code GET
+ * /similarity/{algorithmId}/trace}'s path segment but 400 for a compare/matrix body id), a
+ * linkage id has no path-based use anywhere to disambiguate from.
  */
 @RestController
 @RequestMapping("/api/v1/clustering")
@@ -105,7 +107,7 @@ public class ClusteringController {
         try {
             return Representation.fromId(id);
         } catch (IllegalArgumentException exception) {
-            throw new InvalidRequestException("unknown representation id: " + id);
+            throw new InvalidRequestException(ProblemType.UNKNOWN_REPRESENTATION, "unknown representation id: " + id);
         }
     }
 }

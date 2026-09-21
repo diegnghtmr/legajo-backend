@@ -1,6 +1,7 @@
 package co.edu.uniquindio.legajo.infrastructure.rest.error;
 
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.infrastructure.embedding.EmbeddingApiException;
 import org.slf4j.Logger;
@@ -10,6 +11,8 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.net.URI;
 
 /**
  * Central RFC 9457 Problem Detail mapping for every {@code /api/v1/**} endpoint (TRD §6.6:
@@ -80,12 +83,16 @@ public class ProblemDetailExceptionHandler extends ResponseEntityExceptionHandle
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ProblemDetail handleNotFound(ResourceNotFoundException exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+        exception.type().ifPresent(type -> problem.setType(URI.create(type.urn())));
+        return problem;
     }
 
     @ExceptionHandler(InvalidRequestException.class)
     public ProblemDetail handleBadRequest(InvalidRequestException exception) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
+        exception.type().ifPresent(type -> problem.setType(URI.create(type.urn())));
+        return problem;
     }
 
     /** NFR-QA-12: a live-embedding failure is a degraded dependency, not a client mistake
@@ -93,8 +100,10 @@ public class ProblemDetailExceptionHandler extends ResponseEntityExceptionHandle
     @ExceptionHandler(EmbeddingApiException.class)
     public ProblemDetail handleEmbeddingApiUnavailable(EmbeddingApiException exception) {
         log.warn("Live embedding API unavailable (NFR-QA-12 degradation)", exception);
-        return ProblemDetail.forStatusAndDetail(
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.SERVICE_UNAVAILABLE, "The live embedding API is currently unavailable.");
+        problem.setType(URI.create(ProblemType.EMBEDDING_API_UNAVAILABLE.urn()));
+        return problem;
     }
 
     @ExceptionHandler(Exception.class)
