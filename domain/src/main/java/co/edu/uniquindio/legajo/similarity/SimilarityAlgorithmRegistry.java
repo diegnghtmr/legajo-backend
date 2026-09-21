@@ -9,9 +9,12 @@ import java.util.Optional;
 
 /**
  * Framework-free collector for every {@link SimilarityAlgorithm} the application wires
- * up. Infrastructure gathers the Spring {@code @Component} beans into a {@code List} via
- * list injection (TRD §4.4) and passes it to this constructor; the domain module itself
- * never depends on Spring.
+ * up. Nothing in this class ever gathers a {@code @Component} bean itself: {@code
+ * bootstrap}'s {@code DomainConfiguration} declares each of the six algorithms as its own
+ * {@code @Bean} factory method, in TRD §6.3's fixed order, and Spring's ordered list
+ * injection collects the resulting {@code List<SimilarityAlgorithm>} into this
+ * constructor's parameter — the domain module itself never depends on Spring, and never
+ * sees an annotation.
  */
 public final class SimilarityAlgorithmRegistry {
 

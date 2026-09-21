@@ -30,16 +30,14 @@ import java.util.List;
  * {@code new}-ed by hand inside the five offline CLIs, and the six {@link SimilarityAlgorithm}
  * implementations assembled into a {@link SimilarityAlgorithmRegistry}.
  *
- * <p><b>Domain stays framework-free (ArchUnit-enforced).</b> {@link SimilarityAlgorithmRegistry}'s
- * own Javadoc describes "the Spring {@code @Component} beans" being gathered by list
- * injection; the six algorithm classes below are never annotated themselves (that would
- * import {@code org.springframework.stereotype.Component} into a package ArchUnit's
- * {@code domainHasNoFrameworkDependency} rule forbids from touching Spring at all) — instead,
- * each gets its own {@code @Bean} factory method here, in {@code bootstrap}, so Spring's list
- * injection collects the resulting {@code List<SimilarityAlgorithm>} the same way it would
- * collect {@code @Component}-annotated beans, without a single Spring import reaching
- * {@code domain}. This is a real gap in that Javadoc's stated intent, flagged in the feature
- * document rather than silently "fixed" by annotating domain classes.
+ * <p><b>Domain stays framework-free (ArchUnit-enforced).</b> The six algorithm classes below
+ * are never annotated themselves (that would import {@code org.springframework.stereotype.Component}
+ * into a package ArchUnit's {@code domainHasNoFrameworkDependency} rule forbids from touching
+ * Spring at all) — instead, each gets its own {@code @Bean} factory method here, in
+ * {@code bootstrap}, so Spring's ordered list injection collects the resulting
+ * {@code List<SimilarityAlgorithm>} into {@link SimilarityAlgorithmRegistry}'s constructor,
+ * in this class's declaration order (TRD §6.3), without a single Spring import reaching
+ * {@code domain}.
  *
  * <p><b>Two {@link EmbeddingRepository} beans, not one.</b> The two embedding-based
  * capabilities ({@code embedding-local}, {@code embedding-api}) each read a different cache
