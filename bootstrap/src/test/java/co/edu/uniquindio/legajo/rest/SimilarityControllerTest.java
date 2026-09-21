@@ -164,10 +164,10 @@ class SimilarityControllerTest {
                                 {"algorithmId":"jaccard","documentIds":["d10","d11","d12"]}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0][1].cached")
-                        .value(true))
-                .andExpect(jsonPath("$[0][0].cached")
-                        .value(false));
+                // Only the positive cell is asserted: the Spring test context, and so the
+                // cache, is shared with other test classes, so a "still a miss" assertion on
+                // any other cell would depend on test order.
+                .andExpect(jsonPath("$[0][1].cached").value(true));
     }
 
     @Test
