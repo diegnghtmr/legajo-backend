@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 /**
  * End-to-end proof, over a real listening HTTP port (no MockMvc) and the real 20-document
@@ -139,15 +140,22 @@ class ClusteringEndToEndTest {
 
         assertThat(singleRows.size()).isEqualTo(N - 1);
         assertThat(wardRows.size()).isEqualTo(N - 1);
-        // TAC-14 does not claim single and ward merge in the same order (different
-        // criteria agglomerate differently); the 2x relationship holds against the shared
-        // distance base D, not row-by-row against a different linkage's merge order. This
-        // asserts the always-true, representation-shared invariant instead: Ward's own
-        // distances scale as D_w = 2*D, so Ward's maximum merge distance must be positive
-        // and every row's distance must be non-negative under the same shared representation.
-        for (JsonNode row : wardRows) {
-            assertThat(row.get("mergeDistance").asDouble()).isGreaterThanOrEqualTo(0.0);
-        }
+
+        // Single and Ward agglomerate differently, so their rows cannot be compared one by one.
+        // The first merge is the exception, and it is exactly where D_w = 2*D is observable:
+        // every cluster is still a singleton, so no Lance-Williams update has run yet and each
+        // criterion reads its initial matrix directly — single reads D, Ward reads D_w = 2*D.
+        // Both pick the minimum of their matrix, which is the same pair (doubling preserves the
+        // order, and the lexicographic tie rule is shared), and Ward's height is exactly twice
+        // single's. This fails if Ward ever runs on D instead of 2*D, or on a different
+        // representation than single in the same request.
+        JsonNode singleFirst = singleRows.get(0);
+        JsonNode wardFirst = wardRows.get(0);
+        assertThat(wardFirst.get("idx1").asInt()).isEqualTo(singleFirst.get("idx1").asInt());
+        assertThat(wardFirst.get("idx2").asInt()).isEqualTo(singleFirst.get("idx2").asInt());
+        double singleHeight = singleFirst.get("mergeDistance").asDouble();
+        assertThat(singleHeight).as("a zero first height would make the ratio vacuous").isGreaterThan(0.0);
+        assertThat(wardFirst.get("mergeDistance").asDouble()).isCloseTo(2.0 * singleHeight, within(1e-9));
     }
 
     @Test

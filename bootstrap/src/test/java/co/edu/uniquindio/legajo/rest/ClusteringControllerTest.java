@@ -91,18 +91,16 @@ class ClusteringControllerTest {
                         .content("""
                                 {"representation":"tfidf-cosine","linkages":["single"],"ks":[10,11,12]}
                                 """))
-                .andExpect(result -> {
-                    int status = result.getResponse().getStatus();
-                    if (status == 200) {
-                        // Accepted: prove the extra field changed nothing about the fixed cuts.
-                        String body = result.getResponse().getContentAsString();
-                        org.assertj.core.api.Assertions.assertThat(body).doesNotContain("\"10\"", "\"11\"", "\"12\"");
-                    } else {
-                        // Rejected outright (unrecognized property): a ks field can never
-                        // succeed, which is an even stronger guarantee than being ignored.
-                        org.assertj.core.api.Assertions.assertThat(status).isEqualTo(400);
-                    }
-                });
+                // Pinned to the behavior the server actually has: Jackson drops the unknown
+                // field and the request succeeds. A test accepting "either 200 or 400" could
+                // not detect a change from one to the other. What matters is that the cut set
+                // is still exactly the fixed {2,3,4,5} for the reference corpus (n = 20), not
+                // the requested {10,11,12}.
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].evaluation.meanSilhouette.length()").value(4))
+                .andExpect(jsonPath("$[0].evaluation.meanSilhouette['2']").exists())
+                .andExpect(jsonPath("$[0].evaluation.meanSilhouette['5']").exists())
+                .andExpect(jsonPath("$[0].evaluation.meanSilhouette['10']").doesNotExist());
     }
 
     @Test
