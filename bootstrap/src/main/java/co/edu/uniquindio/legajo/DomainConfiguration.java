@@ -1,8 +1,10 @@
 package co.edu.uniquindio.legajo;
 
+import co.edu.uniquindio.legajo.application.embedding.EmbeddingProviderMode;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.infrastructure.corpus.JsonCorpusRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.JsonEmbeddingRepository;
+import co.edu.uniquindio.legajo.infrastructure.embedding.LiveApiEmbeddingRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.MiniLmEmbedder;
 import co.edu.uniquindio.legajo.infrastructure.embedding.OpenAiCompatibleEmbedder;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -15,6 +17,7 @@ import co.edu.uniquindio.legajo.similarity.NeedlemanWunsch;
 import co.edu.uniquindio.legajo.similarity.SimilarityAlgorithm;
 import co.edu.uniquindio.legajo.similarity.SimilarityAlgorithmRegistry;
 import co.edu.uniquindio.legajo.similarity.TfIdfCosine;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -53,6 +56,20 @@ import java.util.List;
  * pins both the {@code test} and {@code bootRun} tasks' working directory there for exactly
  * this reason (Gradle's default working directory for a subproject task is that subproject's
  * own directory, not the backend root {@code data/} actually lives in).
+ *
+ * <p><b>{@code apiEmbeddingRepository}'s two implementations (feature doc task A8, TRD §6.3
+ * "Modo en vivo de {@code embedding-api} (fijado)").</b> {@code legajo.embedding-provider}
+ * (A1's {@link LegajoProperties}) selects which adapter backs this bean: {@code cached} (the
+ * default) keeps the versioned {@link JsonEmbeddingRepository}, unchanged; {@code live}
+ * selects {@link LiveApiEmbeddingRepository}, which fetches vectors from the remote model at
+ * request time. The four documented env vars ({@code SPRING_AI_OPENAI_API_KEY}/{@code
+ * SPRING_AI_OPENAI_BASE_URL}/{@code LEGAJO_EMBEDDING_API_MODEL}/{@code
+ * LEGAJO_EMBEDDING_API_DIMENSION}) are read here via Spring's relaxed environment-variable
+ * binding, all with safe defaults (blank/1536), so a {@code live}-configured context with a
+ * missing key still starts — {@link LiveApiEmbeddingRepository} itself defers building its
+ * network client to first use, so a missing key answers 503 on the first request that needs
+ * it, never a startup failure (TRD: "no hay reserva silenciosa ... clave ausente responden
+ * 503").
  */
 @Configuration
 public class DomainConfiguration {
@@ -73,7 +90,15 @@ public class DomainConfiguration {
     }
 
     @Bean(name = "apiEmbeddingRepository")
-    public EmbeddingRepository apiEmbeddingRepository(CorpusRepository corpusRepository) {
+    public EmbeddingRepository apiEmbeddingRepository(CorpusRepository corpusRepository,
+            LegajoProperties legajoProperties,
+            @Value("${spring.ai.openai.api-key:}") String apiKey,
+            @Value("${spring.ai.openai.base-url:}") String baseUrl,
+            @Value("${legajo.embedding-api.model:gemini-embedding-2-preview}") String apiModel,
+            @Value("${legajo.embedding-api.dimension:1536}") int apiDimension) {
+        if (legajoProperties.embeddingProvider() == EmbeddingProviderMode.LIVE) {
+            return new LiveApiEmbeddingRepository(corpusRepository, apiKey, baseUrl, apiModel, apiDimension);
+        }
         Corpus corpus = corpusRepository.load();
         return new JsonEmbeddingRepository(API_EMBEDDINGS_PATH, OpenAiCompatibleEmbedder.PROVIDER,
                 corpus.corpusSha256());
@@ -104,9 +129,10 @@ public class DomainConfiguration {
         return new EmbeddingLocal();
     }
 
+    /** The trace's provider status must name the mode actually serving vectors (TRD 1.3.7 §6.3). */
     @Bean
-    public EmbeddingApi embeddingApi() {
-        return new EmbeddingApi();
+    public EmbeddingApi embeddingApi(LegajoProperties legajoProperties) {
+        return new EmbeddingApi(legajoProperties.embeddingProvider().id());
     }
 
     /**

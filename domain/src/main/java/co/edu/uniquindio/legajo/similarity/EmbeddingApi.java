@@ -24,20 +24,34 @@ import java.util.Optional;
  * empty (TRD §6.3, "Vector nulo de TF-IDF (fijado)"), so {@code degenerate} is always
  * {@code false} here.
  *
- * <p><b>Provider status (scope note).</b> TRD §6.3's trace row also names "estado del
- * proveedor" and a live-mode 503 when the remote API is down; that behavior belongs to the
- * broader {@code EmbeddingProvider} orchestration (per-pair vector resolution, cached-vs-live
- * choice) that S6a already flagged as an application-layer concern for a later task, not this
- * persistence-and-metric task. {@link EmbeddingApiTrace#providerStatus()} carries the fixed
- * value {@link #PROVIDER_STATUS_CACHED}, matching the current posture where both embedding
- * capabilities are served from their versioned caches in the demo (TRD §5.1 stack table).
+ * <p><b>Provider status.</b> TRD §6.3's trace row names "estado del proveedor". Where the
+ * vectors come from (the versioned cache or the live model, TRD 1.3.7) is decided outside the
+ * domain, at startup, so the status is given to this capability when it is built and
+ * reported unchanged in every {@link EmbeddingApiTrace#providerStatus()}. The no-argument
+ * constructor keeps {@link #PROVIDER_STATUS_CACHED}, the default demo posture.
  */
 public final class EmbeddingApi implements SimilarityAlgorithm {
 
-    /** {@link EmbeddingApiTrace#providerStatus()} value used while only the cached path exists. */
+    /** {@link EmbeddingApiTrace#providerStatus()} value when vectors come from the versioned cache. */
     static final String PROVIDER_STATUS_CACHED = "cached";
 
     private static final double SQRT_2 = Math.sqrt(2.0);
+
+    private final String providerStatus;
+
+    /** Vectors served from the versioned cache ({@link #PROVIDER_STATUS_CACHED}). */
+    public EmbeddingApi() {
+        this(PROVIDER_STATUS_CACHED);
+    }
+
+    /** @param providerStatus where the vectors come from, e.g. {@code "cached"} or {@code "live"} */
+    public EmbeddingApi(String providerStatus) {
+        Objects.requireNonNull(providerStatus, "providerStatus");
+        if (providerStatus.isBlank()) {
+            throw new IllegalArgumentException("providerStatus must not be blank");
+        }
+        this.providerStatus = providerStatus;
+    }
 
     @Override
     public String id() {
@@ -91,7 +105,7 @@ public final class EmbeddingApi implements SimilarityAlgorithm {
                 sumSquaredDiff,
                 distance,
                 normalizedScore,
-                PROVIDER_STATUS_CACHED);
+                providerStatus);
         return Optional.of(trace);
     }
 
