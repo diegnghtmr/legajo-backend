@@ -9,12 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.actuate.endpoint.web.WebMvcEndpointHandlerMapping;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -63,6 +63,18 @@ class OpenApiRouteConformanceTest {
         assertThat(mapped).containsExactlyInAnyOrderElementsOf(documented);
     }
 
+    /**
+     * A {@code @RequestMapping} with no HTTP method matches every method. Iterating its
+     * (empty) method set would add nothing, so such a route would silently escape the drift
+     * check above. It must surface as {@code ANY <path>}, which no YAML operation names.
+     */
+    @Test
+    void aMappingWithNoHttpMethodIsReportedAsAnyRatherThanSkipped() {
+        RequestMappingInfo methodless = RequestMappingInfo.paths("/api/v1/unlisted").build();
+
+        assertThat(routesOf(java.util.List.of(methodless), path -> true)).containsExactly("ANY /api/v1/unlisted");
+    }
+
     private static Set<String> documentedRoutes() {
         SwaggerParseResult result = new OpenAPIV3Parser().readLocation(specUrl(), null, null);
         OpenAPI api = result.getOpenAPI();
@@ -83,13 +95,20 @@ class OpenApiRouteConformanceTest {
     }
 
     private static Set<String> routesOf(RequestMappingInfoHandlerMapping mapping, Predicate<String> pathFilter) {
+        return routesOf(mapping.getHandlerMethods().keySet(), pathFilter);
+    }
+
+    static Set<String> routesOf(Collection<RequestMappingInfo> infos, Predicate<String> pathFilter) {
         Set<String> routes = new TreeSet<>();
-        for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : mapping.getHandlerMethods().entrySet()) {
-            RequestMappingInfo info = entry.getKey();
+        for (RequestMappingInfo info : infos) {
             Set<RequestMethod> methods = info.getMethodsCondition().getMethods();
             for (String pattern : patternsOf(info)) {
                 if (!pathFilter.test(pattern)) {
                     continue;
+                }
+                if (methods.isEmpty()) {
+                    // No method condition means "every method"; see the methodless test above.
+                    routes.add("ANY " + pattern);
                 }
                 for (RequestMethod method : methods) {
                     routes.add(method.name() + " " + pattern);
