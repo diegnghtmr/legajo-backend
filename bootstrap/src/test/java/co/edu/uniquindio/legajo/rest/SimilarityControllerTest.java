@@ -164,6 +164,21 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-selection"));
     }
 
+    /**
+     * An empty or missing selection is also smaller than three (TRD §6.6), so it carries the
+     * same {@code invalid-selection} URN instead of a type-less 400.
+     */
+    @Test
+    void matrixAnswers400WithInvalidSelectionForAnEmptySelection() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/matrix")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"algorithmId":"jaccard","documentIds":[]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-selection"));
+    }
+
     /** TRD §6.6: a duplicate id in the selection is the same {@code invalid-selection} URN. */
     @Test
     void matrixAnswers400ForADuplicateDocumentIdInTheSelection() throws Exception {

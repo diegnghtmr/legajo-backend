@@ -2,6 +2,7 @@ package co.edu.uniquindio.legajo.infrastructure.rest.similarity;
 
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
+import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.application.error.UnknownIdentifierException;
 import co.edu.uniquindio.legajo.application.similarity.AlgorithmSimilarity;
 import co.edu.uniquindio.legajo.application.similarity.CachedSimilarityResult;
@@ -90,7 +91,7 @@ public class SimilarityController {
         requireNonBlank(request.algorithmId(), "algorithmId");
         List<String> documentIds = request.documentIds();
         if (documentIds == null || documentIds.isEmpty()) {
-            throw new InvalidRequestException("documentIds must not be empty");
+            throw new InvalidRequestException(ProblemType.INVALID_SELECTION, "documentIds must not be empty");
         }
 
         List<List<CachedSimilarityResult>> rows;
