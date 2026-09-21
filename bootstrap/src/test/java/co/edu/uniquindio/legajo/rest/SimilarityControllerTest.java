@@ -137,6 +137,39 @@ class SimilarityControllerTest {
                         org.hamcrest.Matchers.is(true))));
     }
 
+    /**
+     * {@code R3-matrix-cached-rest-untested}: a matrix cell must reuse the exact cache entry
+     * a prior {@code compare} call for the same (algorithm, pair) populated, over real HTTP —
+     * {@code SimilarityServiceTest.matrixCellsShareTheSameCacheAsCompareByAlgorithmAndDirectionalPair}
+     * already proves this at the application layer; this proves the REST boundary wires the
+     * same singleton {@code SimilarityService} through to {@code /similarity/matrix}. This
+     * class's {@code SimilarityService} bean is a Spring singleton shared by every test in
+     * this suite (see {@code compareTwiceReportsCachedFalseThenTrueForTheSamePairAndAlgorithm}
+     * above), so this test reserves {@code d10}/{@code d11}/{@code d12} — unused by every
+     * other similarity call in this suite (checked, not assumed) — instead of the pair
+     * {@code compareTwice...} already reserves.
+     */
+    @Test
+    void matrixCellReportsCachedTrueAfterAPriorCompareOfTheSamePair() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"documentIdA":"d10","documentIdB":"d11","algorithmIds":["jaccard"]}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/similarity/matrix")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"algorithmId":"jaccard","documentIds":["d10","d11","d12"]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0][1].cached")
+                        .value(true))
+                .andExpect(jsonPath("$[0][0].cached")
+                        .value(false));
+    }
+
     @Test
     void matrixReturnsAnMByMGridForOneAlgorithm() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/matrix")

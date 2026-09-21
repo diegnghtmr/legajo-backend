@@ -59,6 +59,26 @@ class EmbeddingsServiceTest {
         assertThat(status.corpusSha256()).isEqualTo("a-different-sha");
     }
 
+    /**
+     * {@code R3-empty-cache-provider-untested}: {@link EmbeddingsService#status} has no
+     * vector to read a {@code provider} id from when the cache is empty, so it reports the
+     * documented {@code "unknown"} fail-soft placeholder (see this class's Javadoc for why)
+     * instead of throwing or guessing a real provider id.
+     */
+    @Test
+    void statusReportsProviderUnknownWhenTheCacheHasNoVectors() {
+        EmbeddingsService service = new EmbeddingsService(new FakeCorpusRepository(MATCHING_CORPUS));
+        EmbeddingRepository repository = new FakeEmbeddingRepository(
+                new EmbeddingCache("1.0", "1.0", "corpus-sha", "all-MiniLM-L6-v2", 2, List.of()));
+
+        EmbeddingStatus status = service.status(repository, "cpu", EmbeddingProviderMode.CACHED);
+
+        assertThat(status.provider()).isEqualTo("unknown");
+        assertThat(status.model()).isEqualTo("all-MiniLM-L6-v2");
+        assertThat(status.dimension()).isEqualTo(2);
+        assertThat(status.matchesCorpus()).isTrue();
+    }
+
     private static final class FakeCorpusRepository implements CorpusRepository {
         private final Corpus corpus;
 

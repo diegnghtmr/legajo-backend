@@ -11,17 +11,23 @@ import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
 import co.edu.uniquindio.legajo.port.EmbeddingRepository;
 import co.edu.uniquindio.legajo.similarity.AlgorithmKind;
+import co.edu.uniquindio.legajo.similarity.AlgorithmTrace;
+import co.edu.uniquindio.legajo.similarity.DpMatrixTrace;
 import co.edu.uniquindio.legajo.similarity.EmbeddingApi;
+import co.edu.uniquindio.legajo.similarity.EmbeddingApiTrace;
 import co.edu.uniquindio.legajo.similarity.EmbeddingCache;
 import co.edu.uniquindio.legajo.similarity.EmbeddingLocal;
+import co.edu.uniquindio.legajo.similarity.EmbeddingLocalTrace;
 import co.edu.uniquindio.legajo.similarity.EmbeddingVector;
 import co.edu.uniquindio.legajo.similarity.Jaccard;
+import co.edu.uniquindio.legajo.similarity.JaccardTrace;
 import co.edu.uniquindio.legajo.similarity.Levenshtein;
 import co.edu.uniquindio.legajo.similarity.NeedlemanWunsch;
 import co.edu.uniquindio.legajo.similarity.SimilarityAlgorithm;
 import co.edu.uniquindio.legajo.similarity.SimilarityAlgorithmRegistry;
 import co.edu.uniquindio.legajo.similarity.SimilarityResult;
 import co.edu.uniquindio.legajo.similarity.TfIdfCosine;
+import co.edu.uniquindio.legajo.similarity.TfIdfCosineTrace;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -258,11 +264,42 @@ class SimilarityServiceTest {
                 .isFalse();
     }
 
+    /**
+     * {@code R3-trace-test-overclaims}: this test's name promised the trace's value "matches
+     * the computed score", but the original body only asserted presence. Mirrors {@code
+     * SimilarityEndToEndTest.tac06TheTraceValueAlwaysEqualsThePublishedScore}'s per-capability
+     * extraction: the DP matrix's bottom-right cell for the two DP algorithms (compared
+     * against {@code rawValue}, never {@code normalizedScore}, since the DP algorithms report
+     * a possibly-unnormalized raw distance/score) and the coefficient/cosine/normalizedScore
+     * field for the other four (compared against {@code normalizedScore}).
+     */
     @Test
     void traceIsAvailableForEveryOneOfTheSixCapabilitiesAndMatchesTheComputedScore() {
-        for (SimilarityAlgorithm algorithm : registry.all()) {
-            Optional<?> trace = service.trace(algorithm.id(), "d01", "d02");
-            assertThat(trace).as("trace for %s", algorithm.id()).isPresent();
+        List<AlgorithmSimilarity> results = service.compare("d01", "d02", List.of());
+        assertThat(results).as("compare must return all six capabilities").hasSize(6);
+
+        for (AlgorithmSimilarity row : results) {
+            String algorithmId = row.algorithmId();
+            Optional<AlgorithmTrace> trace = service.trace(algorithmId, "d01", "d02");
+            assertThat(trace).as("trace for %s", algorithmId).isPresent();
+
+            double traceValue = switch (trace.get()) {
+                case DpMatrixTrace dp -> {
+                    double[][] matrix = dp.matrix();
+                    yield matrix[matrix.length - 1][matrix[matrix.length - 1].length - 1];
+                }
+                case JaccardTrace jaccard -> jaccard.coefficient();
+                case TfIdfCosineTrace tfIdf -> tfIdf.cosine();
+                case EmbeddingLocalTrace embeddingLocal -> embeddingLocal.normalizedScore();
+                case EmbeddingApiTrace embeddingApi -> embeddingApi.normalizedScore();
+            };
+            double publishedValue = switch (algorithmId) {
+                case "levenshtein", "needleman-wunsch" -> row.result().rawValue();
+                default -> row.result().normalizedScore();
+            };
+
+            assertThat(traceValue).as("trace value for %s must equal the published score", algorithmId)
+                    .isCloseTo(publishedValue, within(1e-9));
         }
     }
 

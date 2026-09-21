@@ -67,15 +67,33 @@ class ClusteringServiceTest {
         assertThat(evaluation.copheneticCorrelation()).isBetween(-1.0, 1.0);
     }
 
+    /**
+     * {@code R3-evaluate-only-partial-assert}: the original body only compared
+     * {@code copheneticCorrelation}, leaving {@code meanSilhouetteByK}/{@code
+     * daviesBouldinByK} unchecked. Comparing against {@code service} (this class's shared
+     * cache) would make the two evaluation blocks trivially identical — {@code evaluateOnly}
+     * delegates to {@code run}, so a second call for the same key is a cache hit returning
+     * the very same {@link LinkageRunResult} instance, proving nothing about the k-maps'
+     * actual content. {@code independentService} below has its own, separate cache, so
+     * {@code full} and {@code evaluationOnly} are two genuinely independent computations of
+     * the same input — their equality is a real assertion.
+     */
     @Test
     void evaluateOnlyReturnsTheSameEvaluationBlockAsRunWithoutRowsOrLeafOrder() {
+        ClusteringService independentService = new ClusteringService(
+                corpusRepository, localEmbeddingRepository, apiEmbeddingRepository, new FakeRequestCache<>());
+
         List<LinkageRunResult> full = service.run(Representation.TFIDF_COSINE, List.of("ward"));
-        List<LinkageEvaluationOnly> evaluationOnly = service.evaluateOnly(Representation.TFIDF_COSINE, List.of("ward"));
+        List<LinkageEvaluationOnly> evaluationOnly =
+                independentService.evaluateOnly(Representation.TFIDF_COSINE, List.of("ward"));
 
         assertThat(evaluationOnly).hasSize(1);
         assertThat(evaluationOnly.get(0).linkageId()).isEqualTo("ward");
-        assertThat(evaluationOnly.get(0).evaluation().copheneticCorrelation())
-                .isEqualTo(full.get(0).evaluation().copheneticCorrelation());
+        ClusteringEvaluationBlock evaluation = evaluationOnly.get(0).evaluation();
+        ClusteringEvaluationBlock fullEvaluation = full.get(0).evaluation();
+        assertThat(evaluation.copheneticCorrelation()).isEqualTo(fullEvaluation.copheneticCorrelation());
+        assertThat(evaluation.meanSilhouetteByK()).isNotEmpty().isEqualTo(fullEvaluation.meanSilhouetteByK());
+        assertThat(evaluation.daviesBouldinByK()).isNotEmpty().isEqualTo(fullEvaluation.daviesBouldinByK());
     }
 
     @Test
@@ -185,6 +203,20 @@ class ClusteringServiceTest {
 
         assertThatThrownBy(() -> cached.rows().add(null)).isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> cached.leafOrder().add(99)).isInstanceOf(UnsupportedOperationException.class);
+    }
+
+    /**
+     * Residual of {@code R3-cut-miss-path-untested}: a bare {@code cut} with no prior
+     * {@code run} for that key must still populate the shared {@link ClusteringCacheKey}
+     * cache (the {@code orElseGet} miss branch in {@code cut}), not just compute and discard.
+     */
+    @Test
+    void aBareCutWithNoPriorRunPopulatesTheSharedCache() {
+        assertThat(cache.size()).isZero();
+
+        service.cut(Representation.TFIDF_COSINE, "average", 2);
+
+        assertThat(cache.size()).isEqualTo(1);
     }
 
     /**
