@@ -116,6 +116,24 @@ class EmbeddingApiTest {
         assertThat(trace.providerStatus()).isNotBlank();
     }
 
+    /**
+     * TRD 1.3.7 §6.3: in live mode the vectors come from the remote model at request time, so
+     * a trace that still said "cached" would misreport the provider state it exists to show.
+     */
+    @Test
+    void traceReportsTheProviderStatusItWasConfiguredWith() {
+        SimilarityInput a = inputFor(vector("d01", 0.6, 0.8, 0.0));
+        SimilarityInput b = inputFor(vector("d02", 0.0, 0.6, 0.8));
+
+        EmbeddingApiTrace live = (EmbeddingApiTrace) new EmbeddingApi("live").trace(a, b, SimilarityContext.EMPTY)
+                .orElseThrow();
+        EmbeddingApiTrace byDefault = (EmbeddingApiTrace) new EmbeddingApi().trace(a, b, SimilarityContext.EMPTY)
+                .orElseThrow();
+
+        assertThat(live.providerStatus()).isEqualTo("live");
+        assertThat(byDefault.providerStatus()).isEqualTo("cached");
+    }
+
     @Test
     void traceExcerptIsCappedAtEightDimensionsForAHigherDimensionalVector() {
         double[] raw = new double[10];

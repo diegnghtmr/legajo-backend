@@ -118,7 +118,8 @@ class LiveEmbeddingApiIntegrationTest {
         mockMvc.perform(get("/api/v1/similarity/embedding-api/trace?documentIdA=d01&documentIdB=d02"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.normalizedScore").exists())
-                .andExpect(jsonPath("$.dimension").value(4));
+                .andExpect(jsonPath("$.dimension").value(4))
+                .andExpect(jsonPath("$.providerStatus").value("live"));
     }
 
     @Test

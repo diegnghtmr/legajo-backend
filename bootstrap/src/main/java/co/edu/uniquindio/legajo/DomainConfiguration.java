@@ -129,9 +129,10 @@ public class DomainConfiguration {
         return new EmbeddingLocal();
     }
 
+    /** The trace's provider status must name the mode actually serving vectors (TRD 1.3.7 §6.3). */
     @Bean
-    public EmbeddingApi embeddingApi() {
-        return new EmbeddingApi();
+    public EmbeddingApi embeddingApi(LegajoProperties legajoProperties) {
+        return new EmbeddingApi(legajoProperties.embeddingProvider().id());
     }
 
     /**
