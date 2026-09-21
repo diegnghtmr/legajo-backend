@@ -63,6 +63,21 @@ class DomainConfigurationTest {
     }
 
     /**
+     * {@code R3-registry-order-unproved}: TRD §6.3 lists the six capabilities in a fixed
+     * order (levenshtein, needleman-wunsch, jaccard, tfidf-cosine, embedding-local,
+     * embedding-api), and {@code SimilarityService.catalogue()}/{@code compare()}'s default
+     * both rely on {@code registry.all()} preserving it. The test above only proves the set
+     * is right (order-insensitive); this proves the real, Spring-wired registry — assembled
+     * by ordered list injection over {@code DomainConfiguration}'s six {@code @Bean} methods,
+     * not a test-built one — preserves the declaration order those methods are written in.
+     */
+    @Test
+    void registryReturnsTheSixAlgorithmsInTheTrdFixedOrder() {
+        assertThat(registry.all()).extracting(a -> a.id()).containsExactly(
+                "levenshtein", "needleman-wunsch", "jaccard", "tfidf-cosine", "embedding-local", "embedding-api");
+    }
+
+    /**
      * Feature doc task A8, TRD §6.3: {@code legajo.embedding-provider=live} must switch the
      * {@code apiEmbeddingRepository} bean to {@link LiveApiEmbeddingRepository} — and the
      * context must still start with no {@code SPRING_AI_OPENAI_*}/{@code

@@ -124,6 +124,26 @@ class LiveApiEmbeddingRepositoryTest {
         assertThatThrownBy(repository::load).isInstanceOf(EmbeddingApiException.class);
     }
 
+    /**
+     * {@code R3-client-construction-failure-path-untested}: {@link
+     * LiveApiEmbeddingRepository#embedder()} wraps any exception raised while <em>building</em>
+     * the underlying {@link OpenAiCompatibleEmbedder} client in {@link EmbeddingApiException},
+     * the same as a call failure — never a startup crash. A malformed base URL makes {@code
+     * new OpenAiCompatibleEmbedder(...)} itself throw {@link IllegalArgumentException} (Spring's
+     * {@code RestClient} builder rejects it while parsing the URI), verified empirically
+     * against this exact string before writing this test, not assumed; no WireMock stub is
+     * needed since the failure happens before any network call is attempted.
+     */
+    @Test
+    void wrapsAMalformedBaseUrlConstructionFailureInEmbeddingApiException() {
+        LiveApiEmbeddingRepository repository =
+                new LiveApiEmbeddingRepository(corpusRepository, "test-key", "ht!tp://foo", MODEL, DIMENSION);
+
+        assertThatThrownBy(repository::load)
+                .isInstanceOf(EmbeddingApiException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+    }
+
     @Test
     void saveIsUnsupported() {
         LiveApiEmbeddingRepository repository =

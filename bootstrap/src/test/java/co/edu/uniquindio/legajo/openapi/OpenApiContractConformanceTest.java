@@ -23,6 +23,7 @@ import static com.atlassian.oai.validator.mockmvc.OpenApiValidationMatchers.open
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -128,6 +129,12 @@ class OpenApiContractConformanceTest {
                 .andExpect(openApi().isValid(validator));
     }
 
+    /**
+     * {@code R3-error-urn-not-asserted}: response-only conformance (no {@code openApi()}
+     * request-side matcher, see class Javadoc) proved the shape was valid but never pinned
+     * {@code $.type} to the TRD-fixed URN — a handler that answered a schema-valid 400 with
+     * the wrong (or a missing) {@code type} would still have passed.
+     */
     @Test
     void similarityCompareUnknownAlgorithmConformsToTheContract() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/similarity/compare")
@@ -136,6 +143,7 @@ class OpenApiContractConformanceTest {
                                 {"documentIdA":"d01","documentIdB":"d02","algorithmIds":["does-not-exist"]}
                                 """))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"))
                 .andReturn();
         assertResponseConformsToContract(result);
     }
@@ -177,12 +185,14 @@ class OpenApiContractConformanceTest {
                 .andExpect(openApi().isValid(validator));
     }
 
+    /** {@code R3-error-urn-not-asserted}: see {@code similarityCompareUnknownAlgorithm...}. */
     @Test
     void similarityTraceUnknownAlgorithmConformsToTheContract() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/v1/similarity/{algorithmId}/trace", "does-not-exist")
                         .param("documentIdA", "d01")
                         .param("documentIdB", "d02"))
                 .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"))
                 .andReturn();
         assertResponseConformsToContract(result);
     }
@@ -205,6 +215,7 @@ class OpenApiContractConformanceTest {
                 .andExpect(openApi().isValid(validator));
     }
 
+    /** {@code R3-error-urn-not-asserted}: see {@code similarityCompareUnknownAlgorithm...}. */
     @Test
     void clusteringRunUnknownLinkageConformsToTheContract() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/clustering")
@@ -213,6 +224,7 @@ class OpenApiContractConformanceTest {
                                 {"linkages":["does-not-exist"]}
                                 """))
                 .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-linkage"))
                 .andReturn();
         assertResponseConformsToContract(result);
     }
