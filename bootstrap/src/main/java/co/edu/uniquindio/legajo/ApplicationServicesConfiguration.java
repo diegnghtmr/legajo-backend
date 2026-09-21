@@ -2,6 +2,7 @@ package co.edu.uniquindio.legajo;
 
 import co.edu.uniquindio.legajo.application.clustering.ClusteringService;
 import co.edu.uniquindio.legajo.application.corpus.CorpusService;
+import co.edu.uniquindio.legajo.application.embedding.EmbeddingProviderMode;
 import co.edu.uniquindio.legajo.application.embedding.EmbeddingsService;
 import co.edu.uniquindio.legajo.application.similarity.SimilarityService;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -50,5 +51,17 @@ public class ApplicationServicesConfiguration {
     @Bean
     public EmbeddingsService embeddingsService(CorpusRepository corpusRepository) {
         return new EmbeddingsService(corpusRepository);
+    }
+
+    /**
+     * Exposes {@code legajo.embedding-provider}'s already-bound, typed value (A1's
+     * {@link LegajoProperties}) as its own bean, so {@code EmbeddingsController} (A4) can
+     * receive it by constructor injection without depending on {@link LegajoProperties}
+     * itself — {@code infrastructure} may not depend on {@code bootstrap} (ArchUnit,
+     * TRD §4.3), and this is the one value {@code EmbeddingsController} needs from it.
+     */
+    @Bean
+    public EmbeddingProviderMode embeddingProviderMode(LegajoProperties legajoProperties) {
+        return legajoProperties.embeddingProvider();
     }
 }
