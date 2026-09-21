@@ -42,6 +42,10 @@ dependencies {
     // docs/openapi-legajo.yaml (see the version catalog comment on this alias for the
     // Spring Boot 4 / Jakarta compatibility check).
     testImplementation(libs.openapi.request.validator.mockmvc)
+    // Feature doc task A8 (TRD §6.3 "Modo en vivo de embedding-api"): a real Spring context
+    // with legajo.embedding-provider=live, wired against a stubbed OpenAI-compatible
+    // embeddings endpoint via @DynamicPropertySource, so no test needs a real key or network.
+    testImplementation(libs.wiremock)
     // Test-only, on :bootstrap's test classpath so ArchitectureTest's @AnalyzeClasses can
     // see :benchmarks' classes; without it the module escaped the architecture test suite
     // entirely (it was never a dependency of the one module ArchUnit runs from).

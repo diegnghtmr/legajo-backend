@@ -81,8 +81,11 @@ Definidos por el TRD §13 y §14; `./gradlew tasks` confirma los nombres reales.
 | Salud | `GET /actuator/health` |
 
 Variables de entorno: `LEGAJO_EMBEDDING_PROVIDER` (`cached` en la demo),
-`LEGAJO_CORS_ORIGINS`, `SPRING_AI_OPENAI_BASE_URL`, `SPRING_AI_OPENAI_API_KEY`.
-`.env.example` las documenta; los valores nunca se suben.
+`LEGAJO_CORS_ORIGINS`, `SPRING_AI_OPENAI_BASE_URL`, `SPRING_AI_OPENAI_API_KEY`,
+`LEGAJO_EMBEDDING_API_MODEL`, `LEGAJO_EMBEDDING_API_DIMENSION` (estas dos últimas,
+antes solo leídas por el precómputo, ahora también configuran el modo en vivo de
+`embedding-api` en el servidor, tarea A8 — TRD §6.3). `.env.example` las documenta;
+los valores nunca se suben.
 
 ## Reglas que no se negocian
 
