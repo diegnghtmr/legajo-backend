@@ -99,6 +99,10 @@ class SimilarityEndToEndTest {
         JsonNode compareResults = postJson("/api/v1/similarity/compare",
                 "{\"documentIdA\":\"%s\",\"documentIdB\":\"%s\"}".formatted(documentIdA, documentIdB));
 
+        // Every assertion below lives inside the loop, so an empty response would iterate
+        // zero times and pass without checking a single trace. Pin the count first.
+        assertThat(compareResults.size()).as("the default compare must return all six capabilities").isEqualTo(6);
+
         for (JsonNode row : compareResults) {
             String algorithmId = row.get("algorithmId").asString();
             JsonNode result = row.get("result");
