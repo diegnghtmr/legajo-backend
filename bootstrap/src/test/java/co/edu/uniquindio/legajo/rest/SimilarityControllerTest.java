@@ -111,11 +111,13 @@ class SimilarityControllerTest {
 
         mockMvc.perform(post("/api/v1/similarity/compare").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[*].result.cached").value(org.hamcrest.Matchers.everyItem(
                         org.hamcrest.Matchers.is(false))));
 
         mockMvc.perform(post("/api/v1/similarity/compare").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[*].result.cached").value(org.hamcrest.Matchers.everyItem(
                         org.hamcrest.Matchers.is(true))));
     }
