@@ -25,6 +25,10 @@ dependencies {
     precomputeRuntimeClasspath(project(":infrastructure"))
 
     testImplementation(libs.spring.boot.starter.test)
+    // A3 of the rest-api feature (MockMvc controller tests): @WebMvcTest/@AutoConfigureMockMvc
+    // live here, not in spring-boot-starter-test, as of Spring Boot 4.0.3 (see the version
+    // catalog comment on this alias).
+    testImplementation(libs.spring.boot.webmvc.test)
     testImplementation(libs.archunit.junit5)
     // Test-only, on :bootstrap's test classpath so ArchitectureTest's @AnalyzeClasses can
     // see :benchmarks' classes; without it the module escaped the architecture test suite
