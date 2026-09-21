@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.application.clustering;
 
+import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.clustering.AverageLinkage;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
@@ -101,11 +102,23 @@ public final class ClusteringService {
 
     /**
      * {@code POST /clustering/cut}: the only endpoint accepting a free {@code k}, required
-     * in {@code [2, n-1]} (TRD §6.6); {@link LinkageCut#cut} itself enforces that range.
-     * {@code representation} defaults to {@link Representation#DEFAULT}, mirroring
-     * {@link #run} — the TRD does not restate this default specifically for {@code cut}, but
-     * {@code representation} is the same shared enum with the same documented default for
-     * every clustering endpoint, so this is a direct, not an invented, extension.
+     * in {@code [2, n-1]} (TRD §6.6). {@code representation} defaults to
+     * {@link Representation#DEFAULT}, mirroring {@link #run} — the TRD does not restate this
+     * default specifically for {@code cut}, but {@code representation} is the same shared
+     * enum with the same documented default for every clustering endpoint, so this is a
+     * direct, not an invented, extension.
+     *
+     * <p><b>A4 fix (feature doc {@code rest-api.md}, advisory
+     * {@code R3-narrowed-handler-unmigrated-throw-sites}).</b> This method used to pass
+     * {@code k} straight to {@link LinkageCut#cut}, which itself enforces {@code [2, n-1]}
+     * but does so with a <em>raw</em> {@link IllegalArgumentException} — since A3b's
+     * error-classification fix, a raw IAE reaching the REST boundary is (correctly) treated
+     * as a server bug and answers 500. A client-supplied {@code k} outside range is a
+     * request-validation failure, not a server fault, so this application boundary now
+     * checks the range itself and throws the dedicated {@link InvalidRequestException}
+     * subtype (400) *before* the domain ever sees the bad value.
+     * {@link LinkageCut#cut}'s own check is kept as a defense-in-depth invariant guard for
+     * any other caller, not removed.
      */
     public ClusterAssignment cut(Representation representation, String linkageId, int k) {
         Representation effectiveRepresentation = representation == null ? Representation.DEFAULT : representation;
@@ -115,6 +128,11 @@ public final class ClusteringService {
         List<List<Double>> vectors = vectorsFor(effectiveRepresentation, corpus);
         DistanceMatrix distances = DistanceMatrix.cosineDistance(vectors);
         LinkageMatrix linkage = engine.agglomerate(engineInputFor(criterion, distances), criterion);
+
+        int n = linkage.size() + 1;
+        if (k < 2 || k > n - 1) {
+            throw new InvalidRequestException("k must be in [2, n-1] (n=%d), was %d".formatted(n, k));
+        }
         return LinkageCut.cut(linkage, k);
     }
 
