@@ -1,0 +1,1141 @@
+openapi: 3.0.3
+info:
+  title: Legajo API
+  description: >-
+    REST contract for Legajo's RF1 (six similarity capabilities) and RF2
+    (hierarchical clustering with four linkage criteria) over the reference
+    corpus (TRD-legajo v1.3.7, §6.6). This file is the contract's source of
+    truth (ADR-010): it describes exactly what the running server accepts and
+    returns today, never an aspiration. The frontend generates its TypeScript
+    types from this file with `npm run api:types`, and CI fails on drift
+    (TAC-12, TR-09).
+  version: "1.0.0"
+  contact:
+    name: Legajo backend
+    url: https://github.com/diegnghtmr/legajo
+  license:
+    name: UNLICENSED
+servers:
+  - url: /
+    description: Same-origin (Render in production; localhost in development)
+
+# No authentication scheme exists anywhere in this backend (TRD/PRD do not define one for
+# this demo API); declared explicitly, rather than left implicit, so linters and readers see
+# an intentional "no security" rather than an oversight.
+security: []
+
+tags:
+  - name: corpus
+    description: The reference corpus (TRD §9).
+  - name: similarity
+    description: RF1 — six similarity capabilities (TRD §6.3).
+  - name: clustering
+    description: RF2 — hierarchical clustering, four linkage criteria (TRD §6.4/§6.5).
+  - name: embeddings
+    description: Status of the two embedding families (TRD §6.3, fixed by TRD 1.3.6).
+  - name: health
+    description: Liveness check (Spring Boot Actuator).
+
+paths:
+  /api/v1/corpus:
+    get:
+      operationId: listCorpus
+      tags: [corpus]
+      summary: List every document in the reference corpus
+      description: >-
+        `id`, `title`, and `authors` only — never the abstract (TRD §6.6).
+      responses:
+        "200":
+          description: The n documents of the reference corpus, in corpus order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CorpusSummary"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/corpus/{id}:
+    get:
+      operationId: getCorpusDocument
+      tags: [corpus]
+      summary: Get one document plus its full abstract
+      parameters:
+        - $ref: "#/components/parameters/CorpusDocumentId"
+      responses:
+        "200":
+          description: The document, including its full abstract.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CorpusDocument"
+        "404":
+          description: >-
+            No corpus document with this id (TRD §6.6 error table: 404 because
+            `id` is a path segment).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              example:
+                type: "urn:legajo:problem:unknown-document"
+                title: "Not Found"
+                status: 404
+                detail: "no corpus document with id: does-not-exist"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/similarity/algorithms:
+    get:
+      operationId: listSimilarityAlgorithms
+      tags: [similarity]
+      summary: The catalogue of the six similarity capabilities
+      description: Exactly six ids, including `needleman-wunsch` (TAC-01).
+      responses:
+        "200":
+          description: The six capabilities, in registration order.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlgorithmSummary"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/similarity/compare:
+    post:
+      operationId: compareSimilarity
+      tags: [similarity]
+      summary: Multi-algorithm pairwise similarity for two documents
+      description: >-
+        `algorithmIds` is optional; omitted or `null` defaults to all six
+        capabilities (TAC-01, PRD HU-1.1), so the default request already
+        exercises every capability.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompareRequest"
+      responses:
+        "200":
+          description: One result per requested (or defaulted) algorithm.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlgorithmSimilarity"
+        "400":
+          description: >-
+            An unknown `algorithmIds` entry (`unknown-algorithm`), an unknown
+            `documentIdA`/`documentIdB` (`unknown-document`), or a blank
+            required field (`about:blank`, framework-detected) — TRD §6.6
+            error table: 400 because these values arrive in the request body.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              examples:
+                unknownAlgorithm:
+                  value:
+                    type: "urn:legajo:problem:unknown-algorithm"
+                    title: "Bad Request"
+                    status: 400
+                    detail: "no similarity algorithm registered with id: bogus"
+                unknownDocument:
+                  value:
+                    type: "urn:legajo:problem:unknown-document"
+                    title: "Bad Request"
+                    status: 400
+                    detail: "no corpus document with id: does-not-exist"
+        "503":
+          $ref: "#/components/responses/EmbeddingApiUnavailable"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/similarity/matrix:
+    post:
+      operationId: similarityMatrix
+      tags: [similarity]
+      summary: m x m similarity matrix for one algorithm over a document selection
+      description: >-
+        m = selection size, business rule m ∈ [3, n] (3–20 in the reference
+        corpus); the response is a plain m x m nested array with no envelope,
+        row/column order matching `documentIds` as sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatrixRequest"
+      responses:
+        "200":
+          description: An m x m grid; row i, column j is the pair `(documentIds[i], documentIds[j])`.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/SimilarityResult"
+        "400":
+          description: >-
+            An unknown `algorithmId` (`unknown-algorithm`), an unknown entry
+            in `documentIds` (`unknown-document`), or a selection smaller than
+            3 elements or containing duplicates (`invalid-selection`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              examples:
+                invalidSelection:
+                  value:
+                    type: "urn:legajo:problem:invalid-selection"
+                    title: "Bad Request"
+                    status: 400
+                    detail: "documentIds must not be empty"
+        "503":
+          $ref: "#/components/responses/EmbeddingApiUnavailable"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/similarity/{algorithmId}/trace:
+    get:
+      operationId: similarityTrace
+      tags: [similarity]
+      summary: The complete audit trace for one capability and one document pair
+      description: >-
+        Returns the **complete** trace with no truncation parameter
+        (NFR-QA-03). The trace pair is identified by two required query
+        parameters (a decision this feature took: the TRD fixes the path but
+        not the pair-identification shape for a GET).
+      parameters:
+        - name: algorithmId
+          in: path
+          required: true
+          description: One of the six similarity capability ids.
+          schema:
+            $ref: "#/components/schemas/AlgorithmId"
+        - name: documentIdA
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: documentIdB
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The complete trace; its shape depends on `algorithmId`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlgorithmTrace"
+        "400":
+          description: >-
+            An unknown `documentIdA`/`documentIdB` query value
+            (`unknown-document`) — TRD §6.6 error table: 400 because these are
+            query parameters, not the path segment.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: >-
+            An unknown `algorithmId` path segment (`unknown-algorithm`) — TRD
+            §6.6 error table: 404 because this value is a path segment.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              example:
+                type: "urn:legajo:problem:unknown-algorithm"
+                title: "Not Found"
+                status: 404
+                detail: "no similarity algorithm registered with id: bogus"
+        "503":
+          $ref: "#/components/responses/EmbeddingApiUnavailable"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/clustering:
+    post:
+      operationId: runClustering
+      tags: [clustering]
+      summary: Run hierarchical clustering for one or more linkage criteria
+      description: >-
+        Returns, per linkage, the (n-1)-row linkage matrix, `leafOrder`, and
+        the evaluation block computed always at the fixed cuts
+        k ∈ {2,3,4,5} ∩ [2, n-1]. There is no `ks` request parameter, so no
+        conforming request can alter the fixed-cut rule (TAC-04).
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClusteringRequest"
+      responses:
+        "200":
+          description: One `LinkageResult` per requested (or defaulted) linkage.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LinkageResult"
+        "400":
+          description: >-
+            An unknown `representation` (`unknown-representation`) or an
+            unknown entry in `linkages` (`unknown-linkage`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              examples:
+                unknownRepresentation:
+                  value:
+                    type: "urn:legajo:problem:unknown-representation"
+                    title: "Bad Request"
+                    status: 400
+                    detail: "unknown representation id: bogus"
+                unknownLinkage:
+                  value:
+                    type: "urn:legajo:problem:unknown-linkage"
+                    title: "Bad Request"
+                    status: 400
+                    detail: "no linkage criterion registered with id: bogus"
+        "503":
+          $ref: "#/components/responses/EmbeddingApiUnavailable"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/clustering/evaluation:
+    post:
+      operationId: evaluateClustering
+      tags: [clustering]
+      summary: The same computation as /clustering, evaluation block only
+      description: >-
+        Convenience endpoint; `POST /clustering` already includes this same
+        evaluation block. Same request body and the same fixed-cut rule.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClusteringRequest"
+      responses:
+        "200":
+          description: One `LinkageEvaluation` per requested (or defaulted) linkage.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LinkageEvaluation"
+        "400":
+          description: Same causes as `POST /clustering`.
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "503":
+          $ref: "#/components/responses/EmbeddingApiUnavailable"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/clustering/cut:
+    post:
+      operationId: cutClustering
+      tags: [clustering]
+      summary: Cut one linkage at a free k (the only free-cut endpoint)
+      description: >-
+        The only clustering endpoint accepting a free cut. `k` is an integer
+        business rule in [2, n-1] (2–19 in the reference corpus); no height
+        cut exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClusteringCutRequest"
+      responses:
+        "200":
+          description: One cluster label per original observation, plus the k they were cut at.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClusterAssignment"
+        "400":
+          description: >-
+            An unknown `representation` (`unknown-representation`), an
+            unknown `linkage` (`unknown-linkage`), a `k` outside [2, n-1]
+            (`invalid-cut`), or a blank `linkage`/missing `k`
+            (`about:blank`, framework-adjacent validation).
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              examples:
+                invalidCut:
+                  value:
+                    type: "urn:legajo:problem:invalid-cut"
+                    title: "Bad Request"
+                    status: 400
+                    detail: "k must be in [2, 19], was 100"
+        "503":
+          $ref: "#/components/responses/EmbeddingApiUnavailable"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /api/v1/embeddings/status:
+    get:
+      operationId: embeddingsStatus
+      tags: [embeddings]
+      summary: Status of both embedding families in one response
+      description: >-
+        One object per capability (`embeddingLocal`, `embeddingApi`), because
+        each reads its own cache and each cache can drift from the corpus
+        independently (TRD §6.6, fixed by TRD 1.3.6; TAC-13).
+      responses:
+        "200":
+          description: Both families' status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingStatus"
+        default:
+          $ref: "#/components/responses/UnexpectedError"
+
+  /actuator/health:
+    get:
+      operationId: health
+      tags: [health]
+      summary: Liveness check
+      description: TAC-11 verifies this answers 200 from the deployed URL.
+      responses:
+        "200":
+          description: >-
+            The application is up. Served as
+            `application/vnd.spring-boot.actuator.v3+json` when the
+            caller sends no `Accept` header (Spring's default content
+            negotiation for actuator endpoints prefers this vendor type
+            first), or as plain `application/json` when the caller
+            explicitly requests it.
+          content:
+            application/vnd.spring-boot.actuator.v3+json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+components:
+  parameters:
+    CorpusDocumentId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    EmbeddingApiUnavailable:
+      description: >-
+        NFR-QA-12: a network failure, timeout, rejection, or missing API key
+        from the live `embedding-api` provider. Applies to every endpoint
+        that can use the `embedding-api` capability/representation (TRD
+        §6.3). As of this contract's authoring (feature task A6), the live
+        path is not yet wired to any production call site (task A8 does
+        that); the mapping already exists in
+        `ProblemDetailExceptionHandler` and is documented here because the
+        TRD fixes it as part of this endpoint's error contract.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            type: "urn:legajo:problem:embedding-api-unavailable"
+            title: "Service Unavailable"
+            status: 503
+            detail: "The live embedding API is currently unavailable."
+
+    UnexpectedError:
+      description: >-
+        Any status this operation's explicit responses do not name: a
+        framework-detected client mistake (malformed JSON, missing
+        parameter, unsupported method/media type, unknown route, a blank
+        Bean Validation field — `about:blank`, Spring's own handling) or an
+        unexpected server fault (500, generic detail, no exception message
+        or class name ever exposed).
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+          example:
+            title: "Internal Server Error"
+            status: 500
+            detail: "An unexpected error occurred."
+
+  schemas:
+    AlgorithmId:
+      type: string
+      description: One of the six fixed similarity capability ids (TRD §6.3).
+      enum:
+        - levenshtein
+        - needleman-wunsch
+        - jaccard
+        - tfidf-cosine
+        - embedding-local
+        - embedding-api
+
+    AlgorithmKind:
+      type: string
+      enum: [CLASSIC, AI]
+
+    LinkageId:
+      type: string
+      enum: [single, complete, average, ward]
+
+    ProblemDetail:
+      type: object
+      description: >-
+        RFC 9457 Problem Detail, as Spring Framework 7 serializes it natively.
+        `type` carries one of this API's fixed URNs, or is entirely absent
+        (never a literal JSON `null`) when the error is one Spring's own
+        machinery classifies without a domain-specific cause (TRD §6.6).
+      required: [title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: >-
+            A fixed `urn:legajo:problem:*` URN (never a resolvable URL), or
+            omitted entirely for a framework-detected or unexpected error
+            (Spring's default is `about:blank`, which it also omits from the
+            serialized body).
+          enum:
+            - "urn:legajo:problem:unknown-document"
+            - "urn:legajo:problem:unknown-algorithm"
+            - "urn:legajo:problem:unknown-representation"
+            - "urn:legajo:problem:unknown-linkage"
+            - "urn:legajo:problem:invalid-cut"
+            - "urn:legajo:problem:invalid-selection"
+            - "urn:legajo:problem:embedding-api-unavailable"
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+          description: >-
+            Spring populates this with the request path (a relative
+            reference, e.g. `/api/v1/corpus/does-not-exist`), never an
+            absolute URI — `uri-reference` (RFC 3986 URI-reference) is the
+            correct, narrower format for that shape, unlike `type` above,
+            which is always an absolute URN or omitted.
+
+    HealthStatus:
+      type: object
+      description: >-
+        Spring Boot Actuator's own response shape, not one Legajo defines;
+        `additionalProperties: true` because Actuator can add further keys
+        (e.g. component details when authorized) that this contract does not
+        enumerate.
+      required: [status]
+      additionalProperties: true
+      properties:
+        status:
+          type: string
+          example: "UP"
+        groups:
+          type: array
+          description: The configured health-indicator groups (Actuator's own default field).
+          items:
+            type: string
+
+    CorpusSummary:
+      type: object
+      required: [id, title, authors]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+
+    CorpusDocument:
+      type: object
+      required: [id, title, authors, abstract]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            type: string
+        abstract:
+          type: string
+
+    AlgorithmSummary:
+      type: object
+      required: [id, displayName, kind]
+      properties:
+        id:
+          $ref: "#/components/schemas/AlgorithmId"
+        displayName:
+          type: string
+        kind:
+          $ref: "#/components/schemas/AlgorithmKind"
+
+    SimilarityResult:
+      type: object
+      description: TRD §6.3 common result envelope, as returned over the wire (with `cached`).
+      required: [normalizedScore, computedNanos, cached, degenerate]
+      properties:
+        normalizedScore:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+        rawValue:
+          type: number
+          format: double
+          nullable: true
+          description: "null only in the documented degenerate cases (e.g. the TF-IDF null vector)."
+        computedNanos:
+          type: integer
+          format: int64
+        cached:
+          type: boolean
+        degenerate:
+          type: boolean
+
+    AlgorithmSimilarity:
+      type: object
+      required: [algorithmId, result]
+      properties:
+        algorithmId:
+          $ref: "#/components/schemas/AlgorithmId"
+        result:
+          $ref: "#/components/schemas/SimilarityResult"
+
+    CompareRequest:
+      type: object
+      required: [documentIdA, documentIdB]
+      properties:
+        documentIdA:
+          type: string
+        documentIdB:
+          type: string
+        algorithmIds:
+          type: array
+          nullable: true
+          description: Omitted or null defaults to all six capabilities (TAC-01).
+          items:
+            $ref: "#/components/schemas/AlgorithmId"
+
+    MatrixRequest:
+      type: object
+      required: [algorithmId, documentIds]
+      properties:
+        algorithmId:
+          $ref: "#/components/schemas/AlgorithmId"
+        documentIds:
+          type: array
+          description: "Business rule: size m ∈ [3, n] (3–20 in the reference corpus), no duplicates."
+          items:
+            type: string
+
+    MatrixCell:
+      type: object
+      required: [row, col]
+      properties:
+        row:
+          type: integer
+        col:
+          type: integer
+
+    DpOperationKind:
+      type: string
+      description: >-
+        MATCH/SUBSTITUTION/INSERTION/DELETION classify a Levenshtein step;
+        MATCH/MISMATCH/GAP classify a Needleman-Wunsch step.
+      enum: [MATCH, SUBSTITUTION, INSERTION, DELETION, MISMATCH, GAP]
+
+    DpTraceStep:
+      type: object
+      required: [from, to, operation]
+      properties:
+        from:
+          $ref: "#/components/schemas/MatrixCell"
+        to:
+          $ref: "#/components/schemas/MatrixCell"
+        operation:
+          $ref: "#/components/schemas/DpOperationKind"
+
+    DpMatrixTrace:
+      type: object
+      description: Shared by `levenshtein` and `needleman-wunsch` (TRD §6.3).
+      required: [algorithmId, rowLabels, columnLabels, matrix, optimalPath, operations]
+      properties:
+        algorithmId:
+          $ref: "#/components/schemas/AlgorithmId"
+        rowLabels:
+          type: array
+          items:
+            type: string
+        columnLabels:
+          type: array
+          items:
+            type: string
+        matrix:
+          type: array
+          description: The complete DP matrix, never truncated.
+          items:
+            type: array
+            items:
+              type: number
+              format: double
+        optimalPath:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatrixCell"
+        operations:
+          type: array
+          items:
+            $ref: "#/components/schemas/DpTraceStep"
+
+    JaccardTrace:
+      type: object
+      required: [algorithmId, setA, setB, intersectionSize, unionSize, intersection, union, coefficient]
+      properties:
+        algorithmId:
+          $ref: "#/components/schemas/AlgorithmId"
+        setA:
+          type: array
+          items:
+            type: string
+        setB:
+          type: array
+          items:
+            type: string
+        intersectionSize:
+          type: integer
+        unionSize:
+          type: integer
+        intersection:
+          type: array
+          items:
+            type: string
+        union:
+          type: array
+          items:
+            type: string
+        coefficient:
+          type: number
+          format: double
+
+    TfIdfTermTrace:
+      type: object
+      required:
+        - term
+        - frequencyA
+        - frequencyB
+        - documentFrequency
+        - tfA
+        - tfB
+        - idf
+        - rawWeightA
+        - rawWeightB
+        - normalizedWeightA
+        - normalizedWeightB
+      properties:
+        term:
+          type: string
+        frequencyA:
+          type: integer
+        frequencyB:
+          type: integer
+        documentFrequency:
+          type: integer
+        tfA:
+          type: number
+          format: double
+        tfB:
+          type: number
+          format: double
+        idf:
+          type: number
+          format: double
+        rawWeightA:
+          type: number
+          format: double
+        rawWeightB:
+          type: number
+          format: double
+        normalizedWeightA:
+          type: number
+          format: double
+        normalizedWeightB:
+          type: number
+          format: double
+
+    TfIdfCosineTrace:
+      type: object
+      required: [algorithmId, corpusSize, terms, dotProduct, rawNormA, rawNormB, cosine, angleDegrees]
+      properties:
+        algorithmId:
+          $ref: "#/components/schemas/AlgorithmId"
+        corpusSize:
+          type: integer
+        terms:
+          type: array
+          description: Only terms present in at least one of the two compared documents (TRD §6.3).
+          items:
+            $ref: "#/components/schemas/TfIdfTermTrace"
+        dotProduct:
+          type: number
+          format: double
+        rawNormA:
+          type: number
+          format: double
+        rawNormB:
+          type: number
+          format: double
+        cosine:
+          type: number
+          format: double
+        angleDegrees:
+          type: number
+          format: double
+
+    EmbeddingLocalTrace:
+      type: object
+      required:
+        - algorithmId
+        - provider
+        - model
+        - dimension
+        - vectorAExcerpt
+        - vectorBExcerpt
+        - vectorA
+        - vectorB
+        - preNormL2A
+        - preNormL2B
+        - dotProduct
+        - cosine
+        - angleDegrees
+        - normalizedScore
+      properties:
+        algorithmId:
+          $ref: "#/components/schemas/AlgorithmId"
+        provider:
+          type: string
+        model:
+          type: string
+        dimension:
+          type: integer
+        vectorAExcerpt:
+          type: array
+          items:
+            type: number
+            format: double
+        vectorBExcerpt:
+          type: array
+          items:
+            type: number
+            format: double
+        vectorA:
+          type: array
+          items:
+            type: number
+            format: double
+        vectorB:
+          type: array
+          items:
+            type: number
+            format: double
+        preNormL2A:
+          type: number
+          format: double
+        preNormL2B:
+          type: number
+          format: double
+        dotProduct:
+          type: number
+          format: double
+        cosine:
+          type: number
+          format: double
+        angleDegrees:
+          type: number
+          format: double
+        normalizedScore:
+          type: number
+          format: double
+
+    EmbeddingApiTrace:
+      type: object
+      required:
+        - algorithmId
+        - provider
+        - model
+        - dimension
+        - vectorAExcerpt
+        - vectorBExcerpt
+        - vectorA
+        - vectorB
+        - preNormL2A
+        - preNormL2B
+        - sumSquaredDiff
+        - distance
+        - normalizedScore
+        - providerStatus
+      properties:
+        algorithmId:
+          $ref: "#/components/schemas/AlgorithmId"
+        provider:
+          type: string
+        model:
+          type: string
+        dimension:
+          type: integer
+        vectorAExcerpt:
+          type: array
+          items:
+            type: number
+            format: double
+        vectorBExcerpt:
+          type: array
+          items:
+            type: number
+            format: double
+        vectorA:
+          type: array
+          items:
+            type: number
+            format: double
+        vectorB:
+          type: array
+          items:
+            type: number
+            format: double
+        preNormL2A:
+          type: number
+          format: double
+        preNormL2B:
+          type: number
+          format: double
+        sumSquaredDiff:
+          type: number
+          format: double
+        distance:
+          type: number
+          format: double
+        normalizedScore:
+          type: number
+          format: double
+        providerStatus:
+          type: string
+
+    AlgorithmTrace:
+      description: >-
+        One variant per similarity capability (TRD §6.3, NFR-QA-03).
+        `levenshtein` and `needleman-wunsch` share the `DpMatrixTrace` shape.
+      oneOf:
+        - $ref: "#/components/schemas/DpMatrixTrace"
+        - $ref: "#/components/schemas/JaccardTrace"
+        - $ref: "#/components/schemas/TfIdfCosineTrace"
+        - $ref: "#/components/schemas/EmbeddingLocalTrace"
+        - $ref: "#/components/schemas/EmbeddingApiTrace"
+      discriminator:
+        propertyName: algorithmId
+        mapping:
+          levenshtein: "#/components/schemas/DpMatrixTrace"
+          needleman-wunsch: "#/components/schemas/DpMatrixTrace"
+          jaccard: "#/components/schemas/JaccardTrace"
+          tfidf-cosine: "#/components/schemas/TfIdfCosineTrace"
+          embedding-local: "#/components/schemas/EmbeddingLocalTrace"
+          embedding-api: "#/components/schemas/EmbeddingApiTrace"
+
+    ClusteringRequest:
+      type: object
+      properties:
+        representation:
+          type: string
+          nullable: true
+          enum: [tfidf-cosine, embedding-local, embedding-api]
+          description: >-
+            The vector-space representation (see the shared
+            `Representation` schema); omitted or null defaults to
+            `tfidf-cosine`. Inlined rather than `$ref`'d, since OpenAPI 3.0
+            does not allow `nullable` as a sibling of `$ref` and the `allOf`
+            workaround for that trips Redocly's `nullable-type-sibling`
+            rule ("the `type` field must be defined when `nullable` is
+            used") — an enum this small is clearer duplicated than wrapped.
+        linkages:
+          type: array
+          nullable: true
+          description: "Omitted or null defaults to all four. Business rule: non-empty, no unknown ids."
+          items:
+            $ref: "#/components/schemas/LinkageId"
+
+    ClusteringCutRequest:
+      type: object
+      required: [linkage, k]
+      properties:
+        representation:
+          type: string
+          nullable: true
+          enum: [tfidf-cosine, embedding-local, embedding-api]
+          description: >-
+            The vector-space representation (see the shared
+            `Representation` schema); omitted or null defaults to
+            `tfidf-cosine` (see `ClusteringRequest.representation`'s
+            description for why this is inlined rather than `$ref`'d).
+        linkage:
+          $ref: "#/components/schemas/LinkageId"
+        k:
+          type: integer
+          description: "Business rule: integer in [2, n-1] (2–19 in the reference corpus)."
+
+    LinkageStep:
+      type: object
+      description: One row of a linkage matrix (TRD §6.4). `idx1 < idx2` always.
+      required: [idx1, idx2, mergeDistance, size]
+      properties:
+        idx1:
+          type: integer
+        idx2:
+          type: integer
+        mergeDistance:
+          type: number
+          format: double
+        size:
+          type: integer
+
+    ClusteringEvaluation:
+      type: object
+      description: >-
+        `meanSilhouette`/`daviesBouldin` are objects keyed by the fixed cut k
+        (JSON object keys are always strings, e.g. "2".."5") — computed
+        always at k ∈ {2,3,4,5} ∩ [2, n-1] (TAC-04).
+      required: [cophenetic, meanSilhouette, daviesBouldin]
+      properties:
+        cophenetic:
+          type: number
+          format: double
+        meanSilhouette:
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        daviesBouldin:
+          type: object
+          description: "null for a k whose centroids coincide (TRD §6.5)."
+          additionalProperties:
+            type: number
+            format: double
+            nullable: true
+
+    LinkageResult:
+      type: object
+      required: [linkageId, linkageDisplayName, rows, leafOrder, evaluation]
+      properties:
+        linkageId:
+          $ref: "#/components/schemas/LinkageId"
+        linkageDisplayName:
+          type: string
+        rows:
+          type: array
+          description: (n-1) rows (19 rows with n = 20).
+          items:
+            $ref: "#/components/schemas/LinkageStep"
+        leafOrder:
+          type: array
+          items:
+            type: integer
+        evaluation:
+          $ref: "#/components/schemas/ClusteringEvaluation"
+
+    LinkageEvaluation:
+      type: object
+      required: [linkageId, linkageDisplayName, evaluation]
+      properties:
+        linkageId:
+          $ref: "#/components/schemas/LinkageId"
+        linkageDisplayName:
+          type: string
+        evaluation:
+          $ref: "#/components/schemas/ClusteringEvaluation"
+
+    ClusterAssignment:
+      type: object
+      required: [labels, k]
+      properties:
+        labels:
+          type: array
+          items:
+            type: integer
+        k:
+          type: integer
+
+    EmbeddingLocalStatus:
+      type: object
+      required: [provider, model, dimension, corpusSha256, matchesCorpus, device]
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        dimension:
+          type: integer
+        corpusSha256:
+          type: string
+        matchesCorpus:
+          type: boolean
+        device:
+          type: string
+          description: 'Fixed literal "cpu" today (TRD §14.2, CPU-only default).'
+
+    EmbeddingApiStatus:
+      type: object
+      required: [provider, model, dimension, corpusSha256, matchesCorpus, mode]
+      properties:
+        provider:
+          type: string
+        model:
+          type: string
+        dimension:
+          type: integer
+        corpusSha256:
+          type: string
+        matchesCorpus:
+          type: boolean
+        mode:
+          type: string
+          description: The only capability with a live-update path (NFR-QA-12).
+          enum: [cached, live]
+
+    EmbeddingStatus:
+      type: object
+      required: [embeddingLocal, embeddingApi]
+      properties:
+        embeddingLocal:
+          $ref: "#/components/schemas/EmbeddingLocalStatus"
+        embeddingApi:
+          $ref: "#/components/schemas/EmbeddingApiStatus"

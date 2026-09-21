@@ -14,6 +14,16 @@ djlTokenizers = "0.36.0"
 onnxruntime = "1.29.0"
 springAi = "2.0.0"
 wiremock = "3.10.0"
+# Task A6 of the rest-api feature (TRD §5.1: "springdoc-openapi 3.1.x - Linea de Boot 4").
+# 3.1.1 is the current release built against the Spring Boot 4 line (confirmed against
+# Maven Central's metadata, 2026-09-21).
+springdocOpenapi = "3.1.1"
+# Task A6's drift check (TC-08): validates real MockMvc responses against
+# docs/openapi-legajo.yaml. Renamed from "swagger-request-validator-*" to
+# "openapi-request-validator-*" at 3.0.0 (still com.atlassian.oai); the mockmvc module's own
+# README states "Compatible with Spring 7+" and targets Jakarta, confirmed by successfully
+# compiling and running against this project's Spring Boot 4.0.3 / MockMvc stack.
+openapiRequestValidator = "3.0.0"
 
 [libraries]
 spring-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "springBoot" }
@@ -42,6 +52,8 @@ onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = 
 spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "springAi" }
 spring-ai-openai = { module = "org.springframework.ai:spring-ai-openai" }
 wiremock = { module = "org.wiremock:wiremock-standalone", version.ref = "wiremock" }
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdocOpenapi" }
+openapi-request-validator-mockmvc = { module = "com.atlassian.oai:openapi-request-validator-mockmvc", version.ref = "openapiRequestValidator" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }

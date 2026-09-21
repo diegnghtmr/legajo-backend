@@ -21,6 +21,14 @@ dependencies {
 
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.boot.starter.actuator)
+    // Task A6 of the rest-api feature (TRD ADR-010, §6.6): publishes the contract and
+    // Swagger UI. Swagger UI's descriptor URL is pointed at the hand-written
+    // docs/openapi-legajo.yaml (application.yml's springdoc.swagger-ui.url, served as a
+    // static resource by the copy below); springdoc's own generated /v3/api-docs document
+    // stays enabled only because springdoc itself requires it internally to serve the UI
+    // shell — it is never used as a source of truth, and never used by the drift tests
+    // below, which compare the YAML directly against RequestMappingHandlerMapping.
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
 
     precomputeRuntimeClasspath(project(":infrastructure"))
 
@@ -30,11 +38,28 @@ dependencies {
     // catalog comment on this alias).
     testImplementation(libs.spring.boot.webmvc.test)
     testImplementation(libs.archunit.junit5)
+    // Task A6's drift check (TC-08): validates real MockMvc responses against
+    // docs/openapi-legajo.yaml (see the version catalog comment on this alias for the
+    // Spring Boot 4 / Jakarta compatibility check).
+    testImplementation(libs.openapi.request.validator.mockmvc)
     // Test-only, on :bootstrap's test classpath so ArchitectureTest's @AnalyzeClasses can
     // see :benchmarks' classes; without it the module escaped the architecture test suite
     // entirely (it was never a dependency of the one module ArchUnit runs from).
     testImplementation(project(":benchmarks"))
     testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+// Task A6 (ADR-010): docs/openapi-legajo.yaml, one level up from this module, is the
+// contract's single source of truth. Rather than hand-duplicating it onto the classpath,
+// this copies that exact file into the module's own resources at build time, into
+// static/, so Spring Boot's own static-resource handler serves it at
+// GET /openapi-legajo.yaml with no further configuration, and springdoc/Swagger UI can
+// point at it (application.yml) — the served document is always byte-identical to the
+// authored file, never a second copy that can drift.
+tasks.named<ProcessResources>("processResources") {
+    from(rootProject.layout.projectDirectory.file("docs/openapi-legajo.yaml")) {
+        into("static")
+    }
 }
 
 // The Spring context this module now boots (A1 of the rest-api feature) reads
