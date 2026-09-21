@@ -232,7 +232,10 @@ public final class SimilarityService {
     private EmbeddingVector requireVector(Map<String, EmbeddingVector> vectors, String documentId, String cacheLabel) {
         EmbeddingVector vector = vectors.get(documentId);
         if (vector == null) {
-            throw new ResourceNotFoundException(
+            // The id already passed the corpus lookup, so a missing vector is an inconsistency
+            // in the server's own caches (bound to corpusSha256 and verified at startup), not a
+            // resource the client asked for wrongly: a server fault, never a 404.
+            throw new IllegalStateException(
                     "no %s embedding cached for document id: %s".formatted(cacheLabel, documentId));
         }
         return vector;

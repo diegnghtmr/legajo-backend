@@ -99,6 +99,21 @@ class SimilarityServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    /**
+     * The document id has already passed the corpus lookup, so a missing cached vector is an
+     * inconsistency in the server's own caches, not something the client asked for wrongly.
+     * See {@code ClusteringServiceTest} for the same rule on the clustering path.
+     */
+    @Test
+    void aKnownDocumentMissingFromTheEmbeddingCacheIsAServerFaultNotANotFound() {
+        SimilarityService withIncompleteCache = new SimilarityService(
+                corpusRepository, registry, new FakeEmbeddingRepository(List.of()), apiEmbeddingRepository);
+
+        assertThatThrownBy(() -> withIncompleteCache.compare("d01", "d02", List.of("embedding-local")))
+                .isInstanceOf(IllegalStateException.class)
+                .isNotInstanceOf(ResourceNotFoundException.class);
+    }
+
     @Test
     void compareRejectsAnUnknownDocumentId() {
         assertThatThrownBy(() -> service.compare("does-not-exist", "d02", List.of("jaccard")))

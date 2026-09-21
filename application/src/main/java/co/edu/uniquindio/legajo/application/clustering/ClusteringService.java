@@ -173,8 +173,12 @@ public final class ClusteringService {
         EmbeddingCache cache = repository.load();
         List<List<Double>> vectors = new ArrayList<>(corpus.documents().size());
         for (CorpusDocument document : corpus.documents()) {
+            // The caches are bound to corpusSha256 and verified at startup, so a corpus document
+            // with no cached vector means the server's own data is inconsistent. The client asked
+            // for a valid representation and supplied nothing wrong, so this is a server fault
+            // (500), never a "not found" that would blame the client.
             EmbeddingVector vector = cache.find(document.id())
-                    .orElseThrow(() -> new ResourceNotFoundException(
+                    .orElseThrow(() -> new IllegalStateException(
                             "no %s embedding cached for document id: %s".formatted(cacheLabel, document.id())));
             vectors.add(vector.values());
         }

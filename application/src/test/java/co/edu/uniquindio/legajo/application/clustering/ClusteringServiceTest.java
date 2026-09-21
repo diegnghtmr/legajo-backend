@@ -93,6 +93,21 @@ class ClusteringServiceTest {
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
+    /**
+     * The embedding caches are bound to {@code corpusSha256} and verified at startup, so a
+     * corpus document with no cached vector cannot happen on a correctly started server. If
+     * it does, the server's own data is inconsistent: the client asked for a valid
+     * representation and supplied nothing wrong, so answering "not found" (404) would blame
+     * it for the server's state. It must surface as a server fault instead.
+     */
+    @Test
+    void aCorpusDocumentMissingFromTheEmbeddingCacheIsAServerFaultNotANotFound() {
+        // The fake cache holds no vectors, so every corpus document is a cache miss.
+        assertThatThrownBy(() -> service.run(Representation.EMBEDDING_LOCAL, List.of("single")))
+                .isInstanceOf(IllegalStateException.class)
+                .isNotInstanceOf(ResourceNotFoundException.class);
+    }
+
     private static CorpusDocument doc(String id, String abstractText) {
         return new CorpusDocument(id, "Title " + id, List.of("Author"), abstractText, "pdf", "grobid", true,
                 "sha-" + id);
