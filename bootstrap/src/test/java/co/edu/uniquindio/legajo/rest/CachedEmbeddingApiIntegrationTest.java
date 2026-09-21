@@ -2,7 +2,7 @@ package co.edu.uniquindio.legajo.rest;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,8 +49,11 @@ class CachedEmbeddingApiIntegrationTest {
         registry.add("spring.ai.openai.api-key", () -> "test-key");
     }
 
-    @AfterEach
-    void stopServer() {
+    // Stopped once, after every test: stopping it after the first test would make the next
+    // one's "no serve events" assertion pass vacuously, because a request to a stopped server
+    // is refused instead of recorded.
+    @AfterAll
+    static void stopServer() {
         wireMockServer.stop();
     }
 
