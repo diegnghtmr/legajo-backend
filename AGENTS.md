@@ -40,7 +40,7 @@ archivo, nunca una copia.
 | Ruta | Qué va ahí | Qué no va ahí |
 |---|---|---|
 | `domain/` | Algoritmos, preprocesado, métricas, puertos, `stopwords-en.txt` como recurso. Java puro | Spring, Jackson, DJL, nada de infraestructura |
-| `application/` | Casos de uso y servicios que orquestan (`SimilarityService`, `ClusteringService`, `EvaluationService`, `CorpusService`) | Lógica de algoritmos |
+| `application/` | Casos de uso y servicios que orquestan (`CorpusService`, `SimilarityService`, `ClusteringService` — que incluye la evaluación en los cortes fijos como un método propio, no un `EvaluationService` aparte, porque `/clustering/evaluation` es el mismo cómputo de `/clustering` filtrado, TRD §6.6 — y `EmbeddingsService` para `/embeddings/status`) | Lógica de algoritmos |
 | `infrastructure/` | Adaptadores: REST, PDF (GROBID y PDFBox), embeddings (DJL, OpenAI), corpus JSON, caché Caffeine | Reglas de negocio |
 | `bootstrap/` | Composición de Spring, configuración, perfiles, arranque | Lógica de dominio |
 | `benchmarks/` | Arnés JMH: curvas empíricas frente a la complejidad teórica | Pruebas unitarias |
