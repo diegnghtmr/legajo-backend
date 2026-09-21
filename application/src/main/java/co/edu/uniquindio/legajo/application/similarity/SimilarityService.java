@@ -1,5 +1,7 @@
 package co.edu.uniquindio.legajo.application.similarity;
 
+import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
+import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -20,7 +22,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -115,14 +116,14 @@ public final class SimilarityService {
         int n = corpus.documents().size();
         int m = documentIds.size();
         if (m < 3 || m > n) {
-            throw new IllegalArgumentException(
+            throw new InvalidRequestException(
                     "matrix selection size must be in [3, %d] (n=%d), was %d".formatted(n, n, m));
         }
         if (new HashSet<>(documentIds).size() != m) {
-            throw new IllegalArgumentException("matrix selection must not contain duplicate document ids");
+            throw new InvalidRequestException("matrix selection must not contain duplicate document ids");
         }
 
-        SimilarityAlgorithm algorithm = registry.require(algorithmId);
+        SimilarityAlgorithm algorithm = requireAlgorithm(algorithmId);
         List<CorpusDocument> documents = documentIds.stream().map(id -> requireDocument(corpus, id)).toList();
         SimilarityContext context = buildContext(corpus, List.of(algorithm));
         Map<String, EmbeddingVector> localVectors =
@@ -149,7 +150,7 @@ public final class SimilarityService {
         Objects.requireNonNull(documentIdA, "documentIdA");
         Objects.requireNonNull(documentIdB, "documentIdB");
 
-        SimilarityAlgorithm algorithm = registry.require(algorithmId);
+        SimilarityAlgorithm algorithm = requireAlgorithm(algorithmId);
         Corpus corpus = corpusRepository.load();
         CorpusDocument documentA = requireDocument(corpus, documentIdA);
         CorpusDocument documentB = requireDocument(corpus, documentIdB);
@@ -169,14 +170,28 @@ public final class SimilarityService {
         if (algorithmIds == null || algorithmIds.isEmpty()) {
             return registry.all();
         }
-        return algorithmIds.stream().map(registry::require).toList();
+        return algorithmIds.stream().map(this::requireAlgorithm).toList();
+    }
+
+    /**
+     * Looks the algorithm up via {@link SimilarityAlgorithmRegistry#find(String)} rather than
+     * {@link SimilarityAlgorithmRegistry#require(String)} so this boundary never has to catch
+     * the domain's own {@link java.util.NoSuchElementException} (task A3b): catching a broad
+     * JDK exception type around a call risks swallowing one thrown by an unrelated bug in the
+     * same try block, which is the exact mis-classification this task removes from the REST
+     * handler. Absence is translated directly into {@link ResourceNotFoundException} instead.
+     */
+    private SimilarityAlgorithm requireAlgorithm(String algorithmId) {
+        return registry.find(algorithmId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "no similarity algorithm registered with id: " + algorithmId));
     }
 
     private CorpusDocument requireDocument(Corpus corpus, String id) {
         return corpus.documents().stream()
                 .filter(document -> document.id().equals(id))
                 .findFirst()
-                .orElseThrow(() -> new NoSuchElementException("no corpus document with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("no corpus document with id: " + id));
     }
 
     private SimilarityContext buildContext(Corpus corpus, List<SimilarityAlgorithm> algorithms) {
@@ -217,7 +232,7 @@ public final class SimilarityService {
     private EmbeddingVector requireVector(Map<String, EmbeddingVector> vectors, String documentId, String cacheLabel) {
         EmbeddingVector vector = vectors.get(documentId);
         if (vector == null) {
-            throw new NoSuchElementException(
+            throw new ResourceNotFoundException(
                     "no %s embedding cached for document id: %s".formatted(cacheLabel, documentId));
         }
         return vector;

@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.application.clustering;
 
+import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
@@ -89,7 +90,7 @@ class ClusteringServiceTest {
     @Test
     void runRejectsAnUnknownLinkageId() {
         assertThatThrownBy(() -> service.run(Representation.TFIDF_COSINE, List.of("does-not-exist")))
-                .isInstanceOf(java.util.NoSuchElementException.class);
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     private static CorpusDocument doc(String id, String abstractText) {

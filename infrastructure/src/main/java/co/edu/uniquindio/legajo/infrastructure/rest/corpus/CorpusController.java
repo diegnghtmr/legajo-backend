@@ -1,6 +1,7 @@
 package co.edu.uniquindio.legajo.infrastructure.rest.corpus;
 
 import co.edu.uniquindio.legajo.application.corpus.CorpusService;
+import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -8,15 +9,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 
 /**
  * {@code GET /api/v1/corpus} and {@code GET /api/v1/corpus/{id}} (TRD §6.6, feature doc task
  * A3). Pure adapter: delegates every rule to {@link CorpusService} (application) and only
  * shapes the response as {@link CorpusSummaryResponse}/{@link CorpusDocumentResponse}. An
- * unknown id throws {@link NoSuchElementException}, mapped to a 404 RFC 9457 Problem Detail
- * by {@code ProblemDetailExceptionHandler}.
+ * unknown id throws {@link ResourceNotFoundException} (task A3b), mapped to a 404 RFC 9457
+ * Problem Detail by {@code ProblemDetailExceptionHandler}.
  */
 @RestController
 @RequestMapping("/api/v1/corpus")
@@ -38,7 +38,7 @@ public class CorpusController {
     @GetMapping("/{id}")
     public CorpusDocumentResponse get(@PathVariable("id") String id) {
         CorpusDocument document = corpusService.findDocument(id)
-                .orElseThrow(() -> new NoSuchElementException("no corpus document with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("no corpus document with id: " + id));
         return CorpusDocumentResponse.from(document);
     }
 }

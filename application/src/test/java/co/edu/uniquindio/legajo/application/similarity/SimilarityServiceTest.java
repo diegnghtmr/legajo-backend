@@ -1,5 +1,7 @@
 package co.edu.uniquindio.legajo.application.similarity;
 
+import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
+import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -19,7 +21,6 @@ import co.edu.uniquindio.legajo.similarity.TfIdfCosine;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,13 +96,13 @@ class SimilarityServiceTest {
     @Test
     void compareRejectsAnUnknownAlgorithmId() {
         assertThatThrownBy(() -> service.compare("d01", "d02", List.of("does-not-exist")))
-                .isInstanceOf(NoSuchElementException.class);
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
     void compareRejectsAnUnknownDocumentId() {
         assertThatThrownBy(() -> service.compare("does-not-exist", "d02", List.of("jaccard")))
-                .isInstanceOf(NoSuchElementException.class);
+                .isInstanceOf(ResourceNotFoundException.class);
     }
 
     @Test
@@ -118,7 +119,7 @@ class SimilarityServiceTest {
     @Test
     void matrixRejectsASelectionSmallerThanThree() {
         assertThatThrownBy(() -> service.matrix(List.of("d01", "d02"), "jaccard"))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(InvalidRequestException.class);
     }
 
     @Test

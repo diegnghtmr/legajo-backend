@@ -1,5 +1,7 @@
 package co.edu.uniquindio.legajo.infrastructure.rest.error;
 
+import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
+import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -7,8 +9,6 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-
-import java.util.NoSuchElementException;
 
 /**
  * Central RFC 9457 Problem Detail mapping for every {@code /api/v1/**} endpoint (TRD §6.6:
@@ -27,10 +27,24 @@ import java.util.NoSuchElementException;
  * longer declares its own handlers for missing or mistyped parameters: the base already
  * owns those types, and two handlers for the same type in one advice fail at startup.
  *
+ * <p><b>Why {@link IllegalArgumentException} and {@link java.util.NoSuchElementException}
+ * are not mapped here (task A3b, advisory {@code R3-broad-exception-mapping}).</b> Both are
+ * plain JDK exception types that any code can throw, including code that is simply buggy.
+ * Mapping them broadly meant a server-side bug that happened to throw either one was
+ * reported to the client as "your request was invalid" or "the resource does not exist",
+ * {@link Exception#getMessage()} and all, instead of the honest 500. Only the dedicated
+ * {@link InvalidRequestException}/{@link ResourceNotFoundException} subtypes — both
+ * introduced by task A3b specifically to mean "the request failed validation" and "the
+ * requested resource does not exist" — are mapped below. A raw {@link
+ * IllegalArgumentException} or {@link java.util.NoSuchElementException} that is not an
+ * instance of one of those subtypes no longer matches either handler and falls through to
+ * the catch-all, which is the correct outcome: the server, not the client, is at fault.
+ *
  * <p>Mapping added here, on top of the base:
  * <ul>
- *   <li>{@link NoSuchElementException} → 404 — an unknown corpus id or algorithm id.</li>
- *   <li>{@link IllegalArgumentException} → 400 — a validation failure (blank required
+ *   <li>{@link ResourceNotFoundException} → 404 — an unknown corpus, algorithm, or
+ *       linkage id.</li>
+ *   <li>{@link InvalidRequestException} → 400 — a validation failure (blank required
  *       field, an out-of-range matrix selection size, a duplicate document id).</li>
  *   <li>Anything else → 500 with a fixed, generic detail. The real exception is logged
  *       server-side only: a response body never carries a stack trace or an internal
@@ -42,13 +56,13 @@ public class ProblemDetailExceptionHandler extends ResponseEntityExceptionHandle
 
     private static final Logger log = LoggerFactory.getLogger(ProblemDetailExceptionHandler.class);
 
-    @ExceptionHandler(NoSuchElementException.class)
-    public ProblemDetail handleNotFound(NoSuchElementException exception) {
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ProblemDetail handleNotFound(ResourceNotFoundException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ProblemDetail handleBadRequest(IllegalArgumentException exception) {
+    @ExceptionHandler(InvalidRequestException.class)
+    public ProblemDetail handleBadRequest(InvalidRequestException exception) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, exception.getMessage());
     }
 

@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.application.clustering;
 
+import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
 import co.edu.uniquindio.legajo.clustering.AverageLinkage;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.clustering.CompleteLinkage;
@@ -29,7 +30,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.OptionalDouble;
 
@@ -174,7 +174,7 @@ public final class ClusteringService {
         List<List<Double>> vectors = new ArrayList<>(corpus.documents().size());
         for (CorpusDocument document : corpus.documents()) {
             EmbeddingVector vector = cache.find(document.id())
-                    .orElseThrow(() -> new NoSuchElementException(
+                    .orElseThrow(() -> new ResourceNotFoundException(
                             "no %s embedding cached for document id: %s".formatted(cacheLabel, document.id())));
             vectors.add(vector.values());
         }
@@ -197,7 +197,7 @@ public final class ClusteringService {
             case "complete" -> new CompleteLinkage();
             case "average" -> new AverageLinkage();
             case "ward" -> new WardLinkage();
-            default -> throw new NoSuchElementException("unknown linkage id: " + id);
+            default -> throw new ResourceNotFoundException("unknown linkage id: " + id);
         };
     }
 }
