@@ -5,6 +5,7 @@ import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.infrastructure.corpus.JsonCorpusRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.JsonEmbeddingRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.LiveApiEmbeddingRepository;
+import co.edu.uniquindio.legajo.infrastructure.embedding.MemoizingEmbeddingRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.MiniLmEmbedder;
 import co.edu.uniquindio.legajo.infrastructure.embedding.OpenAiCompatibleEmbedder;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -17,6 +18,8 @@ import co.edu.uniquindio.legajo.similarity.NeedlemanWunsch;
 import co.edu.uniquindio.legajo.similarity.SimilarityAlgorithm;
 import co.edu.uniquindio.legajo.similarity.SimilarityAlgorithmRegistry;
 import co.edu.uniquindio.legajo.similarity.TfIdfCosine;
+import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -68,6 +71,20 @@ import java.util.List;
  * network client to first use, so a missing key answers 503 on the first request that needs
  * it, never a startup failure (TRD: "no hay reserva silenciosa ... clave ausente responden
  * 503").
+ *
+ * <p><b>Startup fail-closed and one shared, already-validated cache (feature doc {@code
+ * rest-followups.md}, F3; TRD §6.1/§9, TAC-13).</b> {@code embeddingCacheStartupValidator}
+ * below loads {@code localEmbeddingRepository} unconditionally, and {@code
+ * apiEmbeddingRepository} only in {@code cached} mode, once every singleton bean is built, so a
+ * mismatched {@code corpusSha256} stops the boot instead of only surfacing on the first
+ * request. Both {@code JsonEmbeddingRepository}-backed beans are wrapped in {@link
+ * MemoizingEmbeddingRepository} for exactly this reason: without it, that startup call would
+ * just be one more full re-read and re-validation on top of the one every request already
+ * pays for (each of {@code SimilarityService}/{@code ClusteringService}/{@code
+ * EmbeddingsService} calls {@code EmbeddingRepository#load()} per request); wrapping the bean
+ * makes the startup call and every later request-time call share the exact same parsed cache
+ * instead. The {@code live}-mode {@link LiveApiEmbeddingRepository} is never wrapped or
+ * validated at startup — it is not a file-backed cache, and TAC-13 explicitly excludes it.
  */
 @Configuration
 public class DomainConfiguration {
@@ -84,7 +101,8 @@ public class DomainConfiguration {
     @Bean(name = "localEmbeddingRepository")
     public EmbeddingRepository localEmbeddingRepository(CorpusRepository corpusRepository) {
         Corpus corpus = corpusRepository.load();
-        return new JsonEmbeddingRepository(LOCAL_EMBEDDINGS_PATH, MiniLmEmbedder.PROVIDER, corpus.corpusSha256());
+        return new MemoizingEmbeddingRepository(
+                new JsonEmbeddingRepository(LOCAL_EMBEDDINGS_PATH, MiniLmEmbedder.PROVIDER, corpus.corpusSha256()));
     }
 
     @Bean(name = "apiEmbeddingRepository")
@@ -98,8 +116,29 @@ public class DomainConfiguration {
             return new LiveApiEmbeddingRepository(corpusRepository, apiKey, baseUrl, apiModel, apiDimension);
         }
         Corpus corpus = corpusRepository.load();
-        return new JsonEmbeddingRepository(API_EMBEDDINGS_PATH, OpenAiCompatibleEmbedder.PROVIDER,
-                corpus.corpusSha256());
+        return new MemoizingEmbeddingRepository(new JsonEmbeddingRepository(API_EMBEDDINGS_PATH,
+                OpenAiCompatibleEmbedder.PROVIDER, corpus.corpusSha256()));
+    }
+
+    /**
+     * TRD §6.1/§9, TAC-13: fails application startup, not just the first request, when a
+     * cache the configured mode actually serves was precomputed for a different corpus
+     * (feature doc {@code rest-followups.md}, F3). Registered as a {@link
+     * SmartInitializingSingleton} — Spring's standard hook for "run this once every singleton
+     * bean, including both {@code EmbeddingRepository} beans above, is fully constructed" —
+     * so {@link EmbeddingCacheStartupValidator#validate()}'s {@link IllegalStateException} (on
+     * a {@code corpusSha256} mismatch, naming the {@code precomputeEmbeddings} task) still
+     * aborts {@code refresh()} instead of only surfacing on the first request that needs the
+     * mismatched cache.
+     */
+    @Bean
+    public SmartInitializingSingleton embeddingCacheStartupValidator(
+            @Qualifier("localEmbeddingRepository") EmbeddingRepository localEmbeddingRepository,
+            @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository,
+            LegajoProperties legajoProperties) {
+        EmbeddingCacheStartupValidator validator = new EmbeddingCacheStartupValidator(
+                localEmbeddingRepository, apiEmbeddingRepository, legajoProperties.embeddingProvider());
+        return validator::validate;
     }
 
     @Bean
