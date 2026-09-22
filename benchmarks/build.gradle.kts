@@ -4,10 +4,24 @@
 
 plugins {
     alias(libs.plugins.jmh)
+    alias(libs.plugins.spring.dependency.management)
+}
+
+// Jackson 3 (package tools.jackson.*) has no standalone BOM alias in the catalog; importing
+// the Spring Boot BOM keeps this module's Jackson version aligned with the rest of the
+// backend (infrastructure/build.gradle.kts uses the identical import for the identical
+// reason). Used here only to read data/corpus.json for the real-corpus benchmarks and JMH's
+// own JSON results file for the CSV/slopes exporter (J2) -- never for an R-02-covered
+// algorithm, which this module only ever calls into :domain for.
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.boot:spring-boot-dependencies:${libs.versions.springBoot.get()}")
+    }
 }
 
 dependencies {
     implementation(project(":domain"))
+    implementation(libs.jackson.databind)
     jmh(project(":domain"))
 
     testImplementation(platform(libs.junit.bom))
