@@ -329,6 +329,40 @@ class SimilarityServiceTest {
                 .isEqualTo(ProblemType.UNKNOWN_DOCUMENT);
     }
 
+    /**
+     * R3-matrix-repeated-preprocess: an m×m matrix must preprocess each selected document once,
+     * not once per cell (m² times). Jaccard needs no TF-IDF corpus index, so every counted call
+     * comes from the matrix itself.
+     */
+    @Test
+    void matrixPreprocessesEachSelectedDocumentExactlyOnce() {
+        java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+        SimilarityService counting = new SimilarityService(corpusRepository, registry, localEmbeddingRepository,
+                apiEmbeddingRepository, new NoOpRequestCache<>(), text -> {
+                    calls.incrementAndGet();
+                    return List.of(text.split(" "));
+                });
+
+        counting.matrix(List.of("d01", "d02", "d03"), "jaccard");
+
+        assertThat(calls.get()).isEqualTo(3);
+    }
+
+    /** compare() tokenizes each of its two documents once, however many algorithms run. */
+    @Test
+    void comparePreprocessesEachDocumentOnceAcrossAllClassicAlgorithms() {
+        java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+        SimilarityService counting = new SimilarityService(corpusRepository, registry, localEmbeddingRepository,
+                apiEmbeddingRepository, new NoOpRequestCache<>(), text -> {
+                    calls.incrementAndGet();
+                    return List.of(text.split(" "));
+                });
+
+        counting.compare("d01", "d02", List.of("levenshtein", "needleman-wunsch", "jaccard"));
+
+        assertThat(calls.get()).isEqualTo(2);
+    }
+
     private static final class FakeCorpusRepository implements CorpusRepository {
         private final Corpus corpus;
 

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * Orchestration behind the four similarity endpoints of TRD §6.6: {@code
@@ -61,11 +62,20 @@ public final class SimilarityService {
     private final EmbeddingRepository localEmbeddingRepository;
     private final EmbeddingRepository apiEmbeddingRepository;
     private final RequestCache<SimilarityCacheKey, SimilarityResult> cache;
-    private final TextPreprocessor textPreprocessor = new TextPreprocessor();
+    private final Function<String, List<String>> tokenizer;
 
     public SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
             EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
             RequestCache<SimilarityCacheKey, SimilarityResult> cache) {
+        this(corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository, cache,
+                preprocessor());
+    }
+
+    /** Test seam: {@code tokenizer} replaces the TRD §6.2 preprocessing so calls can be counted. */
+    SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
+            EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
+            RequestCache<SimilarityCacheKey, SimilarityResult> cache, Function<String, List<String>> tokenizer) {
+        this.tokenizer = Objects.requireNonNull(tokenizer, "tokenizer");
         this.corpusRepository = Objects.requireNonNull(corpusRepository, "corpusRepository");
         this.registry = Objects.requireNonNull(registry, "registry");
         this.localEmbeddingRepository = Objects.requireNonNull(localEmbeddingRepository, "localEmbeddingRepository");
@@ -97,10 +107,12 @@ public final class SimilarityService {
         Map<String, EmbeddingVector> localVectors = loadVectorsIfNeeded(algorithms, "embedding-local", localEmbeddingRepository);
         Map<String, EmbeddingVector> apiVectors = loadVectorsIfNeeded(algorithms, "embedding-api", apiEmbeddingRepository);
 
+        List<String> tokensA = tokenizer.apply(documentA.abstractText());
+        List<String> tokensB = tokenizer.apply(documentB.abstractText());
         List<AlgorithmSimilarity> results = new ArrayList<>(algorithms.size());
         for (SimilarityAlgorithm algorithm : algorithms) {
-            SimilarityInput inputA = inputFor(documentA, algorithm, localVectors, apiVectors);
-            SimilarityInput inputB = inputFor(documentB, algorithm, localVectors, apiVectors);
+            SimilarityInput inputA = inputFor(documentA, tokensA, algorithm, localVectors, apiVectors);
+            SimilarityInput inputB = inputFor(documentB, tokensB, algorithm, localVectors, apiVectors);
             results.add(computeCached(algorithm, inputA, inputB, context, documentIdA, documentIdB));
         }
         return List.copyOf(results);
@@ -136,13 +148,19 @@ public final class SimilarityService {
         Map<String, EmbeddingVector> apiVectors =
                 loadVectorsIfNeeded(List.of(algorithm), "embedding-api", apiEmbeddingRepository);
 
+        // Each selected document is preprocessed once, not once per cell.
+        List<SimilarityInput> inputs = documents.stream()
+                .map(document -> inputFor(document, tokenizer.apply(document.abstractText()), algorithm,
+                        localVectors, apiVectors))
+                .toList();
+
         List<List<CachedSimilarityResult>> rows = new ArrayList<>(m);
         for (int i = 0; i < m; i++) {
             List<CachedSimilarityResult> row = new ArrayList<>(m);
-            SimilarityInput inputI = inputFor(documents.get(i), algorithm, localVectors, apiVectors);
+            SimilarityInput inputI = inputs.get(i);
             String documentIdI = documents.get(i).id();
             for (int j = 0; j < m; j++) {
-                SimilarityInput inputJ = inputFor(documents.get(j), algorithm, localVectors, apiVectors);
+                SimilarityInput inputJ = inputs.get(j);
                 String documentIdJ = documents.get(j).id();
                 AlgorithmSimilarity cell = computeCached(algorithm, inputI, inputJ, context, documentIdI, documentIdJ);
                 row.add(new CachedSimilarityResult(cell.result(), cell.cached()));
@@ -188,8 +206,10 @@ public final class SimilarityService {
         Map<String, EmbeddingVector> apiVectors =
                 loadVectorsIfNeeded(List.of(algorithm), "embedding-api", apiEmbeddingRepository);
 
-        SimilarityInput inputA = inputFor(documentA, algorithm, localVectors, apiVectors);
-        SimilarityInput inputB = inputFor(documentB, algorithm, localVectors, apiVectors);
+        SimilarityInput inputA = inputFor(documentA, tokenizer.apply(documentA.abstractText()), algorithm,
+                localVectors, apiVectors);
+        SimilarityInput inputB = inputFor(documentB, tokenizer.apply(documentB.abstractText()), algorithm,
+                localVectors, apiVectors);
         return algorithm.trace(inputA, inputB, context);
     }
 
@@ -243,7 +263,7 @@ public final class SimilarityService {
             return SimilarityContext.EMPTY;
         }
         List<List<String>> corpusTokenStreams = corpus.documents().stream()
-                .map(document -> textPreprocessor.preprocess(document.abstractText()).tokens())
+                .map(document -> tokenizer.apply(document.abstractText()))
                 .toList();
         return SimilarityContext.withTfIdfIndex(TfIdfCorpusIndex.from(corpusTokenStreams));
     }
@@ -261,9 +281,13 @@ public final class SimilarityService {
         return byDocumentId;
     }
 
-    private SimilarityInput inputFor(CorpusDocument document, SimilarityAlgorithm algorithm,
+    private static Function<String, List<String>> preprocessor() {
+        TextPreprocessor textPreprocessor = new TextPreprocessor();
+        return text -> textPreprocessor.preprocess(text).tokens();
+    }
+
+    private SimilarityInput inputFor(CorpusDocument document, List<String> tokens, SimilarityAlgorithm algorithm,
             Map<String, EmbeddingVector> localVectors, Map<String, EmbeddingVector> apiVectors) {
-        List<String> tokens = textPreprocessor.preprocess(document.abstractText()).tokens();
         EmbeddingVector vector = switch (algorithm.id()) {
             case "embedding-local" -> requireVector(localVectors, document.id(), "embedding-local");
             case "embedding-api" -> requireVector(apiVectors, document.id(), "embedding-api");
