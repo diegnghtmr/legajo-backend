@@ -15,6 +15,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
@@ -126,6 +127,34 @@ class LiveApiEmbeddingRepositoryTest {
      * next {@code load()} re-requests every document, not just the ones the failed attempt
      * happened not to reach.
      */
+    /**
+     * TRD 1.3.7 §6.3: each document is requested at most once per process, including when two
+     * requests arrive together on a cold cache (a bulk {@code getAll} alone is not atomic).
+     */
+    @Test
+    void concurrentColdLoadsSendASingleBatchedRequest() throws Exception {
+        stubEmbeddingResponse(3, java.util.Collections.nCopies(3, "[1.0, 0.0, 0.0, 0.0]"), 500);
+        LiveApiEmbeddingRepository repository =
+                new LiveApiEmbeddingRepository(corpusRepository, "test-key", wireMockServer.baseUrl(), MODEL, DIMENSION);
+        java.util.concurrent.CountDownLatch start = new java.util.concurrent.CountDownLatch(1);
+
+        try (var executor = java.util.concurrent.Executors.newFixedThreadPool(4)) {
+            List<java.util.concurrent.Future<EmbeddingCache>> loads = new ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                loads.add(executor.submit(() -> {
+                    start.await();
+                    return repository.load();
+                }));
+            }
+            start.countDown();
+            for (java.util.concurrent.Future<EmbeddingCache> load : loads) {
+                assertThat(load.get().vectors()).hasSize(3);
+            }
+        }
+
+        wireMockServer.verify(1, postRequestedFor(urlEqualTo("/embeddings")));
+    }
+
     @Test
     void aProviderVectorCountMismatchFailsClosedAndANextLoadRetriesEveryDocument() {
         stubEmbeddingResponse(2, "[1.0, 0.0, 0.0, 0.0]"); // corpus has 3 documents, provider returns 2
@@ -223,6 +252,10 @@ class LiveApiEmbeddingRepositoryTest {
 
     /** Stubs a batch response with one distinct embedding array per item, in order. */
     private void stubEmbeddingResponse(int count, List<String> embeddingArrays) {
+        stubEmbeddingResponse(count, embeddingArrays, 0);
+    }
+
+    private void stubEmbeddingResponse(int count, List<String> embeddingArrays, int delayMillis) {
         if (embeddingArrays.size() != count) {
             throw new IllegalArgumentException("embeddingArrays must have exactly " + count + " entries");
         }
@@ -244,7 +277,8 @@ class LiveApiEmbeddingRepositoryTest {
                 }
                 """.formatted(items, MODEL, count * 3, count * 3);
         wireMockServer.stubFor(post(urlEqualTo("/embeddings"))
-                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody(body)));
+                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody(body)
+                        .withFixedDelay(delayMillis)));
     }
 
     private static JsonNode requestBodyOf(com.github.tomakehurst.wiremock.stubbing.ServeEvent event) {

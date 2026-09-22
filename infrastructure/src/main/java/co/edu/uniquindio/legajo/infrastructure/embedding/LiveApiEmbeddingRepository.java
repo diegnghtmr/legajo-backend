@@ -101,13 +101,22 @@ public final class LiveApiEmbeddingRepository implements EmbeddingRepository {
         this.timeout = timeout;
     }
 
+    private final Object batchLock = new Object();
+
     @Override
     public EmbeddingCache load() {
         Corpus corpus = corpusRepository.load();
         List<CorpusDocument> documents = corpus.documents();
         List<String> ids = documents.stream().map(CorpusDocument::id).toList();
 
-        Map<String, EmbeddingVector> byDocumentId = cache.getAll(ids, missingIds -> fetchMissing(documents, missingIds));
+        Map<String, EmbeddingVector> byDocumentId = cache.getAllPresent(ids);
+        if (byDocumentId.size() < ids.size()) {
+            // getAll alone is not atomic across callers: two cold loads would both fetch. The
+            // lock keeps "each document requested at most once per process" (TRD 1.3.7 §6.3).
+            synchronized (batchLock) {
+                byDocumentId = cache.getAll(ids, missingIds -> fetchMissing(documents, missingIds));
+            }
+        }
 
         List<EmbeddingVector> vectors = new ArrayList<>(documents.size());
         for (CorpusDocument document : documents) {
