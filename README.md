@@ -69,7 +69,7 @@ git — use the hosting provider's secret panel in production).
 | Variable | Read by | Required | Notes |
 |---|---|---|---|
 | `LEGAJO_EMBEDDING_PROVIDER` | `application.yml` (`legajo.embedding-provider`) | No, defaults to `cached` | `cached` reads `data/embeddings-*.json`, no network needed |
-| `LEGAJO_CORS_ORIGINS` | `application.yml` (`legajo.cors-origins`) | No, defaults to empty | Comma-separated browser origins allowed by CORS (TRD §14.4) |
+| `LEGAJO_CORS_ORIGINS` | `application.yml` (`legajo.cors-origins`) | No, defaults to `http://localhost:5173` and `http://localhost` | Comma-separated browser origins allowed by CORS for `/api/v1/**`; a defined list replaces the defaults instead of adding to them (TRD §14.4) |
 | `SPRING_AI_OPENAI_BASE_URL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | OpenAI-compatible embeddings endpoint (Gemini, TRD §8) |
 | `SPRING_AI_OPENAI_API_KEY` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Read from the environment only; never logged or included in an exception message |
 | `LEGAJO_EMBEDDING_API_MODEL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | e.g. `gemini-embedding-2-preview` |

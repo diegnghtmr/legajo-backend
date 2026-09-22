@@ -9,14 +9,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * Makes {@code legajo.cors-origins} genuinely drive CORS (TRD §14.1/§14.3), the second of
  * the two dead configuration keys this feature makes live.
  *
- * <p><b>Empty means closed, not open (fixed by the feature document).</b> When {@link
- * LegajoProperties#corsOrigins()} is empty, this configurer registers no CORS mapping at
- * all, so Spring MVC applies no CORS headers and browsers block the cross-origin request by
- * their own same-origin policy. Registering a mapping with an empty {@code allowedOrigins}
- * array instead would be the opposite of "closed": {@code CorsConfiguration}'s own default-
- * value logic treats "no origin explicitly configured" as "allow every origin"
- * ({@code applyPermitDefaultValues()}), which is exactly the accidental wide-open
- * configuration this property must not produce when unset.
+ * <p><b>Defaults and replacement live in {@link LegajoProperties} (TRD §14.4, 1.3.8).</b>
+ * {@link LegajoProperties#corsOrigins()} already resolves an empty or absent
+ * {@code LEGAJO_CORS_ORIGINS} to the local development origins, and a defined list already
+ * replaces those defaults rather than adding to them — this class only registers whatever
+ * list it is handed. The {@code isEmpty()} guard below is defense in depth, not the normal
+ * path: {@link LegajoProperties} should never actually hand this class an empty list, but if
+ * it somehow did, registering a mapping with an empty {@code allowedOrigins} array would be
+ * the opposite of closed — {@code CorsConfiguration}'s own default-value logic treats "no
+ * origin explicitly configured" as "allow every origin" ({@code applyPermitDefaultValues()}) —
+ * so this configurer registers no mapping at all instead.
  */
 @Configuration
 @EnableConfigurationProperties(LegajoProperties.class)
