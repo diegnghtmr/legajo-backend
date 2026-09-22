@@ -1054,7 +1054,7 @@ components:
 
     LinkageResult:
       type: object
-      required: [linkageId, linkageDisplayName, rows, leafOrder, evaluation]
+      required: [linkageId, linkageDisplayName, rows, leafOrder, documentIds, evaluation]
       properties:
         linkageId:
           $ref: "#/components/schemas/LinkageId"
@@ -1069,6 +1069,15 @@ components:
           type: array
           items:
             type: integer
+        documentIds:
+          type: array
+          description: >-
+            Length n; position i is the id of the document behind observation
+            i, in the order of corpus.json (the same order GET /corpus lists).
+            idx1/idx2 (< n) and leafOrder index into this same order (TRD
+            1.3.9).
+          items:
+            type: string
         evaluation:
           $ref: "#/components/schemas/ClusteringEvaluation"
 
@@ -1085,7 +1094,7 @@ components:
 
     ClusterAssignment:
       type: object
-      required: [labels, k]
+      required: [labels, k, documentIds]
       properties:
         labels:
           type: array
@@ -1093,6 +1102,14 @@ components:
             type: integer
         k:
           type: integer
+        documentIds:
+          type: array
+          description: >-
+            Length n, aligned with labels: documentIds[i] is the document
+            whose cluster is labels[i], in the order of corpus.json (the same
+            order GET /corpus lists, TRD 1.3.9).
+          items:
+            type: string
 
     EmbeddingLocalStatus:
       type: object

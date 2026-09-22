@@ -158,6 +158,65 @@ class ClusteringEndToEndTest {
         assertThat(wardFirst.get("mergeDistance").asDouble()).isCloseTo(2.0 * singleHeight, within(1e-9));
     }
 
+    /**
+     * TRD 1.3.9 §6.4/§6.6: every {@code LinkageResult} of {@code POST /clustering} carries
+     * {@code documentIds}, length n = 20, equal to {@code GET /api/v1/corpus}'s ids in the
+     * same order — the order the server built the distance matrix from, and the order
+     * {@code idx1}/{@code idx2} and {@code leafOrder} index into.
+     */
+    @Test
+    void documentIdsOnEveryLinkageMatchTheCorpusOrderFromGetCorpus() throws IOException, InterruptedException {
+        List<String> corpusIds = getCorpusIdsInOrder();
+
+        JsonNode results = postJson("/api/v1/clustering", "{}");
+
+        assertThat(results).hasSize(4);
+        for (JsonNode result : results) {
+            List<String> documentIds = new ArrayList<>();
+            for (JsonNode id : result.get("documentIds")) {
+                documentIds.add(id.asString());
+            }
+            assertThat(documentIds).as("linkage %s", result.get("linkageId").asString())
+                    .hasSize(N)
+                    .containsExactlyElementsOf(corpusIds);
+        }
+    }
+
+    /**
+     * TRD 1.3.9 §6.4/§6.6: {@code POST /clustering/cut}'s response also carries {@code
+     * documentIds}, length n = 20, aligned with {@code labels}, equal to {@code GET
+     * /api/v1/corpus}'s ids in order.
+     */
+    @Test
+    void cutDocumentIdsMatchTheCorpusOrderFromGetCorpusAndAlignWithLabels() throws IOException, InterruptedException {
+        List<String> corpusIds = getCorpusIdsInOrder();
+
+        JsonNode result = postJson("/api/v1/clustering/cut",
+                "{\"representation\":\"tfidf-cosine\",\"linkage\":\"average\",\"k\":3}");
+
+        List<String> documentIds = new ArrayList<>();
+        for (JsonNode id : result.get("documentIds")) {
+            documentIds.add(id.asString());
+        }
+        assertThat(documentIds).hasSize(N).containsExactlyElementsOf(corpusIds);
+        assertThat(result.get("labels").size()).as("labels must align position-by-position with documentIds")
+                .isEqualTo(documentIds.size());
+    }
+
+    private List<String> getCorpusIdsInOrder() throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v1/corpus"))
+                .GET()
+                .build();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).isEqualTo(200);
+        JsonNode corpus = jsonMapper.readTree(response.body());
+        List<String> ids = new ArrayList<>();
+        for (JsonNode document : corpus) {
+            ids.add(document.get("id").asString());
+        }
+        return ids;
+    }
+
     @Test
     void clusteringOverTheEmbeddingLocalRepresentationProducesTac03Shape() throws IOException, InterruptedException {
         JsonNode results = postJson("/api/v1/clustering", "{\"representation\":\"embedding-local\"}");

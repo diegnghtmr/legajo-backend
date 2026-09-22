@@ -4,7 +4,6 @@ import co.edu.uniquindio.legajo.application.cache.FakeRequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ProblemType;
 import co.edu.uniquindio.legajo.application.error.ResourceNotFoundException;
-import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
@@ -96,12 +95,66 @@ class ClusteringServiceTest {
         assertThat(evaluation.daviesBouldinByK()).isNotEmpty().isEqualTo(fullEvaluation.daviesBouldinByK());
     }
 
+    /**
+     * TRD 1.3.9 §6.4/§6.6: each {@code LinkageRunResult} carries {@code documentIds}, the
+     * document behind each observation index, in {@code corpus.json} order. The fixture
+     * corpus here is deliberately *not* alphabetical by id (d03, d01, d05, d02, d04), so a
+     * bug that sorted ids before returning them (instead of reusing the exact order the
+     * distance matrix was built from) would still fail this assertion.
+     */
+    @Test
+    void runsDocumentIdsMatchCorpusOrderNotAlphabeticalOrder() {
+        List<CorpusDocument> unsortedDocs = List.of(
+                doc("d03", "stock markets and interest rates move the global economy"),
+                doc("d01", "cats and dogs are common household pets around the world"),
+                doc("d05", "volcanoes and earthquakes reshape the surface of the earth"),
+                doc("d02", "dogs are loyal pets that live with families at home"),
+                doc("d04", "interest rates set by central banks affect stock markets"));
+        Corpus unsortedCorpus = new Corpus("1.0", unsortedDocs.size(), "corpus-sha", unsortedDocs);
+        ClusteringService unsortedService = new ClusteringService(new FakeCorpusRepository(unsortedCorpus),
+                localEmbeddingRepository, apiEmbeddingRepository, new FakeRequestCache<>());
+
+        List<LinkageRunResult> results = unsortedService.run(Representation.TFIDF_COSINE, List.of("single"));
+
+        assertThat(results).allSatisfy(r -> assertThat(r.documentIds())
+                .as("documentIds must mirror corpus.json order, not a sorted order")
+                .containsExactly("d03", "d01", "d05", "d02", "d04"));
+    }
+
     @Test
     void cutAtAFreeKReturnsLabelsForExactlyThatK() {
-        ClusterAssignment assignment = service.cut(Representation.TFIDF_COSINE, "average", 2);
+        ClusteringCutResult result = service.cut(Representation.TFIDF_COSINE, "average", 2);
 
-        assertThat(assignment.k()).isEqualTo(2);
-        assertThat(assignment.labels()).hasSize(DOCS.size());
+        assertThat(result.assignment().k()).isEqualTo(2);
+        assertThat(result.assignment().labels()).hasSize(DOCS.size());
+    }
+
+    /**
+     * TRD 1.3.9 §6.4/§6.6: {@code /clustering/cut}'s result also carries {@code
+     * documentIds}, aligned with {@code labels} position by position, in {@code corpus.json}
+     * order. Same non-alphabetical fixture as {@code runsDocumentIdsMatchCorpusOrder...} so a
+     * sorted-id bug would still fail here.
+     */
+    @Test
+    void cutDocumentIdsMatchCorpusOrderAndAlignWithLabels() {
+        List<CorpusDocument> unsortedDocs = List.of(
+                doc("d03", "stock markets and interest rates move the global economy"),
+                doc("d01", "cats and dogs are common household pets around the world"),
+                doc("d05", "volcanoes and earthquakes reshape the surface of the earth"),
+                doc("d02", "dogs are loyal pets that live with families at home"),
+                doc("d04", "interest rates set by central banks affect stock markets"));
+        Corpus unsortedCorpus = new Corpus("1.0", unsortedDocs.size(), "corpus-sha", unsortedDocs);
+        ClusteringService unsortedService = new ClusteringService(new FakeCorpusRepository(unsortedCorpus),
+                localEmbeddingRepository, apiEmbeddingRepository, new FakeRequestCache<>());
+
+        ClusteringCutResult result = unsortedService.cut(Representation.TFIDF_COSINE, "average", 2);
+
+        assertThat(result.documentIds())
+                .as("documentIds must mirror corpus.json order, not a sorted order")
+                .containsExactly("d03", "d01", "d05", "d02", "d04");
+        assertThat(result.documentIds())
+                .as("documentIds must be aligned position-by-position with labels")
+                .hasSameSizeAs(result.assignment().labels());
     }
 
     @Test
@@ -179,11 +232,11 @@ class ClusteringServiceTest {
         service.run(Representation.TFIDF_COSINE, List.of("average"));
         int cacheSizeAfterRun = cache.size();
 
-        ClusterAssignment assignment = service.cut(Representation.TFIDF_COSINE, "average", 3);
+        ClusteringCutResult result = service.cut(Representation.TFIDF_COSINE, "average", 3);
 
         assertThat(cacheSizeAfterRun).isEqualTo(1);
         assertThat(cache.size()).as("cut must not add a second entry for the same key").isEqualTo(1);
-        assertThat(assignment.k()).isEqualTo(3);
+        assertThat(result.assignment().k()).isEqualTo(3);
 
         assertThatThrownBy(() -> service.cut(Representation.TFIDF_COSINE, "average", DOCS.size()))
                 .isInstanceOf(InvalidRequestException.class);

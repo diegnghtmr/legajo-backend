@@ -7,13 +7,16 @@ import java.util.Objects;
 
 /**
  * One linkage's full result within {@code POST /api/v1/clustering} (TRD §6.6): the
- * (n-1)-row linkage matrix, the crossing-free {@code leafOrder}, and its evaluation block.
+ * (n-1)-row linkage matrix, the crossing-free {@code leafOrder}, {@code documentIds}
+ * (TRD 1.3.9: length n, position i is the document of observation i, the same order
+ * {@code idx1}/{@code idx2} and {@code leafOrder} index into), and its evaluation block.
  */
 public record LinkageResultResponse(
         String linkageId,
         String linkageDisplayName,
         List<LinkageStepResponse> rows,
         List<Integer> leafOrder,
+        List<String> documentIds,
         ClusteringEvaluationResponse evaluation) {
 
     public static LinkageResultResponse from(LinkageRunResult result) {
@@ -23,6 +26,7 @@ public record LinkageResultResponse(
                 result.linkageDisplayName(),
                 result.rows().stream().map(LinkageStepResponse::from).toList(),
                 result.leafOrder(),
+                result.documentIds(),
                 ClusteringEvaluationResponse.from(result.evaluation()));
     }
 }
