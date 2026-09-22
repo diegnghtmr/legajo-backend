@@ -64,9 +64,17 @@ public final class BenchmarkFamilies {
 
     /**
      * Classifies one JMH result. {@code params} must contain exactly one of
-     * {@link #SIZE_PARAM_KEYS}; every other entry (e.g. {@code criterion}, {@code
-     * algorithmId}) is appended to the base label, in map iteration order, to distinguish
-     * curves that share one benchmark class.
+     * {@link #SIZE_PARAM_KEYS} (more than one is rejected as ambiguous harness metadata,
+     * never silently resolved by {@link #SIZE_PARAM_KEYS}' lookup order); every other entry
+     * (e.g. {@code criterion}, {@code algorithmId}) is appended to the base label, sorted by
+     * key, to distinguish curves that share one benchmark class deterministically regardless
+     * of {@code params}' own iteration order.
+     *
+     * <p>A non-numeric size value fails with an {@link IllegalArgumentException} naming the
+     * benchmark, the offending parameter key and its raw value, rather than defaulting to a
+     * misleading number: callers exporting many records ({@link JmhResultsCsvWriter},
+     * {@link SlopesCsvWriter}) catch this per record and skip only that one, so one malformed
+     * result never aborts the whole export.
      */
     public static BenchmarkFamily classify(String benchmark, Map<String, String> params) {
         Objects.requireNonNull(benchmark, "benchmark");
@@ -81,15 +89,30 @@ public final class BenchmarkFamilies {
         String simpleClass = segments[segments.length - 2];
         String baseLabel = BASE_LABELS.getOrDefault(simpleClass + "#" + method, simpleClass + "." + method);
 
-        String sizeKey = SIZE_PARAM_KEYS.stream()
-                .filter(params::containsKey)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "no recognized size parameter (%s) in %s".formatted(SIZE_PARAM_KEYS, params)));
-        double size = Double.parseDouble(params.get(sizeKey));
+        List<String> presentSizeKeys = SIZE_PARAM_KEYS.stream().filter(params::containsKey).toList();
+        if (presentSizeKeys.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "no recognized size parameter (%s) in %s".formatted(SIZE_PARAM_KEYS, params));
+        }
+        if (presentSizeKeys.size() > 1) {
+            throw new IllegalArgumentException(
+                    "expected exactly one size parameter among %s for benchmark '%s', found %s in %s"
+                            .formatted(SIZE_PARAM_KEYS, benchmark, presentSizeKeys, params));
+        }
+        String sizeKey = presentSizeKeys.get(0);
+        String rawSize = params.get(sizeKey);
+        double size;
+        try {
+            size = Double.parseDouble(rawSize);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "size parameter '%s' for benchmark '%s' is not numeric: '%s'"
+                            .formatted(sizeKey, benchmark, rawSize), e);
+        }
 
         String suffix = params.entrySet().stream()
                 .filter(entry -> !entry.getKey().equals(sizeKey))
+                .sorted(Map.Entry.comparingByKey())
                 .map(Map.Entry::getValue)
                 .collect(Collectors.joining("-"));
         String family = suffix.isEmpty() ? baseLabel : baseLabel + "-" + suffix;

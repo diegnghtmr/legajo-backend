@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.benchmarks.export;
 
+import tools.jackson.core.JacksonException;
 import tools.jackson.core.json.JsonReadFeature;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -28,13 +29,20 @@ public final class JmhJsonResultsReader {
     private JmhJsonResultsReader() {
     }
 
-    /** Reads and parses every entry of {@code resultsJson} (a JMH {@code -rf JSON} array). */
+    /**
+     * Reads and parses every entry of {@code resultsJson} (a JMH {@code -rf JSON} array).
+     * Malformed or truncated JSON fails with a message naming {@code resultsJson}: Jackson 3
+     * raises its parsing failures as the unchecked {@link JacksonException}, which by itself
+     * carries no reference to the file this reader opened it from.
+     */
     public static List<JmhResultRecord> read(Path resultsJson) {
         try (InputStream in = Files.newInputStream(resultsJson)) {
             JmhRawEntry[] entries = MAPPER.readValue(in, JmhRawEntry[].class);
             return List.of(entries).stream().map(JmhRawEntry::toResultRecord).toList();
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read JMH results from " + resultsJson, e);
+        } catch (JacksonException e) {
+            throw new IllegalStateException("failed to parse JMH results JSON from " + resultsJson, e);
         }
     }
 }

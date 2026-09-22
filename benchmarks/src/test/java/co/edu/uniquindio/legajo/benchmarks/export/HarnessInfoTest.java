@@ -1,6 +1,12 @@
 package co.edu.uniquindio.legajo.benchmarks.export;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,5 +63,31 @@ class HarnessInfoTest {
         for (String line : info.toHeaderLines()) {
             assertThat(line).startsWith("#");
         }
+    }
+
+    @Test
+    void readsCpuModelNameFromAProcCpuinfoStyleFile(@TempDir Path tempDir) throws IOException {
+        Path cpuinfo = tempDir.resolve("cpuinfo");
+        Files.writeString(cpuinfo, "processor\t: 0\nmodel name\t: Test CPU Model\ncache size\t: 512 KB\n");
+
+        Optional<String> modelName = HarnessInfo.readCpuModelNameFrom(cpuinfo);
+
+        assertThat(modelName).contains("Test CPU Model");
+    }
+
+    @Test
+    void returnsEmptyWhenTheCpuinfoFileDoesNotExist(@TempDir Path tempDir) {
+        Path missing = tempDir.resolve("does-not-exist");
+
+        Optional<String> modelName = HarnessInfo.readCpuModelNameFrom(missing);
+
+        assertThat(modelName).isEmpty();
+    }
+
+    @Test
+    void returnsEmptyInsteadOfThrowingWhenTheCpuinfoPathIsADirectory(@TempDir Path tempDir) {
+        Optional<String> modelName = HarnessInfo.readCpuModelNameFrom(tempDir);
+
+        assertThat(modelName).isEmpty();
     }
 }

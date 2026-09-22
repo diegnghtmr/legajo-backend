@@ -42,9 +42,11 @@ public final class SyntheticTokenSequences {
         int poolSize = tokenPool.size();
         int offsetA = Math.floorMod(seed, poolSize);
         // A second, deliberately different offset (never equal to offsetA when poolSize > 1):
-        // shifting by half the pool plus a fixed odd stride avoids the two sequences starting
-        // at the same place, without needing randomness.
-        int offsetB = Math.floorMod(offsetA + poolSize / 2 + 1, poolSize);
+        // shifting by half the pool (at least 1) avoids the two sequences starting at the same
+        // place, without needing randomness. The stride must stay below poolSize and non-zero
+        // modulo poolSize for every poolSize > 1, including poolSize == 2 (stride 1).
+        int stride = Math.max(1, poolSize / 2);
+        int offsetB = Math.floorMod(offsetA + stride, poolSize);
 
         return new TokenSequencePair(cycle(tokenPool, offsetA, length), cycle(tokenPool, offsetB, length));
     }

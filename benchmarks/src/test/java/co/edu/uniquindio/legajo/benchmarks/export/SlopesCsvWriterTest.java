@@ -70,6 +70,39 @@ class SlopesCsvWriterTest {
         assertThat(lines).hasSize(1);
     }
 
+    @Test
+    void excludesAFamilyWhoseTwoPointsShareTheSameSizeInsteadOfThrowing(@TempDir Path tempDir) throws IOException {
+        Path output = tempDir.resolve("slopes.csv");
+        List<JmhResultRecord> records = List.of(
+                new JmhResultRecord(
+                        "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                        Map.of("length", "50"), 10.0, 0.0, "us/op", "avgt", 1, 3, "1 s", 5, "1 s"),
+                new JmhResultRecord(
+                        "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                        Map.of("length", "50"), 12.0, 0.0, "us/op", "avgt", 1, 3, "1 s", 5, "1 s"));
+
+        SlopesCsvWriter.write(output, records);
+
+        List<String> lines = Files.readAllLines(output);
+        assertThat(lines).hasSize(1);
+    }
+
+    @Test
+    void skipsARecordWithANonNumericSizeAndStillExportsTheOtherFamilies(@TempDir Path tempDir) throws IOException {
+        Path output = tempDir.resolve("slopes.csv");
+        JmhResultRecord badRecord = new JmhResultRecord(
+                "co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute",
+                Map.of("length", "not-a-number"), 1.0, 0.0, "us/op", "avgt", 1, 3, "1 s", 5, "1 s");
+        List<JmhResultRecord> records = new ArrayList<>(quadraticLevenshteinRecords());
+        records.add(badRecord);
+
+        SlopesCsvWriter.write(output, records);
+
+        List<String> lines = Files.readAllLines(output);
+        assertThat(lines).hasSize(2);
+        assertThat(lines.get(1)).isEqualTo("levenshtein,5,2.000000,2.000000");
+    }
+
     private static List<JmhResultRecord> quadraticLevenshteinRecords() {
         List<JmhResultRecord> records = new ArrayList<>();
         for (int length : LENGTHS) {

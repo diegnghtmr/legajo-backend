@@ -79,4 +79,30 @@ class LogLogSlopeTest {
         assertThatThrownBy(() -> LogLogSlope.of(List.of(new SizeScore(1, 0.0), new SizeScore(2, 2.0))))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void rejectsANonFiniteSize() {
+        assertThatThrownBy(() -> LogLogSlope.of(List.of(new SizeScore(Double.NaN, 1.0), new SizeScore(2, 2.0))))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsAnInfiniteSize() {
+        assertThatThrownBy(() -> LogLogSlope
+                .of(List.of(new SizeScore(Double.POSITIVE_INFINITY, 1.0), new SizeScore(2, 2.0))))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsANonFiniteScore() {
+        assertThatThrownBy(() -> LogLogSlope.of(List.of(new SizeScore(1, Double.NaN), new SizeScore(2, 2.0))))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rejectsAnInfiniteScore() {
+        assertThatThrownBy(() -> LogLogSlope
+                .of(List.of(new SizeScore(1, Double.POSITIVE_INFINITY), new SizeScore(2, 2.0))))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

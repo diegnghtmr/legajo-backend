@@ -1,12 +1,14 @@
 package co.edu.uniquindio.legajo.benchmarks.export;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 /**
  * The reference-harness metadata TRD NFR-QA-10 requires in the CSV header and the README
@@ -37,21 +39,28 @@ public record HarnessInfo(
     }
 
     private static String detectCpuModel() {
-        return readProcCpuInfoModelName().orElse("unknown (" + System.getProperty("os.arch", "unknown") + ")");
+        return readCpuModelNameFrom(Path.of("/proc/cpuinfo"))
+                .orElse("unknown (" + System.getProperty("os.arch", "unknown") + ")");
     }
 
-    /** Linux-only: {@code /proc/cpuinfo}'s first {@code model name} line. Empty on any other OS or failure. */
-    private static Optional<String> readProcCpuInfoModelName() {
-        Path cpuInfo = Path.of("/proc/cpuinfo");
+    /**
+     * Linux-only: {@code cpuInfo}'s (typically {@code /proc/cpuinfo}) first {@code model name}
+     * line. Empty when the path is missing, unreadable, not a plain file, or fails while being
+     * read (either {@link IOException} at open time or {@link UncheckedIOException} raised by
+     * {@link Files#lines} while the stream is consumed). Package-private for direct testing
+     * against a fixture file instead of the real {@code /proc/cpuinfo}. The stream is closed
+     * via try-with-resources: {@link Files#lines} holds an open file handle until closed.
+     */
+    static Optional<String> readCpuModelNameFrom(Path cpuInfo) {
         if (!Files.isReadable(cpuInfo)) {
             return Optional.empty();
         }
-        try {
-            return Files.lines(cpuInfo)
+        try (Stream<String> lines = Files.lines(cpuInfo)) {
+            return lines
                     .filter(line -> line.startsWith("model name"))
                     .map(line -> line.substring(line.indexOf(':') + 1).strip())
                     .findFirst();
-        } catch (IOException e) {
+        } catch (IOException | UncheckedIOException e) {
             return Optional.empty();
         }
     }

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for the benchmark-to-family/size-key/theoretical-exponent mapping (TRD
@@ -95,5 +96,44 @@ class BenchmarkFamiliesTest {
         Optional<Double> exponent = BenchmarkFamilies.theoreticalExponentOf("some-unknown-family");
 
         assertThat(exponent).isEmpty();
+    }
+
+    @Test
+    void buildsTheFamilySuffixFromNonSizeParamsInSortedKeyOrderRegardlessOfMapIterationOrder() {
+        String benchmark = "co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate";
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("zetaParam", "z-value");
+        params.put("n", "40");
+        params.put("alphaParam", "a-value");
+
+        BenchmarkFamily family = BenchmarkFamilies.classify(benchmark, params);
+
+        // Sorted by key ("alphaParam" < "zetaParam"), never map insertion or iteration order.
+        assertThat(family.family()).isEqualTo("hac-a-value-z-value");
+    }
+
+    @Test
+    void rejectsMoreThanOneRecognizedSizeParameter() {
+        String benchmark = "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute";
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("length", "50");
+        params.put("n", "20");
+
+        assertThatThrownBy(() -> BenchmarkFamilies.classify(benchmark, params))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("length")
+                .hasMessageContaining("n");
+    }
+
+    @Test
+    void rejectsANonNumericSizeWithAClearMessageInsteadOfAbortingTheWholeExport() {
+        String benchmark = "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute";
+        Map<String, String> params = Map.of("length", "not-a-number");
+
+        assertThatThrownBy(() -> BenchmarkFamilies.classify(benchmark, params))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("length")
+                .hasMessageContaining("not-a-number")
+                .hasMessageContaining(benchmark);
     }
 }
