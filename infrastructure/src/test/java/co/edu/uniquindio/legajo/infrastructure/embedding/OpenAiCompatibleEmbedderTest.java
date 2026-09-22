@@ -3,14 +3,19 @@ package co.edu.uniquindio.legajo.infrastructure.embedding;
 import co.edu.uniquindio.legajo.similarity.EmbeddingVector;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
+import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -144,6 +149,87 @@ class OpenAiCompatibleEmbedderTest {
             assertThatThrownBy(() -> embedder.embed("d01", "an abstract"))
                     .isInstanceOf(EmbeddingApiException.class)
                     .hasMessageContaining("d01");
+        }
+    }
+
+    /**
+     * {@code R3-live-load-fetches-whole-corpus-serially}: {@link OpenAiCompatibleEmbedder#embedBatch}
+     * must send every abstract in ONE request (TRD §6.3) and map the returned vectors back to
+     * document ids strictly by position. Each stub vector below is distinct (a different
+     * one-hot direction) precisely so a positional mix-up (e.g. reversing the list, or an
+     * off-by-one) makes this assertion fail instead of passing by coincidence.
+     */
+    @Test
+    void embedBatchSendsExactlyOneRequestForAllAbstractsInOrderAndMapsVectorsToTheRightDocumentIds() {
+        String body = """
+                {
+                  "object": "list",
+                  "data": [
+                    { "object": "embedding", "index": 0, "embedding": [1.0, 0.0, 0.0, 0.0] },
+                    { "object": "embedding", "index": 1, "embedding": [0.0, 1.0, 0.0, 0.0] },
+                    { "object": "embedding", "index": 2, "embedding": [0.0, 0.0, 1.0, 0.0] }
+                  ],
+                  "model": "%s",
+                  "usage": { "prompt_tokens": 9, "total_tokens": 9 }
+                }
+                """.formatted(MODEL);
+        wireMockServer.stubFor(post(urlEqualTo("/embeddings"))
+                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody(body)));
+
+        try (OpenAiCompatibleEmbedder embedder =
+                new OpenAiCompatibleEmbedder("test-key", wireMockServer.baseUrl(), MODEL, DIMENSION)) {
+            List<EmbeddingVector> vectors = embedder.embedBatch(List.of("d01", "d02", "d03"),
+                    List.of("abstract one", "abstract two", "abstract three"));
+
+            assertThat(vectors).hasSize(3);
+            assertThat(vectors.get(0).documentId()).isEqualTo("d01");
+            assertThat(vectors.get(0).values()).containsExactly(1.0, 0.0, 0.0, 0.0);
+            assertThat(vectors.get(1).documentId()).isEqualTo("d02");
+            assertThat(vectors.get(1).values()).containsExactly(0.0, 1.0, 0.0, 0.0);
+            assertThat(vectors.get(2).documentId()).isEqualTo("d03");
+            assertThat(vectors.get(2).values()).containsExactly(0.0, 0.0, 1.0, 0.0);
+
+            wireMockServer.verify(1, postRequestedFor(urlEqualTo("/embeddings")));
+            LoggedRequest request = wireMockServer.getAllServeEvents().get(0).getRequest();
+            JsonNode requestBody = JsonMapper.builder().build().readTree(request.getBodyAsString());
+            JsonNode input = requestBody.get("input");
+            assertThat(input.size()).isEqualTo(3);
+            assertThat(input.get(0).asString()).isEqualTo("abstract one");
+            assertThat(input.get(1).asString()).isEqualTo("abstract two");
+            assertThat(input.get(2).asString()).isEqualTo("abstract three");
+        }
+    }
+
+    @Test
+    void embedBatchThrowsWhenTheProviderReturnsFewerVectorsThanRequestedInstead() {
+        String body = """
+                {
+                  "object": "list",
+                  "data": [ { "object": "embedding", "index": 0, "embedding": [1.0, 0.0, 0.0, 0.0] } ],
+                  "model": "%s",
+                  "usage": { "prompt_tokens": 3, "total_tokens": 3 }
+                }
+                """.formatted(MODEL);
+        wireMockServer.stubFor(post(urlEqualTo("/embeddings"))
+                .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody(body)));
+
+        try (OpenAiCompatibleEmbedder embedder =
+                new OpenAiCompatibleEmbedder("test-key", wireMockServer.baseUrl(), MODEL, DIMENSION)) {
+            assertThatThrownBy(() -> embedder.embedBatch(List.of("d01", "d02", "d03"),
+                    List.of("abstract one", "abstract two", "abstract three")))
+                    .isInstanceOf(EmbeddingApiException.class)
+                    .hasMessageContaining("3");
+        }
+    }
+
+    @Test
+    void embedBatchOfEmptyInputsReturnsAnEmptyListWithoutAnyNetworkCall() {
+        try (OpenAiCompatibleEmbedder embedder =
+                new OpenAiCompatibleEmbedder("test-key", wireMockServer.baseUrl(), MODEL, DIMENSION)) {
+            List<EmbeddingVector> vectors = embedder.embedBatch(List.of(), List.of());
+
+            assertThat(vectors).isEmpty();
+            wireMockServer.verify(0, postRequestedFor(urlEqualTo("/embeddings")));
         }
     }
 

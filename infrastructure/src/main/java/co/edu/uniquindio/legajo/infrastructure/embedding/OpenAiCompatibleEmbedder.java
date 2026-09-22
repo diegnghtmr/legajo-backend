@@ -119,6 +119,75 @@ public final class OpenAiCompatibleEmbedder implements AutoCloseable {
         return EmbeddingVector.normalize(documentId, PROVIDER, model, raw);
     }
 
+    /**
+     * Embeds every {@code rawAbstracts} entry with exactly ONE network request (TRD §6.3,
+     * "Modo en vivo de {@code embedding-api} (fijado)"), instead of one request per document,
+     * then L2-normalizes each returned vector exactly like {@link #embed}. {@code documentIds}
+     * and {@code rawAbstracts} must be the same length and share positional order: the
+     * provider's response is expected to preserve request order (the OpenAI embeddings
+     * contract's per-item {@code index}), and this method never trusts that silently — a
+     * different vector count than requested fails closed with {@link EmbeddingApiException}
+     * rather than guessing which vector belongs to which document.
+     *
+     * <p>No provider-documented batch-size limit is applied: Gemini's OpenAI-compatible
+     * embeddings endpoint documents no per-request item cap relevant to this corpus's size
+     * (TRD §14), so this sends one request for however many ids are passed in. A future corpus
+     * large enough to need chunking should revisit this once such a limit is documented, not
+     * invent one.
+     *
+     * @throws EmbeddingApiException if the remote call fails, the response's vector count
+     *             does not match {@code documentIds.size()}, or any vector's dimension does
+     *             not match the configured {@code dimension}
+     */
+    public List<EmbeddingVector> embedBatch(List<String> documentIds, List<String> rawAbstracts) {
+        Objects.requireNonNull(documentIds, "documentIds");
+        Objects.requireNonNull(rawAbstracts, "rawAbstracts");
+        if (documentIds.size() != rawAbstracts.size()) {
+            throw new IllegalArgumentException(
+                    "documentIds and rawAbstracts must be the same size, were %d and %d"
+                            .formatted(documentIds.size(), rawAbstracts.size()));
+        }
+        if (documentIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<float[]> outputs;
+        try {
+            outputs = embeddingModel.embed(rawAbstracts);
+        } catch (RuntimeException e) {
+            throw new EmbeddingApiException(
+                    "Embedding API batch call failed for %d document(s) (model=%s): %s"
+                            .formatted(documentIds.size(), model, e.getMessage()),
+                    e);
+        }
+
+        if (outputs == null || outputs.size() != documentIds.size()) {
+            int actual = outputs == null ? -1 : outputs.size();
+            throw new EmbeddingApiException(
+                    ("Embedding API returned %d vector(s) for a batch of %d document(s) (model=%s); "
+                            + "refusing to guess which vector belongs to which document")
+                                    .formatted(actual, documentIds.size(), model));
+        }
+
+        List<EmbeddingVector> vectors = new ArrayList<>(documentIds.size());
+        for (int i = 0; i < documentIds.size(); i++) {
+            String documentId = documentIds.get(i);
+            float[] output = outputs.get(i);
+            if (output == null || output.length != dimension) {
+                int actual = output == null ? -1 : output.length;
+                throw new EmbeddingApiException(
+                        "Embedding API returned %d dimension(s) for document '%s', expected %d (model=%s)"
+                                .formatted(actual, documentId, dimension, model));
+            }
+            List<Double> raw = new ArrayList<>(output.length);
+            for (float component : output) {
+                raw.add((double) component);
+            }
+            vectors.add(EmbeddingVector.normalize(documentId, PROVIDER, model, raw));
+        }
+        return vectors;
+    }
+
     @Override
     public void close() {
         // Nothing to release: Spring AI 2.0.x's plain-builder OpenAiEmbeddingModel exposes no
