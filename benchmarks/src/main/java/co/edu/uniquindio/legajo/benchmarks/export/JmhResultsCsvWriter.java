@@ -12,7 +12,9 @@ import java.util.List;
  * Writes {@code benchmarks/results/jmh-results.csv} (TRD NFR-QA-10, TAC-18): the reference
  * harness as {@code #}-prefixed header lines, then a {@code
  * benchmark,family,parameter,size,score,error,unit} row per {@link JmhResultRecord}, each
- * classified through {@link BenchmarkFamilies}.
+ * classified through {@link BenchmarkFamilies}. A record {@link BenchmarkFamilies#classify}
+ * cannot classify (e.g. a non-numeric size) is skipped on its own, with a diagnostic on
+ * {@link System#err}, instead of aborting the whole export.
  */
 public final class JmhResultsCsvWriter {
 
@@ -26,7 +28,13 @@ public final class JmhResultsCsvWriter {
         List<String> lines = new ArrayList<>(harness.toHeaderLines());
         lines.add(COLUMN_HEADER);
         for (JmhResultRecord record : records) {
-            lines.add(toCsvLine(record));
+            try {
+                lines.add(toCsvLine(record));
+            } catch (IllegalArgumentException e) {
+                System.err.println(
+                        "skipping benchmark result for jmh-results.csv, benchmark '" + record.benchmark() + "': "
+                                + e.getMessage());
+            }
         }
         try {
             Files.createDirectories(output.toAbsolutePath().getParent());

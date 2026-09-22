@@ -64,6 +64,22 @@ class JmhResultsCsvWriterTest {
                         + "levenshtein,length,100.0,21.3,0.42,us/op");
     }
 
+    @Test
+    void skipsARecordWithANonNumericSizeAndStillExportsTheOthers(@TempDir Path tempDir) throws IOException {
+        Path output = tempDir.resolve("jmh-results.csv");
+        JmhResultRecord badRecord = new JmhResultRecord(
+                "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                Map.of("length", "not-a-number"), 1.0, 0.0, "us/op", "avgt", 1, 3, "1 s", 5, "1 s");
+        List<JmhResultRecord> records = List.of(badRecord, oneRecord());
+
+        JmhResultsCsvWriter.write(output, HARNESS, records);
+
+        List<String> lines = Files.readAllLines(output);
+        int firstDataLine = HARNESS.toHeaderLines().size() + 1;
+        assertThat(lines).hasSize(firstDataLine + 1);
+        assertThat(lines.get(firstDataLine)).contains("levenshtein,length,50.0,10.5");
+    }
+
     private static JmhResultRecord oneRecord() {
         return new JmhResultRecord(
                 "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",

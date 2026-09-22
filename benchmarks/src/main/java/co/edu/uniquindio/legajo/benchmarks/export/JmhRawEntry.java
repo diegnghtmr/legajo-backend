@@ -22,8 +22,17 @@ record JmhRawEntry(
         JmhRawMetric primaryMetric) {
 
     JmhResultRecord toResultRecord() {
+        if (primaryMetric == null) {
+            throw new IllegalStateException(
+                    "JMH result entry for benchmark '" + benchmark + "' is missing primaryMetric");
+        }
+        Double score = primaryMetric.score();
+        if (score == null) {
+            throw new IllegalStateException(
+                    "JMH result entry for benchmark '" + benchmark + "' is missing primaryMetric.score");
+        }
         return new JmhResultRecord(
-                benchmark, params == null ? Map.of() : params, primaryMetric.score(), primaryMetric.scoreError(),
+                benchmark, params == null ? Map.of() : params, score, primaryMetric.scoreError(),
                 primaryMetric.scoreUnit(), mode, forks, warmupIterations, warmupTime, measurementIterations,
                 measurementTime);
     }

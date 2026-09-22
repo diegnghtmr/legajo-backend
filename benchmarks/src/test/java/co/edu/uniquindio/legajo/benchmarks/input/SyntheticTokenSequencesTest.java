@@ -54,6 +54,15 @@ class SyntheticTokenSequencesTest {
     }
 
     @Test
+    void theTwoSequencesDifferEvenWhenThePoolHasOnlyTwoTokens() {
+        List<String> twoTokenPool = List.of("alpha", "beta");
+
+        TokenSequencePair pair = SyntheticTokenSequences.build(twoTokenPool, 4, 0L);
+
+        assertThat(pair.sequenceA()).isNotEqualTo(pair.sequenceB());
+    }
+
+    @Test
     void everyTokenComesFromThePool() {
         TokenSequencePair pair = SyntheticTokenSequences.build(POOL, 800, 42L);
 

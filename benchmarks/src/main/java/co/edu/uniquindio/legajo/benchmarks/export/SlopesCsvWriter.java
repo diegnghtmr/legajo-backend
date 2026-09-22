@@ -17,8 +17,11 @@ import java.util.Optional;
  * curve family with a documented theoretical exponent ({@link BenchmarkFamilies}) and at
  * least two distinct sizes, giving the least-squares log-log slope of its empirical scores
  * ({@link LogLogSlope}) next to that theoretical exponent. A fixed-n SLO family (no
- * theoretical exponent) or a family with fewer than two data points is not a curve and is
- * silently excluded, never reported with a nonsensical or undefined slope.
+ * theoretical exponent) or a family with fewer than two distinct sizes (repeated
+ * measurements of the very same size never make a curve) is not a curve and is silently
+ * excluded, never reported with a nonsensical or undefined slope. A record
+ * {@link BenchmarkFamilies#classify} cannot classify (e.g. a non-numeric size) is skipped on
+ * its own, with a diagnostic on {@link System#err}, instead of aborting the whole export.
  */
 public final class SlopesCsvWriter {
 
@@ -33,7 +36,15 @@ public final class SlopesCsvWriter {
         Map<String, Optional<Double>> exponentByFamily = new LinkedHashMap<>();
 
         for (JmhResultRecord record : records) {
-            BenchmarkFamily family = BenchmarkFamilies.classify(record.benchmark(), record.params());
+            BenchmarkFamily family;
+            try {
+                family = BenchmarkFamilies.classify(record.benchmark(), record.params());
+            } catch (IllegalArgumentException e) {
+                System.err.println(
+                        "skipping benchmark result for slopes.csv, benchmark '" + record.benchmark() + "': "
+                                + e.getMessage());
+                continue;
+            }
             pointsByFamily.computeIfAbsent(family.family(), key -> new ArrayList<>())
                     .add(new SizeScore(family.size(), record.score()));
             exponentByFamily.put(family.family(), family.theoreticalExponent());
@@ -44,7 +55,8 @@ public final class SlopesCsvWriter {
         pointsByFamily.keySet().stream().sorted().forEach(family -> {
             Optional<Double> theoreticalExponent = exponentByFamily.get(family);
             List<SizeScore> points = pointsByFamily.get(family);
-            if (theoreticalExponent.isEmpty() || points.size() < 2) {
+            long distinctSizes = points.stream().mapToDouble(SizeScore::size).distinct().count();
+            if (theoreticalExponent.isEmpty() || distinctSizes < 2) {
                 return;
             }
             double slope = LogLogSlope.of(points);

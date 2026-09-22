@@ -18,8 +18,8 @@ public final class LogLogSlope {
     /**
      * Ordinary least-squares slope of {@code y = ln(score)} against {@code x = ln(size)}:
      * {@code slope = Σ((x - x̄)(y - ȳ)) / Σ((x - x̄)²)}. Requires at least two points (a slope
-     * is undefined for one) and every size/score to be strictly positive (a logarithm of a
-     * non-positive number is undefined).
+     * is undefined for one) and every size/score to be finite and strictly positive (a
+     * logarithm of a non-positive, NaN or infinite number is undefined or meaningless here).
      */
     public static double of(List<SizeScore> points) {
         Objects.requireNonNull(points, "points");
@@ -32,11 +32,11 @@ public final class LogLogSlope {
         double[] y = new double[points.size()];
         for (int i = 0; i < points.size(); i++) {
             SizeScore point = points.get(i);
-            if (point.size() <= 0.0) {
-                throw new IllegalArgumentException("size must be positive, was " + point.size());
+            if (!Double.isFinite(point.size()) || point.size() <= 0.0) {
+                throw new IllegalArgumentException("size must be a finite positive number, was " + point.size());
             }
-            if (point.score() <= 0.0) {
-                throw new IllegalArgumentException("score must be positive, was " + point.score());
+            if (!Double.isFinite(point.score()) || point.score() <= 0.0) {
+                throw new IllegalArgumentException("score must be a finite positive number, was " + point.score());
             }
             x[i] = Math.log(point.size());
             y[i] = Math.log(point.score());

@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for the JMH JSON results reader (J2). Written before
@@ -73,6 +74,15 @@ class JmhJsonResultsReaderTest {
         assertThat(third.benchmark())
                 .isEqualTo("co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate");
         assertThat(third.params()).containsEntry("n", "20").containsEntry("criterion", "ward");
+    }
+
+    @Test
+    void wrapsMalformedJsonWithTheResultsFilePath(@TempDir Path tempDir) throws IOException {
+        Path resultsFile = tempDir.resolve("broken-jmh-results.json");
+        Files.writeString(resultsFile, "{ this is not valid JMH JSON ");
+
+        assertThatThrownBy(() -> JmhJsonResultsReader.read(resultsFile))
+                .hasMessageContaining(resultsFile.toString());
     }
 
     private static Path copyFixtureTo(Path tempDir) throws IOException {
