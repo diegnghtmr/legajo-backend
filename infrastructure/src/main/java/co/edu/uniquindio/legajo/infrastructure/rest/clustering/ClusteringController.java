@@ -1,11 +1,11 @@
 package co.edu.uniquindio.legajo.infrastructure.rest.clustering;
 
+import co.edu.uniquindio.legajo.application.clustering.ClusteringCutResult;
 import co.edu.uniquindio.legajo.application.clustering.ClusteringService;
 import co.edu.uniquindio.legajo.application.clustering.LinkageEvaluationOnly;
 import co.edu.uniquindio.legajo.application.clustering.LinkageRunResult;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ProblemType;
-import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.similarity.Representation;
 import org.jspecify.annotations.Nullable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -95,8 +95,8 @@ public class ClusteringController {
             throw new InvalidRequestException("k must not be null");
         }
 
-        ClusterAssignment assignment = clusteringService.cut(representation, request.linkage(), request.k());
-        return ClusterAssignmentResponse.from(assignment);
+        ClusteringCutResult result = clusteringService.cut(representation, request.linkage(), request.k());
+        return ClusterAssignmentResponse.from(result);
     }
 
     /** See this class's Javadoc for why an unknown id is classified 400, not 404. */

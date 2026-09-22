@@ -101,6 +101,7 @@ public final class ClusteringService {
         List<List<Double>> vectors = null;
         DistanceMatrix distances = null;
         List<Integer> fixedKs = null;
+        List<String> documentIds = null;
 
         List<LinkageRunResult> results = new ArrayList<>(criteria.size());
         for (LinkageCriterion criterion : criteria) {
@@ -115,8 +116,9 @@ public final class ClusteringService {
                 vectors = vectorsFor(effectiveRepresentation, corpus);
                 distances = DistanceMatrix.cosineDistance(vectors);
                 fixedKs = fixedKsFor(distances.size());
+                documentIds = documentIdsOf(corpus);
             }
-            LinkageRunResult result = computeLinkage(criterion, distances, vectors, fixedKs);
+            LinkageRunResult result = computeLinkage(criterion, distances, vectors, fixedKs, documentIds);
             cache.put(key, result);
             results.add(result);
         }
@@ -150,7 +152,7 @@ public final class ClusteringService {
      * {@link LinkageCut#cut}'s own check is kept as a defense-in-depth invariant guard for
      * any other caller, not removed.
      */
-    public ClusterAssignment cut(Representation representation, String linkageId, int k) {
+    public ClusteringCutResult cut(Representation representation, String linkageId, int k) {
         Representation effectiveRepresentation = representation == null ? Representation.DEFAULT : representation;
         LinkageCriterion criterion = resolveLinkage(linkageId);
 
@@ -160,7 +162,8 @@ public final class ClusteringService {
             List<List<Double>> vectors = vectorsFor(effectiveRepresentation, corpus);
             DistanceMatrix distances = DistanceMatrix.cosineDistance(vectors);
             List<Integer> fixedKs = fixedKsFor(distances.size());
-            LinkageRunResult result = computeLinkage(criterion, distances, vectors, fixedKs);
+            List<String> documentIds = documentIdsOf(corpus);
+            LinkageRunResult result = computeLinkage(criterion, distances, vectors, fixedKs, documentIds);
             cache.put(key, result);
             return result;
         });
@@ -174,11 +177,11 @@ public final class ClusteringService {
             throw new InvalidRequestException(ProblemType.INVALID_CUT,
                     "k must be in [2, n-1] (n=%d), was %d".formatted(n, k));
         }
-        return LinkageCut.cut(linkage, k);
+        return new ClusteringCutResult(LinkageCut.cut(linkage, k), cachedResult.documentIds());
     }
 
     private LinkageRunResult computeLinkage(LinkageCriterion criterion, DistanceMatrix distances,
-            List<List<Double>> vectors, List<Integer> fixedKs) {
+            List<List<Double>> vectors, List<Integer> fixedKs, List<String> documentIds) {
         LinkageMatrix linkage = engine.agglomerate(engineInputFor(criterion, distances), criterion);
         List<Integer> leafOrder = LeafOrder.of(linkage);
         double cophenetic = CopheneticCorrelation.of(linkage, distances);
@@ -193,7 +196,15 @@ public final class ClusteringService {
 
         ClusteringEvaluationBlock evaluation =
                 new ClusteringEvaluationBlock(cophenetic, silhouetteByK, daviesBouldinByK);
-        return new LinkageRunResult(criterion.id(), criterion.displayName(), linkage.rows(), leafOrder, evaluation);
+        return new LinkageRunResult(
+                criterion.id(), criterion.displayName(), linkage.rows(), leafOrder, documentIds, evaluation);
+    }
+
+    /** TRD 1.3.9: the document behind each observation index, in {@code corpus.json} order —
+     * the same order {@link #vectorsFor} builds the distance matrix from, so index i means
+     * the same thing on both sides without recomputing it separately. */
+    private List<String> documentIdsOf(Corpus corpus) {
+        return corpus.documents().stream().map(CorpusDocument::id).toList();
     }
 
     /** Ward always agglomerates over {@code D_w = 2·D} (TRD §6.4); the other three over base D. */
