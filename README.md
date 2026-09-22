@@ -136,3 +136,45 @@ Re-running step 2 replaces `data/corpus.json` outright (TRD §3.1): every docume
 back to `manuallyValidated=false`, and any previously computed `data/embeddings-*.json`
 caches become stale (their `corpusSha256` no longer matches) until embeddings are
 recomputed for the new corpus.
+
+## Benchmarks
+
+`benchmarks/` measures the algorithms with JMH under the fixed protocol (TRD NFR-QA-10,
+"Protocolo de pruebas de rendimiento" and "Arnés de referencia") and proves the performance
+SLOs (TAC-07, NFR-QA-01/NFR-QA-02): `@BenchmarkMode(AverageTime)`, `@Fork(1)`,
+`@Warmup(iterations = 3, time = 1)`, `@Measurement(iterations = 5, time = 1)` on every
+benchmark class.
+
+| Family | Classes | What varies |
+|---|---|---|
+| Pairwise classic curves | `pairwise.LevenshteinBenchmark`, `NeedlemanWunschBenchmark`, `JaccardBenchmark`, `TfIdfCosineBenchmark` | Token-sequence length L ∈ {50, 100, 200, 400, 800}, built from real corpus tokens |
+| HAC curves | `hac.LanceWilliamsBenchmark` (× 4 linkage criteria), `hac.InternalMetricsBenchmark` (mean silhouette, Davies-Bouldin) | n ∈ {5, 10, 20, 40, 80} synthetic unit vectors |
+| Embedding primitive | `embedding.EmbeddingPrimitiveBenchmark` | d ∈ {384, 1536}, one measurement each, no curve |
+| SLO benchmarks | `slo.ClassicPairwiseSloBenchmark` (NFR-QA-01, per classic algorithm), `slo.ClusteringSloBenchmark` (NFR-QA-02, all four linkages) | Fixed at the real reference corpus, n = 20, similarity cache never involved |
+
+Run the full protocol and export the CSVs:
+
+```bash
+./gradlew :benchmarks:jmh :benchmarks:jmhExport
+```
+
+Results land in `benchmarks/results/`, versioned in git:
+
+- `jmh-results.csv` — `#`-prefixed harness header (CPU model, logical cores, total RAM, JDK,
+  OS, UTC date) followed by `benchmark,family,parameter,size,score,error,unit` rows.
+- `slopes.csv` — `family,points,empiricalSlope,theoreticalExponent`: the least-squares
+  log-log slope of each curve next to the theoretical complexity TRD §6.3/§6.4/§6.5 document
+  for that family (TAC-18). A fixed-n SLO family has no theoretical exponent and is excluded.
+
+A fast, non-representative smoke run (shrinks the protocol; never commit its numbers) is
+available by overriding the JMH Gradle plugin's properties and narrowing to a benchmark
+subset with a regex:
+
+```bash
+./gradlew :benchmarks:jmh -Pjmh.fork=1 -Pjmh.warmupIterations=1 -Pjmh.iterations=1 \
+    -Pjmh.includes=Levenshtein
+```
+
+The reference harness is the machine recorded in `jmh-results.csv`'s header; TRD NFR-QA-10's
+baseline target is a 4 vCPU / 8 GB x86-64 machine. The JMH CI job (`.github/workflows/`) is
+manual or tag-triggered, never run on every push (TRD §14.3).

@@ -56,3 +56,20 @@ jmh {
         includes.set(listOf(project.property("jmh.includes") as String))
     }
 }
+
+// J2: exports the last JMH run (build/results/jmh/jmh-results.json) into the two versioned
+// CSVs the technical documentation reads (TAC-18): benchmarks/results/jmh-results.csv and
+// benchmarks/results/slopes.csv. Run after :benchmarks:jmh, e.g.:
+//   ./gradlew :benchmarks:jmh :benchmarks:jmhExport
+tasks.register<JavaExec>("jmhExport") {
+    group = "verification"
+    description = "Exports build/results/jmh/jmh-results.json to benchmarks/results/jmh-results.csv " +
+            "and benchmarks/results/slopes.csv (TRD NFR-QA-10, TAC-18). Run :benchmarks:jmh first."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("co.edu.uniquindio.legajo.benchmarks.export.JmhExportCli")
+    args(
+        "--input=${layout.buildDirectory.file("results/jmh/jmh-results.json").get().asFile}",
+        "--resultsCsv=${projectDir}/results/jmh-results.csv",
+        "--slopesCsv=${projectDir}/results/slopes.csv",
+    )
+}
