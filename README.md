@@ -176,5 +176,10 @@ subset with a regex:
 ```
 
 The reference harness is the machine recorded in `jmh-results.csv`'s header; TRD NFR-QA-10's
-baseline target is a 4 vCPU / 8 GB x86-64 machine. The JMH CI job (`.github/workflows/`) is
-manual or tag-triggered, never run on every push (TRD §14.3).
+baseline target is a 4 vCPU / 8 GB x86-64 machine. `.github/workflows/benchmarks.yml` runs the
+JMH suite manually (`workflow_dispatch`) or on a `bench-*` tag push, never on every push or
+pull request (TRD §14.3), and uploads `jmh-results.json` and the two CSVs as a build artifact.
+**The numbers that job produces are not the reference harness**: it runs on a shared,
+unpinned GitHub-hosted runner, not the documented machine. The versioned CSVs in
+`benchmarks/results/` — the ones the technical documentation cites (TAC-07, TAC-18) — always
+come from a local run on the reference harness, never from CI.

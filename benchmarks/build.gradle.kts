@@ -57,6 +57,16 @@ jmh {
     }
 }
 
+// J3: the me.champeau.jmh plugin never wires its own compile task into `check`/`build`, so a
+// plain `./gradlew build` silently never compiled this module's JMH sources -- a broken
+// @Benchmark class could sit unnoticed until someone ran :benchmarks:jmh by hand. Making
+// `check` depend on `jmhClasses` (jmh's own "compile + assemble the jmh source set" task)
+// closes that gap without running any benchmark in ordinary CI (TRD §14.3: the JMH job
+// itself stays manual/tag-triggered; only *compiling* it becomes part of the normal build).
+tasks.named("check") {
+    dependsOn("jmhClasses")
+}
+
 // J2: exports the last JMH run (build/results/jmh/jmh-results.json) into the two versioned
 // CSVs the technical documentation reads (TAC-18): benchmarks/results/jmh-results.csv and
 // benchmarks/results/slopes.csv. Run after :benchmarks:jmh, e.g.:
