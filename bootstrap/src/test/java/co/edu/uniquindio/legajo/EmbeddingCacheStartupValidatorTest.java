@@ -141,9 +141,10 @@ class EmbeddingCacheStartupValidatorTest {
                 @Qualifier("localEmbeddingRepository") EmbeddingRepository localEmbeddingRepository,
                 @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository,
                 LegajoProperties legajoProperties) {
-            EmbeddingCacheStartupValidator validator = new EmbeddingCacheStartupValidator(
-                    localEmbeddingRepository, apiEmbeddingRepository, legajoProperties.embeddingProvider());
-            return validator::validate;
+            // Delegates to the production factory, so these tests exercise DomainConfiguration's
+            // own wiring of the validator, not a copy of it.
+            return new DomainConfiguration().embeddingCacheStartupValidator(
+                    localEmbeddingRepository, apiEmbeddingRepository, legajoProperties);
         }
     }
 }

@@ -44,6 +44,20 @@ class DomainConfigurationTest {
     @Autowired
     private SimilarityAlgorithmRegistry registry;
 
+    @Autowired
+    private org.springframework.context.ApplicationContext applicationContext;
+
+    /**
+     * TAC-13 (F3): the real application context must register the startup validator. The
+     * validator's own tests build a minimal context, so without this check removing the
+     * {@code @Bean} would leave them green while the server went back to failing lazily.
+     */
+    @Test
+    void registersTheEmbeddingCacheStartupValidator() {
+        assertThat(applicationContext.getBean("embeddingCacheStartupValidator"))
+                .isInstanceOf(org.springframework.beans.factory.SmartInitializingSingleton.class);
+    }
+
     @Test
     void registersTheJsonCorpusRepositoryAdapter() {
         assertThat(corpusRepository).isInstanceOf(JsonCorpusRepository.class);
