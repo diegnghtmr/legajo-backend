@@ -1,8 +1,8 @@
 package co.edu.uniquindio.legajo;
 
 import co.edu.uniquindio.legajo.infrastructure.corpus.JsonCorpusRepository;
-import co.edu.uniquindio.legajo.infrastructure.embedding.JsonEmbeddingRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.LiveApiEmbeddingRepository;
+import co.edu.uniquindio.legajo.infrastructure.embedding.MemoizingEmbeddingRepository;
 import co.edu.uniquindio.legajo.port.CorpusRepository;
 import co.edu.uniquindio.legajo.port.EmbeddingRepository;
 import co.edu.uniquindio.legajo.similarity.SimilarityAlgorithmRegistry;
@@ -44,15 +44,35 @@ class DomainConfigurationTest {
     @Autowired
     private SimilarityAlgorithmRegistry registry;
 
+    @Autowired
+    private org.springframework.context.ApplicationContext applicationContext;
+
+    /**
+     * TAC-13 (F3): the real application context must register the startup validator. The
+     * validator's own tests build a minimal context, so without this check removing the
+     * {@code @Bean} would leave them green while the server went back to failing lazily.
+     */
+    @Test
+    void registersTheEmbeddingCacheStartupValidator() {
+        assertThat(applicationContext.getBean("embeddingCacheStartupValidator"))
+                .isInstanceOf(org.springframework.beans.factory.SmartInitializingSingleton.class);
+    }
+
     @Test
     void registersTheJsonCorpusRepositoryAdapter() {
         assertThat(corpusRepository).isInstanceOf(JsonCorpusRepository.class);
     }
 
+    /**
+     * Both cache-backed beans are wrapped in {@link MemoizingEmbeddingRepository} (feature doc
+     * {@code rest-followups.md}, F3): the startup validator's {@code load()} call and every
+     * later request-time call must share the same already-validated, already-parsed cache
+     * instead of each re-reading {@code JsonEmbeddingRepository}'s underlying file.
+     */
     @Test
-    void registersTwoDistinctJsonEmbeddingRepositoryAdaptersForTheTwoCacheFamilies() {
-        assertThat(localEmbeddingRepository).isInstanceOf(JsonEmbeddingRepository.class);
-        assertThat(apiEmbeddingRepository).isInstanceOf(JsonEmbeddingRepository.class);
+    void registersTwoDistinctMemoizingEmbeddingRepositoryAdaptersForTheTwoCacheFamilies() {
+        assertThat(localEmbeddingRepository).isInstanceOf(MemoizingEmbeddingRepository.class);
+        assertThat(apiEmbeddingRepository).isInstanceOf(MemoizingEmbeddingRepository.class);
         assertThat(localEmbeddingRepository).isNotSameAs(apiEmbeddingRepository);
     }
 
@@ -103,10 +123,11 @@ class DomainConfigurationTest {
         }
 
         @Test
-        void localEmbeddingRepositoryStaysTheJsonAdapterRegardlessOfApiMode() {
+        void localEmbeddingRepositoryStaysTheMemoizedJsonAdapterRegardlessOfApiMode() {
             // embedding-local has no live mode (TRD §6.3): its inference only ever happens in
-            // the offline precompute job.
-            assertThat(localEmbeddingRepository).isInstanceOf(JsonEmbeddingRepository.class);
+            // the offline precompute job, so it is still the memoized JsonEmbeddingRepository
+            // adapter (feature doc rest-followups.md, F3), never LiveApiEmbeddingRepository.
+            assertThat(localEmbeddingRepository).isInstanceOf(MemoizingEmbeddingRepository.class);
         }
     }
 }
