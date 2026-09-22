@@ -13,7 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * same shape as {@code LEGAJO_GROBID_URL}). This is the first {@code @ConfigurationProperties}
  * in the project; these tests prove the two keys are genuinely bound, with the exact
  * defaults {@code application.yml}'s placeholders already promise
- * ({@code ${LEGAJO_EMBEDDING_PROVIDER:cached}}, {@code ${LEGAJO_CORS_ORIGINS:}}).
+ * ({@code ${LEGAJO_EMBEDDING_PROVIDER:cached}}, {@code ${LEGAJO_CORS_ORIGINS:}}) — the latter
+ * resolved by {@link LegajoProperties} itself into the two local development origins
+ * (TRD §14.4, 1.3.8) whenever the bound list is empty.
  */
 class LegajoPropertiesTest {
 
@@ -25,19 +27,21 @@ class LegajoPropertiesTest {
     }
 
     @Test
-    void bindsToCachedAndNoOriginsWhenNeitherKeyIsSet() {
+    void bindsToCachedAndTheLocalDefaultOriginsWhenNeitherKeyIsSet() {
         contextRunner.run(context -> {
             LegajoProperties properties = context.getBean(LegajoProperties.class);
             assertThat(properties.embeddingProvider()).isEqualTo(EmbeddingProviderMode.CACHED);
-            assertThat(properties.corsOrigins()).isEmpty();
+            assertThat(properties.corsOrigins())
+                    .containsExactly("http://localhost:5173", "http://localhost");
         });
     }
 
     @Test
-    void bindsAnEmptyCorsOriginsStringToNoOrigins() {
+    void bindsAnEmptyCorsOriginsStringToTheLocalDefaultOrigins() {
         contextRunner.withPropertyValues("legajo.cors-origins=").run(context -> {
             LegajoProperties properties = context.getBean(LegajoProperties.class);
-            assertThat(properties.corsOrigins()).isEmpty();
+            assertThat(properties.corsOrigins())
+                    .containsExactly("http://localhost:5173", "http://localhost");
         });
     }
 
