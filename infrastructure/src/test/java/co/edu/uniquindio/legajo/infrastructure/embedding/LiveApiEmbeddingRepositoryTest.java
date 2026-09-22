@@ -7,9 +7,12 @@ import co.edu.uniquindio.legajo.similarity.EmbeddingCache;
 import co.edu.uniquindio.legajo.similarity.EmbeddingVector;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 import java.util.List;
@@ -24,11 +27,13 @@ import static org.assertj.core.api.Assertions.within;
 
 /**
  * {@link LiveApiEmbeddingRepository} against a stubbed OpenAI-compatible embeddings endpoint
- * (feature doc task A8, TRD §6.3 "Modo en vivo de {@code embedding-api} (fijado)"): fetches
- * every corpus document's vector over the network, renormalizes it, caches it so each
- * document is requested at most once per instance, and maps every failure shape — 5xx,
- * timeout, and a missing/blank API key — to {@link EmbeddingApiException}, never a silent
- * fallback. No test here needs a real key or network.
+ * (feature doc task A8/F5, TRD §6.3 "Modo en vivo de {@code embedding-api} (fijado)"): fetches
+ * every not-yet-cached corpus document's vector with ONE batched network request per
+ * {@link LiveApiEmbeddingRepository#load()} call ({@code R3-live-load-fetches-whole-corpus-serially}),
+ * renormalizes each vector, caches it so each document is requested at most once per instance,
+ * and maps every failure shape — 5xx, timeout, a missing/blank API key, and a provider vector
+ * count that does not match the request — to {@link EmbeddingApiException}, never a silent
+ * fallback or a silently misassigned vector. No test here needs a real key or network.
  */
 class LiveApiEmbeddingRepositoryTest {
 
@@ -54,7 +59,7 @@ class LiveApiEmbeddingRepositoryTest {
     void loadFetchesEveryCorpusDocumentAndL2RenormalizesEachVector() {
         // Deliberately not unit length, so a passing assertion proves this class's pipeline
         // (via OpenAiCompatibleEmbedder) renormalizes rather than trusting the provider.
-        stubEmbeddingResponse("[2.0, 0.0, 0.0, 0.0]");
+        stubEmbeddingResponse(3, "[2.0, 0.0, 0.0, 0.0]");
 
         LiveApiEmbeddingRepository repository =
                 new LiveApiEmbeddingRepository(corpusRepository, "test-key", wireMockServer.baseUrl(), MODEL, DIMENSION);
@@ -70,16 +75,73 @@ class LiveApiEmbeddingRepositoryTest {
         }
     }
 
+    /**
+     * {@code R3-live-load-fetches-whole-corpus-serially}: {@link LiveApiEmbeddingRepository#load()}
+     * must send exactly ONE batched request for all not-yet-cached documents (TRD §6.3), with
+     * the corpus's abstracts in corpus order, and map each returned vector back to the right
+     * document id strictly by position. Each stub vector below is a distinct one-hot direction
+     * precisely so a positional mix-up (e.g. the old per-document loop reversed, or an
+     * off-by-one) makes this assertion fail instead of passing by coincidence.
+     */
     @Test
-    void eachDocumentIsRequestedAtMostOnceAcrossMultipleLoadCalls() {
-        stubEmbeddingResponse("[1.0, 0.0, 0.0, 0.0]");
+    void loadSendsExactlyOneBatchedRequestInCorpusOrderAndMapsVectorsToTheRightDocumentIds() {
+        stubEmbeddingResponse(3, List.of("[1.0, 0.0, 0.0, 0.0]", "[0.0, 1.0, 0.0, 0.0]", "[0.0, 0.0, 1.0, 0.0]"));
+
+        LiveApiEmbeddingRepository repository =
+                new LiveApiEmbeddingRepository(corpusRepository, "test-key", wireMockServer.baseUrl(), MODEL, DIMENSION);
+
+        EmbeddingCache cache = repository.load();
+
+        wireMockServer.verify(1, postRequestedFor(urlEqualTo("/embeddings")));
+        JsonNode input = requestBodyOf(wireMockServer.getAllServeEvents().get(0)).get("input");
+        assertThat(input.size()).isEqualTo(3);
+        assertThat(input.get(0).asString()).isEqualTo("abstract text for d01");
+        assertThat(input.get(1).asString()).isEqualTo("abstract text for d02");
+        assertThat(input.get(2).asString()).isEqualTo("abstract text for d03");
+
+        assertThat(vectorFor(cache, "d01").values()).containsExactly(1.0, 0.0, 0.0, 0.0);
+        assertThat(vectorFor(cache, "d02").values()).containsExactly(0.0, 1.0, 0.0, 0.0);
+        assertThat(vectorFor(cache, "d03").values()).containsExactly(0.0, 0.0, 1.0, 0.0);
+    }
+
+    @Test
+    void aSecondLoadMakesZeroFurtherRequestsAfterTheFirstBatchCachesEveryDocument() {
+        stubEmbeddingResponse(3, "[1.0, 0.0, 0.0, 0.0]");
         LiveApiEmbeddingRepository repository =
                 new LiveApiEmbeddingRepository(corpusRepository, "test-key", wireMockServer.baseUrl(), MODEL, DIMENSION);
 
         repository.load();
+        wireMockServer.verify(1, postRequestedFor(urlEqualTo("/embeddings")));
+
         repository.load();
 
-        wireMockServer.verify(3, postRequestedFor(urlEqualTo("/embeddings")));
+        wireMockServer.verify(1, postRequestedFor(urlEqualTo("/embeddings")));
+    }
+
+    /**
+     * {@code R3-live-load-fetches-whole-corpus-serially}: a provider response whose vector
+     * count does not match the request must fail closed instead of silently misassigning
+     * vectors, and — because {@link LiveApiEmbeddingRepository}'s cache is only populated
+     * after a whole batch succeeds — a failed batch must leave nothing cached, so the very
+     * next {@code load()} re-requests every document, not just the ones the failed attempt
+     * happened not to reach.
+     */
+    @Test
+    void aProviderVectorCountMismatchFailsClosedAndANextLoadRetriesEveryDocument() {
+        stubEmbeddingResponse(2, "[1.0, 0.0, 0.0, 0.0]"); // corpus has 3 documents, provider returns 2
+        LiveApiEmbeddingRepository repository =
+                new LiveApiEmbeddingRepository(corpusRepository, "test-key", wireMockServer.baseUrl(), MODEL, DIMENSION);
+
+        assertThatThrownBy(repository::load).isInstanceOf(EmbeddingApiException.class);
+
+        wireMockServer.resetAll();
+        stubEmbeddingResponse(3, "[1.0, 0.0, 0.0, 0.0]");
+
+        EmbeddingCache cache = repository.load();
+
+        assertThat(cache.vectors()).hasSize(3);
+        wireMockServer.verify(1, postRequestedFor(urlEqualTo("/embeddings")));
+        assertThat(requestBodyOf(wireMockServer.getAllServeEvents().get(0)).get("input").size()).isEqualTo(3);
     }
 
     @Test
@@ -154,17 +216,47 @@ class LiveApiEmbeddingRepositoryTest {
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
-    private void stubEmbeddingResponse(String embeddingArray) {
+    /** Stubs a batch response of {@code count} items, all sharing the same {@code embeddingArray}. */
+    private void stubEmbeddingResponse(int count, String embeddingArray) {
+        stubEmbeddingResponse(count, java.util.Collections.nCopies(count, embeddingArray));
+    }
+
+    /** Stubs a batch response with one distinct embedding array per item, in order. */
+    private void stubEmbeddingResponse(int count, List<String> embeddingArrays) {
+        if (embeddingArrays.size() != count) {
+            throw new IllegalArgumentException("embeddingArrays must have exactly " + count + " entries");
+        }
+        StringBuilder items = new StringBuilder();
+        for (int i = 0; i < count; i++) {
+            if (i > 0) {
+                items.append(',');
+            }
+            items.append("""
+                    { "object": "embedding", "index": %d, "embedding": %s }
+                    """.formatted(i, embeddingArrays.get(i)));
+        }
         String body = """
                 {
                   "object": "list",
-                  "data": [ { "object": "embedding", "index": 0, "embedding": %s } ],
+                  "data": [ %s ],
                   "model": "%s",
-                  "usage": { "prompt_tokens": 3, "total_tokens": 3 }
+                  "usage": { "prompt_tokens": %d, "total_tokens": %d }
                 }
-                """.formatted(embeddingArray, MODEL);
+                """.formatted(items, MODEL, count * 3, count * 3);
         wireMockServer.stubFor(post(urlEqualTo("/embeddings"))
                 .willReturn(aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody(body)));
+    }
+
+    private static JsonNode requestBodyOf(com.github.tomakehurst.wiremock.stubbing.ServeEvent event) {
+        LoggedRequest request = event.getRequest();
+        return JsonMapper.builder().build().readTree(request.getBodyAsString());
+    }
+
+    private static EmbeddingVector vectorFor(EmbeddingCache cache, String documentId) {
+        return cache.vectors().stream()
+                .filter(vector -> vector.documentId().equals(documentId))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no vector for document '" + documentId + "'"));
     }
 
     private static CorpusRepository fixedCorpus(String... ids) {
