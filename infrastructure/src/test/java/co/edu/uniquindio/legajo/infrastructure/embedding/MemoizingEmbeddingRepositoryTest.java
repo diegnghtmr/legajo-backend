@@ -47,6 +47,44 @@ class MemoizingEmbeddingRepositoryTest {
         assertThat(delegate.savedCaches).containsExactly(cacheToSave, cacheToSave);
     }
 
+    /** A save through the decorator must not leave later loads serving the pre-save cache. */
+    @Test
+    void loadAfterSaveReturnsTheSavedCache() {
+        CountingEmbeddingRepository delegate = new CountingEmbeddingRepository(twoVectorCache());
+        MemoizingEmbeddingRepository repository = new MemoizingEmbeddingRepository(delegate);
+        repository.load();
+        EmbeddingCache saved = twoVectorCache();
+
+        repository.save(saved);
+
+        assertThat(repository.load()).isSameAs(saved);
+    }
+
+    /** A failed load is not memoized: the next call tries the delegate again. */
+    @Test
+    void aFailedLoadIsRetriedOnTheNextCall() {
+        EmbeddingCache cache = twoVectorCache();
+        AtomicInteger calls = new AtomicInteger();
+        EmbeddingRepository flaky = new EmbeddingRepository() {
+            @Override
+            public EmbeddingCache load() {
+                if (calls.incrementAndGet() == 1) {
+                    throw new IllegalStateException("first read fails");
+                }
+                return cache;
+            }
+
+            @Override
+            public void save(EmbeddingCache ignored) {
+            }
+        };
+        MemoizingEmbeddingRepository repository = new MemoizingEmbeddingRepository(flaky);
+
+        org.assertj.core.api.Assertions.assertThatIllegalStateException().isThrownBy(repository::load);
+        assertThat(repository.load()).isSameAs(cache);
+        assertThat(calls.get()).isEqualTo(2);
+    }
+
     private static EmbeddingCache twoVectorCache() {
         return new EmbeddingCache("1.0", "1.0", "corpus-hash-abc", "all-MiniLM-L6-v2", 2,
                 List.of(

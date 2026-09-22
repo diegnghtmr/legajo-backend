@@ -90,6 +90,27 @@ class EmbeddingCacheStartupValidatorTest {
         });
     }
 
+    /**
+     * The boundary is wider than a sha mismatch on purpose: a served cache that cannot be read
+     * at all is as unusable as a stale one, so it also stops the boot instead of answering 500
+     * on the first request.
+     */
+    @Test
+    void aMissingServedCacheFileAlsoStopsTheBoot() {
+        Path apiPath = writeCache(tempDir.resolve("embeddings-openai.json"), CORPUS_SHA);
+
+        runner(tempDir.resolve("absent-minilm.json"), apiPath, "cached")
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void aMissingApiCacheFileDoesNotStopTheBootInLiveMode() {
+        Path localPath = writeCache(tempDir.resolve("embeddings-minilm.json"), CORPUS_SHA);
+
+        runner(localPath, tempDir.resolve("absent-openai.json"), "live")
+                .run(context -> assertThat(context).hasNotFailed());
+    }
+
     @Test
     void matchingCachesInCachedModeStartCleanly() {
         Path localPath = writeCache(tempDir.resolve("embeddings-minilm.json"), CORPUS_SHA);

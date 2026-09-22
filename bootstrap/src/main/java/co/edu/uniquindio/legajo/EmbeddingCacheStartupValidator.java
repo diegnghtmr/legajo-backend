@@ -31,6 +31,10 @@ import java.util.Objects;
  * SmartInitializingSingleton} startup hook, so a plain {@code IllegalStateException} thrown
  * from {@link #validate()} aborts context refresh with no framework-specific wrapping added
  * here.
+ *
+ * <p>Any {@code load()} failure stops the boot, not only a {@code corpusSha256} mismatch: a
+ * served cache file that is missing, unreadable or malformed is as unusable as a stale one, and
+ * failing at startup is the same fail-closed rule the TRD applies to the mismatch.
  */
 final class EmbeddingCacheStartupValidator {
 

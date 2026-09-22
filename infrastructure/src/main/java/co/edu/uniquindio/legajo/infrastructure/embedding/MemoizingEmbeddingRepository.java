@@ -56,7 +56,9 @@ public final class MemoizingEmbeddingRepository implements EmbeddingRepository {
     }
 
     @Override
-    public void save(EmbeddingCache cache) {
+    public synchronized void save(EmbeddingCache cache) {
         delegate.save(cache);
+        // Keep later loads consistent with what was just written.
+        cachedValue = cache;
     }
 }
