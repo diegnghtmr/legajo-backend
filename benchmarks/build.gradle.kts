@@ -70,17 +70,28 @@ tasks.named("check") {
 // Export-strictness hardening slice: the harness must describe the machine that actually
 // produced the numbers, so it is captured right when :benchmarks:jmh runs -- never later, when
 // :benchmarks:jmhExport happens to run on a different machine or session
-// (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md). This finalizer always
-// runs right after :benchmarks:jmh (even on failure, so the sidecar's absence/staleness is
-// itself the signal jmhExport checks for), and jmhExport reads its output instead of calling
-// HarnessInfo.collect() itself.
+// (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md). Gradle's `finalizedBy`
+// always runs a finalizer, even when the finalized task fails, so this task's own `onlyIf`
+// below skips it when :benchmarks:jmh itself failed -- otherwise a rerun after a failed jmh
+// task would still capture a "fresh-looking" sidecar next to a stale, unrelated
+// jmh-results.json left over from an earlier successful run
+// (R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 / R3-003). When it does run, the
+// sidecar it writes is bound (by SHA-256, not by timestamp) to the exact
+// jmh-results.json it describes; :benchmarks:jmhExport reads that binding, and the sidecar's
+// fields, instead of calling HarnessInfo.collect() itself.
 tasks.register<JavaExec>("jmhHarnessSidecar") {
     group = "verification"
     description = "Captures the reference-harness metadata right when :benchmarks:jmh runs, into " +
             "build/results/jmh/harness.properties, for :benchmarks:jmhExport to read later."
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("co.edu.uniquindio.legajo.benchmarks.export.HarnessSidecarCli")
-    args("--output=${layout.buildDirectory.file("results/jmh/harness.properties").get().asFile}")
+    args(
+        "--output=${layout.buildDirectory.file("results/jmh/harness.properties").get().asFile}",
+        "--input=${layout.buildDirectory.file("results/jmh/jmh-results.json").get().asFile}",
+    )
+    onlyIf("the :benchmarks:jmh task must have succeeded") {
+        tasks.named("jmh").get().state.failure == null
+    }
 }
 
 tasks.named("jmh") {
@@ -92,8 +103,9 @@ tasks.named("jmh") {
 // benchmarks/results/slopes.csv. Run after :benchmarks:jmh, e.g.:
 //   ./gradlew :benchmarks:jmh :benchmarks:jmhExport
 // The export itself is strict (odd/tasks/jmh-benchmarks.md, export-strictness slice): it fails
-// before writing either CSV if the harness sidecar is missing/stale, its JDK disagrees with
-// what the JMH JSON itself reports, or any benchmark result cannot be classified.
+// before writing either CSV if the harness sidecar is missing or bound to a different JMH
+// results file, its JDK disagrees with what the JMH JSON itself reports, or any benchmark
+// result cannot be classified.
 tasks.register<JavaExec>("jmhExport") {
     group = "verification"
     description = "Exports build/results/jmh/jmh-results.json to benchmarks/results/jmh-results.csv " +

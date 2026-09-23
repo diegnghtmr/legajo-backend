@@ -1,10 +1,7 @@
 package co.edu.uniquindio.legajo.benchmarks.export;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.FileTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +15,11 @@ import java.util.Optional;
  * {@code :benchmarks:jmhHarnessSidecar} wrote at {@code :benchmarks:jmh} run time),
  * {@code --resultsCsv=<path>}, {@code --slopesCsv=<path>}.
  *
- * <p>The export is strict: a missing or stale harness sidecar, a JMH-reported JDK version that
- * disagrees with the sidecar, or any benchmark result that cannot be classified all fail the
- * whole export before either CSV is written, rather than producing a silently incomplete file
- * (R4-001/R3-001/R3-002, R3-harness-captured-at-export-time; odd/tasks/jmh-benchmarks.md).
+ * <p>The export is strict: a missing harness sidecar, a sidecar bound to a different JMH
+ * results file, a JMH-reported JDK version that disagrees with the sidecar, or any benchmark
+ * result that cannot be classified all fail the whole export before either CSV is written,
+ * rather than producing a silently incomplete file (R4-001/R3-001/R3-002,
+ * R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md).
  */
 public final class JmhExportCli {
 
@@ -39,7 +37,7 @@ public final class JmhExportCli {
 
     /** Reads {@code input} and writes both CSVs; separated from {@link #main} so it is directly testable. */
     static void run(Path input, Path harnessSidecar, Path resultsCsv, Path slopesCsv) {
-        requireFreshHarnessSidecar(harnessSidecar, input);
+        requireHarnessSidecarBoundToJmhResults(harnessSidecar, input);
         HarnessInfo harness = HarnessInfo.readSidecar(harnessSidecar);
         crossCheckReportedJdkVersion(harness, input);
 
@@ -50,28 +48,28 @@ public final class JmhExportCli {
     }
 
     /**
-     * The harness sidecar must exist and be at least as new as the JMH results it describes:
-     * an absent or older sidecar means it was not (re)written for this run, so the CSV header
-     * would misreport the machine that actually produced these numbers.
+     * The harness sidecar must exist and its recorded {@code jmhResultsSha256} must match
+     * {@code input}'s actual content (R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 /
+     * R3-003, odd/tasks/jmh-benchmarks.md): a plain timestamp comparison cannot tell a sidecar
+     * that legitimately describes {@code input} apart from one refreshed by a finalizer that
+     * ran after a failed {@code :benchmarks:jmh} task against a stale, unrelated results file —
+     * that finalizer run still leaves the sidecar with a newer mtime than the stale JSON, even
+     * though the two no longer describe the same run. Content, not mtime, is the only thing
+     * that can prove the pairing.
      */
-    private static void requireFreshHarnessSidecar(Path harnessSidecar, Path input) {
+    private static void requireHarnessSidecarBoundToJmhResults(Path harnessSidecar, Path input) {
         if (!Files.isRegularFile(harnessSidecar)) {
             throw new IllegalStateException(
                     "harness sidecar " + harnessSidecar + " is missing; run :benchmarks:jmh before "
                             + ":benchmarks:jmhExport so the reference harness is captured at run time");
         }
-        try {
-            FileTime harnessTime = Files.getLastModifiedTime(harnessSidecar);
-            FileTime inputTime = Files.getLastModifiedTime(input);
-            if (harnessTime.compareTo(inputTime) < 0) {
-                throw new IllegalStateException(
-                        "harness sidecar " + harnessSidecar + " (" + harnessTime + ") is older than the JMH "
-                                + "results " + input + " (" + inputTime + "); rerun :benchmarks:jmh so the sidecar "
-                                + "matches this run");
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException(
-                    "failed to compare timestamps of " + harnessSidecar + " and " + input, e);
+        String recordedSha256 = HarnessInfo.readRecordedJmhResultsSha256(harnessSidecar);
+        String actualSha256 = HarnessInfo.sha256Hex(input);
+        if (!recordedSha256.equals(actualSha256)) {
+            throw new IllegalStateException(
+                    "harness sidecar " + harnessSidecar + " was captured for a different JMH results file than "
+                            + input + " (recorded SHA-256 '" + recordedSha256 + "' does not match this file's '"
+                            + actualSha256 + "'); rerun :benchmarks:jmh so the sidecar matches this run");
         }
     }
 
