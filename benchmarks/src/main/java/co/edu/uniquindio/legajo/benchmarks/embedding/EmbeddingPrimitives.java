@@ -12,18 +12,20 @@ import java.util.List;
  * <p>{@code co.edu.uniquindio.legajo.similarity.EmbeddingLocal#dotProduct} and {@code
  * co.edu.uniquindio.legajo.similarity.EmbeddingApi#sumSquaredDifferences} — the domain methods
  * this class mirrors — have package-private (default) access, scoped to the {@code
- * co.edu.uniquindio.legajo.similarity} package inside the {@code domain} module. {@code
- * co.edu.uniquindio.legajo.benchmarks.embedding} is a different package in a different Gradle
- * module, so neither it nor its test package can call them directly. Living in {@code
- * benchmarks}' {@code main} source set (rather than inline inside the JMH class itself, which
- * lives in the separate {@code jmh} source set the {@code test} source set does not depend on)
- * is what lets a plain unit test reach the exact same loop code the JMH benchmark measures, and
- * then compare its result against the domain algorithms' public {@code compute(...)}. Widening
- * {@code EmbeddingLocal}/{@code EmbeddingApi}'s methods to {@code public} was rejected: those
- * methods are deliberately private implementation detail of two {@code domain.similarity}
- * algorithms, and {@code benchmarks} must only ever depend on {@code domain}'s public surface
- * (module map, backend/AGENTS.md) — this class keeps that boundary intact while still proving
- * the two hand-written loops compute the values the domain algorithms actually rely on.
+ * co.edu.uniquindio.legajo.similarity} package inside the {@code domain} module. That is exactly
+ * why {@code co.edu.uniquindio.legajo.benchmarks.embedding} — a different package in a different
+ * Gradle module — cannot call them directly: default access only reaches code in the same
+ * package, and neither {@code benchmarks} nor its test package is that package. Living in
+ * {@code benchmarks}' {@code main} source set (rather than inline inside the JMH class itself,
+ * which lives in the separate {@code jmh} source set the {@code test} source set does not depend
+ * on) is what lets a plain unit test reach the exact same loop code the JMH benchmark measures,
+ * and then compare its result against the domain algorithms' public {@code compute(...)}.
+ * Widening {@code EmbeddingLocal}/{@code EmbeddingApi}'s methods to {@code public} was rejected:
+ * {@code benchmarks} must only ever depend on {@code domain}'s public surface (module map,
+ * backend/AGENTS.md), so widening those two methods just to reach them from a different module
+ * would leak internal algorithm detail across that boundary — this class keeps the boundary
+ * intact while still proving the two hand-written loops compute the values the domain algorithms
+ * actually rely on.
  */
 public final class EmbeddingPrimitives {
 

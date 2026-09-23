@@ -19,27 +19,36 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class CorpusPathsTest {
 
-    private static final String OVERRIDE_PROPERTY = "legajo.benchmarks.corpusPath";
-
     /** Null means the property was absent before the test, not set to the string {@code "null"}. */
     private String overridePropertyBeforeTest;
 
+    /**
+     * Remembers whatever this JVM's {@code CorpusPaths.OVERRIDE_PROPERTY} held before the test
+     * (for {@link #restoreOverrideProperty} to put back afterward), then clears it. Clearing it
+     * here, not just remembering it, is what isolates {@link
+     * #notFoundByWalkFailsNamingTheStartingDirectoryAndTheOverrideOption}: without this, a
+     * leftover value from a real {@code -D} invocation this test JVM was started with (or from
+     * another test in the same JVM whose own {@code @AfterEach} has not run yet) would make that
+     * walk test silently take the override branch instead of exercising the walk-up-and-fail
+     * path it is named for.
+     */
     @BeforeEach
-    void rememberOverrideProperty() {
-        overridePropertyBeforeTest = System.getProperty(OVERRIDE_PROPERTY);
+    void rememberAndClearOverrideProperty() {
+        overridePropertyBeforeTest = System.getProperty(CorpusPaths.OVERRIDE_PROPERTY);
+        System.clearProperty(CorpusPaths.OVERRIDE_PROPERTY);
     }
 
     /**
-     * Restores whatever this JVM's {@code OVERRIDE_PROPERTY} held before the test, instead of
-     * unconditionally clearing it: a plain {@code clearProperty} would erase a value a real
-     * {@code -D} invocation (or another test running in the same JVM) had already set.
+     * Restores whatever this JVM's {@code CorpusPaths.OVERRIDE_PROPERTY} held before the test,
+     * instead of unconditionally clearing it: a plain {@code clearProperty} would erase a value
+     * a real {@code -D} invocation had set for the whole JVM, beyond this test class.
      */
     @AfterEach
     void restoreOverrideProperty() {
         if (overridePropertyBeforeTest == null) {
-            System.clearProperty(OVERRIDE_PROPERTY);
+            System.clearProperty(CorpusPaths.OVERRIDE_PROPERTY);
         } else {
-            System.setProperty(OVERRIDE_PROPERTY, overridePropertyBeforeTest);
+            System.setProperty(CorpusPaths.OVERRIDE_PROPERTY, overridePropertyBeforeTest);
         }
     }
 
@@ -55,7 +64,7 @@ class CorpusPathsTest {
     void overrideThatExistsIsResolvedAsIs(@TempDir Path tempDir) throws IOException {
         Path overrideFile = tempDir.resolve("override-corpus.json");
         Files.writeString(overrideFile, "{}");
-        System.setProperty(OVERRIDE_PROPERTY, overrideFile.toString());
+        System.setProperty(CorpusPaths.OVERRIDE_PROPERTY, overrideFile.toString());
 
         Path resolved = CorpusPaths.resolveCorpusJson();
 
@@ -65,32 +74,38 @@ class CorpusPathsTest {
     @Test
     void overrideThatDoesNotExistFailsWithAClearMessage(@TempDir Path tempDir) {
         Path missingOverride = tempDir.resolve("does-not-exist-corpus.json");
-        System.setProperty(OVERRIDE_PROPERTY, missingOverride.toString());
+        System.setProperty(CorpusPaths.OVERRIDE_PROPERTY, missingOverride.toString());
 
         assertThatThrownBy(CorpusPaths::resolveCorpusJson)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining(OVERRIDE_PROPERTY)
+                .hasMessageContaining(CorpusPaths.OVERRIDE_PROPERTY)
                 .hasMessageContaining(missingOverride.toString())
                 .hasMessageContaining("regular file");
     }
 
     @Test
     void overrideThatIsADirectoryFailsWithAClearMessage(@TempDir Path tempDir) {
-        System.setProperty(OVERRIDE_PROPERTY, tempDir.toString());
+        System.setProperty(CorpusPaths.OVERRIDE_PROPERTY, tempDir.toString());
 
         assertThatThrownBy(CorpusPaths::resolveCorpusJson)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining(OVERRIDE_PROPERTY)
+                .hasMessageContaining(CorpusPaths.OVERRIDE_PROPERTY)
                 .hasMessageContaining(tempDir.toString())
                 .hasMessageContaining("regular file");
     }
 
+    /**
+     * The override property is guaranteed clear here by {@link #rememberAndClearOverrideProperty}
+     * (not merely assumed absent), so this test actually exercises the walk-up-and-fail path
+     * even when this test JVM itself was started with a real {@code -D} override, or another test
+     * in this class ran first and left a value behind for its own {@code @AfterEach} to restore.
+     */
     @Test
     void notFoundByWalkFailsNamingTheStartingDirectoryAndTheOverrideOption(@TempDir Path tempDir) {
         assertThatThrownBy(() -> CorpusPaths.resolveCorpusJson(tempDir))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("data/corpus.json")
                 .hasMessageContaining(tempDir.toString())
-                .hasMessageContaining("-D" + OVERRIDE_PROPERTY);
+                .hasMessageContaining("-D" + CorpusPaths.OVERRIDE_PROPERTY);
     }
 }

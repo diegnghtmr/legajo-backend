@@ -13,7 +13,9 @@ import java.nio.file.Path;
 public final class CorpusPaths {
 
     private static final String RELATIVE_PATH = "data/corpus.json";
-    private static final String OVERRIDE_PROPERTY = "legajo.benchmarks.corpusPath";
+
+    /** Package-private so {@code CorpusPathsTest} references this exact name instead of a duplicated string literal. */
+    static final String OVERRIDE_PROPERTY = "legajo.benchmarks.corpusPath";
 
     private CorpusPaths() {
     }
