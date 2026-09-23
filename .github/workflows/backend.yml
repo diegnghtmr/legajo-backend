@@ -28,3 +28,30 @@ jobs:
 
       - name: Aggregate coverage report
         run: ./gradlew jacocoRootReport
+
+  # TRD §14.3: image smoke test (health, OpenAPI, corpus listing, a real comparison
+  # including needleman-wunsch, and Ward clustering). Runs after `build` rather than in
+  # parallel: building and starting the image is comparatively expensive, and there is no
+  # point paying for it against code that does not even compile or pass its own tests.
+  image-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Build the image and start the default-profile stack
+        run: docker compose up -d --build --wait backend
+
+      - name: Run the smoke script (TRD §14.2 — curl/jq from a container, not the runner)
+        run: |
+          docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
+            alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ http://localhost:8080
+
+      - name: Dump backend logs on failure
+        if: failure()
+        run: docker compose logs backend
+
+      - name: Tear down
+        if: always()
+        run: docker compose down

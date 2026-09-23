@@ -1,8 +1,28 @@
 # TRD §14.1/§14.2: profiles select which services run. `ingest` is a one-shot, local-only
-# extraction step (GROBID) — never part of the `default` demo profile. The backend and
-# frontend services for the `default` profile land with their own Dockerfiles (later task);
-# this file starts with only what T4 needs so it does not invent undocumented services.
+# extraction step (GROBID) — never part of the `default` demo profile.
+#
+# The `backend` service below is the `default`-profile demo target, built from this
+# repository's own Dockerfile. The `frontend` service is not defined here yet: it depends
+# on the frontend repository having its own image (odd/tasks/containers.md, task F1), and on
+# this Compose file building it from `${LEGAJO_FRONTEND_DIR:-../frontend}` (task K4, TRD
+# §14.2) — a follow-up once that image exists, not a promised date.
 services:
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # TRD §14.1: the default profile needs no live embedding credentials — it serves the
+      # versioned caches under data/. LEGAJO_CORS_ORIGINS is passed through empty so the
+      # server falls back to its documented defaults (http://localhost:5173, http://localhost).
+      LEGAJO_EMBEDDING_PROVIDER: ${LEGAJO_EMBEDDING_PROVIDER:-cached}
+      LEGAJO_CORS_ORIGINS: ${LEGAJO_CORS_ORIGINS:-}
+    # No healthcheck override here: Compose inherits the image's own HEALTHCHECK
+    # (Dockerfile) unless a service redefines one, and duplicating the same bash/dev/tcp
+    # probe in two files would only be one more place for the two to drift apart. That
+    # inherited healthcheck is what makes `docker compose up --wait` block until the backend
+    # actually answers 200/UP on /actuator/health, not just until the process starts.
+
   grobid:
     image: lfoppiano/grobid:0.8.2
     profiles: ["ingest"]
