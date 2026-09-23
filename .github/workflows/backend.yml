@@ -14,20 +14,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - name: Set up JDK 25 (Temurin)
-        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
-        with:
-          distribution: temurin
-          java-version: "25"
-
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      # TRD §14.2: runs the exact same containerized path a developer uses locally
+      # (scripts/gradle-in-docker.sh, README "Verification runs in containers") instead of a
+      # separate actions/setup-java host JDK — the documented developer path is what this CI
+      # now exercises, not a parallel one that could drift from it. `</dev/null` gives the
+      # step no TTY (a GitHub-hosted runner's own steps have none either way): the script
+      # itself never passes `-t`/`-i` to `docker run`, so this is only confirming that
+      # explicitly, not fixing anything the script would otherwise get wrong. The script
+      # resolves the invoking uid/gid itself (`$(id -u):$(id -g)`, its own comments) and
+      # reuses one named Docker volume for GRADLE_USER_HOME across both steps below, so the
+      # dependency/build cache the first step downloads is not re-fetched by the second.
       - name: Build (compile, test, ArchUnit)
-        run: ./gradlew build
+        run: ./scripts/gradle-in-docker.sh build </dev/null
 
       - name: Aggregate coverage report
-        run: ./gradlew jacocoRootReport
+        run: ./scripts/gradle-in-docker.sh jacocoRootReport </dev/null
 
   # TRD §14.3: image smoke test (health, OpenAPI, corpus listing, a real comparison
   # including needleman-wunsch, and Ward clustering). Runs after `build` rather than in

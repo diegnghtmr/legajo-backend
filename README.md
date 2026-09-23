@@ -35,24 +35,39 @@ to point at for autocomplete/navigation — neither is a supported way to build 
 this project. See "Checks run in containers" below for the container command for every
 check, and `scripts/gradle-in-docker.sh` for the Gradle runner they share.
 
-CI's `build` job runs on GitHub-hosted runners via `actions/setup-java` (pinned to a commit
-SHA, currently v4.9.1) with `distribution: temurin`, `java-version: "25"` — a CI runner, not
-a developer's machine, so this does not conflict with the container-only rule above. CI's
+CI's `build` job runs `scripts/gradle-in-docker.sh` too — the exact same container-only path
+described above, not a separate `actions/setup-java` install — so what CI actually exercises
+is the documented developer path, not a parallel one that could quietly drift from it. CI's
 `image-smoke` job builds and exercises the image itself, the same way described below.
 
 ## Running with Docker
 
-Build the image directly:
+Build the backend image directly:
 
 ```bash
 docker build -t legajo-backend:local .
 ```
 
-Or run the `default`-profile demo stack with Compose (builds the image, publishes
-`:8080`, waits for the healthcheck):
+Run the full `default`-profile stack with Compose — both `backend` and `frontend` — from
+this directory (`backend/`), with the frontend repository checked out as a sibling of this
+one (`../frontend`, or any other checkout via `LEGAJO_FRONTEND_DIR`):
 
 ```bash
-docker compose up -d --wait backend
+docker compose up -d --build --wait
+docker compose down
+```
+
+This builds and starts both containers, waits for both healthchecks, publishes the frontend
+at http://localhost and the API at http://localhost:8080. No CORS configuration is needed:
+an unset/empty `LEGAJO_CORS_ORIGINS` falls back to `http://localhost` among its documented
+defaults (TRD §14.4) — exactly the frontend's Compose-published origin — so the two
+containers talk to each other correctly with nothing to set.
+
+Backend only, no frontend checkout needed (what CI's `image-smoke` job runs, since it has
+no frontend checkout to build from):
+
+```bash
+docker compose up -d --build --wait backend
 docker compose down
 ```
 
@@ -60,16 +75,33 @@ Compose profiles (TRD §14.1):
 
 | Profile | Services | Purpose |
 |---|---|---|
-| `default` (no `--profile` flag) | `backend` | The demo stack; `LEGAJO_EMBEDDING_PROVIDER` defaults to `cached`, no network needed |
+| `default` (no `--profile` flag) | `backend`, `frontend` | The demo stack; `LEGAJO_EMBEDDING_PROVIDER` defaults to `cached`, no network needed |
 | `ingest` | + `grobid` | One-shot corpus extraction only (see "Ingestion" below); never part of the demo |
 
 `LEGAJO_EMBEDDING_PROVIDER` and `LEGAJO_CORS_ORIGINS` pass straight through from the host
-environment into the `backend` service (`docker-compose.yml`); unset, they keep the
-documented defaults (`cached`, and the two hard-coded CORS origins respectively).
+environment into the `backend` service; unset, they keep the documented defaults (`cached`,
+and the two localhost CORS origins respectively). `frontend` reads three of its own, all
+optional: `LEGAJO_FRONTEND_DIR` (its build context, default `../frontend`),
+`VITE_API_BASE_URL` (a build arg baked into the compiled bundle, default
+`http://localhost:8080` — this is the address the *browser*, not the container, reaches the
+backend at, so it must stay a host-reachable URL, never a Compose service name), and
+`LEGAJO_FRONTEND_PORT` (the host side of the port mapping only, default `80`; the container
+itself always listens on `8080`, frontend/Dockerfile).
 
-Health check: `GET /actuator/health`, probed directly by the Dockerfile's own `HEALTHCHECK`,
-which the Compose `backend` service inherits unchanged (see the Dockerfile's own comments
-for why `docker-compose.yml` never redefines it).
+Health checks: `GET /actuator/health` for `backend`, `GET /` for `frontend` — each probed
+directly by that service's own image `HEALTHCHECK` (this repository's `Dockerfile`, and
+`frontend/Dockerfile` in the sibling checkout), which the Compose services inherit unchanged
+(see each Dockerfile's own comments for why `docker-compose.yml` never redefines either).
+`frontend` also declares `depends_on: backend: condition: service_healthy`, so it does not
+even start until `backend` is already healthy; together with both inherited healthchecks,
+`docker compose up --wait` only returns once the whole stack is actually serving traffic,
+not merely running.
+
+CI's `image-smoke` job (`.github/workflows/backend.yml`) always names only `backend` on the
+command line, so it never builds or even resolves `frontend`'s build context — a missing
+`../frontend` checkout there (the normal case: that CI has none) is harmless. See
+`docker-compose.yml`'s own header comment for why `frontend` still counts as part of the
+plain, no-flag `default` profile despite that.
 
 ## Checks run in containers
 
@@ -82,6 +114,7 @@ Every check below is the exact command a developer or CI runs — no host JDK, n
 | Tests only | `./scripts/gradle-in-docker.sh test` |
 | Aggregated coverage (JaCoCo, >85% in the algorithm packages) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
 | Start locally, no network | `docker compose up -d --wait backend` |
+| Full stack locally, no network | `docker compose up -d --build --wait` (needs `../frontend`, or `LEGAJO_FRONTEND_DIR`) |
 | Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | see below |
 | JMH performance curves + CSV export (NFR-QA-10; must run on the reference machine — see "Benchmarks" below) | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
 
@@ -94,15 +127,27 @@ teardown) ever runs, leaking a running container; and without `set -e`, a failed
 against a stack that never came up, masking the real failure behind a confusing, unrelated
 smoke error. An `EXIT` trap avoids both: it always runs, on success, on a `set -e` abort, or
 on an interrupt, and it explicitly re-exits with the status that triggered it, so the whole
-script's own exit code still reflects whichever step actually failed:
+script's own exit code still reflects whichever step actually failed.
+
+The whole block is wrapped in a `( ... )` subshell so it is also safe to paste straight into
+an interactive shell, not just saved and run as a script: `set -e` only takes effect inside
+the subshell, so a failing step there cannot close the terminal session it was pasted into
+the way a bare `set -e` in the current shell would (confirmed: pasting the un-wrapped form
+into an interactive `bash` and forcing a failure terminated that shell outright, before its
+own teardown trap or any later command could run; the `( ... )` form tears down, reports the
+failure's exit status, and leaves the surrounding shell running). The subshell changes
+nothing about exit-status propagation or teardown-on-failure: both still work exactly as the
+paragraph above describes, now for the whole `( ... )` command as seen from outside it.
 
 ```bash
-set -e
-trap 'status=$?; docker compose down; exit $status' EXIT
-docker compose up -d --wait backend
-docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
-    alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' \
-    _ http://localhost:8080
+(
+  set -e
+  trap 'status=$?; docker compose down; exit $status' EXIT
+  docker compose up -d --wait backend
+  docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
+      alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' \
+      _ http://localhost:8080
+)
 ```
 
 `scripts/gradle-in-docker.sh` runs the same pinned Temurin 25 JDK image the Dockerfile's

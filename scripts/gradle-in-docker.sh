@@ -36,11 +36,14 @@ docker volume inspect "$GRADLE_HOME_VOLUME" >/dev/null 2>&1 \
 # A Docker-managed named volume starts out root-owned; it only needs chowning once, the
 # first time it is created, not on every single invocation once it has filled up with a
 # large dependency/build cache. `find ... -quit` stops at the first entry that does not
-# already belong to the invoking uid, so an already-correctly-owned volume only pays for one
-# read-only tree walk (no chown syscalls at all), instead of always paying for a full
-# `chown -R` whether it is needed or not.
+# already belong to the invoking uid AND gid, so an already-correctly-owned volume only pays
+# for one read-only tree walk (no chown syscalls at all), instead of always paying for a full
+# `chown -R` whether it is needed or not. The group is checked too, not just the owner:
+# `chown -R "$1:$2"` sets both, so a volume with the right owner but a stale group (e.g. left
+# over from an earlier run under a different gid, or a group-writable cache someone else
+# shares) would otherwise pass this check and never get its group corrected.
 docker run --rm -v "$GRADLE_HOME_VOLUME:/gradle-home" "$IMAGE" \
-    sh -c 'if [ -n "$(find /gradle-home ! -user "$1" -print -quit 2>/dev/null)" ]; then chown -R "$1:$2" /gradle-home; fi' \
+    sh -c 'if [ -n "$(find /gradle-home \( ! -user "$1" -o ! -group "$2" \) -print -quit 2>/dev/null)" ]; then chown -R "$1:$2" /gradle-home; fi' \
     _ "$(id -u)" "$(id -g)"
 
 # Docker-socket access is opt-in, never the default (LEGAJO_DOCKER_SOCKET=1). Mounting the
@@ -69,9 +72,9 @@ fi
 # GROBID at http://localhost:8070 (backend/README.md "Ingestion, validation and
 # verification"): without this, "localhost" inside the container is the container's own
 # loopback, not the host's, so a Compose-published port is simply unreachable from in here.
-# Left off by default because it hands the container the whole host network namespace,
-# broader than an ordinary build/test run — which needs no inbound or host-local network
-# access at all — ever needs.
+# Left off by default: it hands the container the whole host network namespace, which is
+# more access than an ordinary build/test run ever needs — such a run makes no inbound or
+# host-local network connections at all.
 NETWORK_ARGS=""
 if [ "${LEGAJO_NETWORK_HOST:-0}" = "1" ]; then
     NETWORK_ARGS="--network host"
