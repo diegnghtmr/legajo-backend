@@ -3,7 +3,12 @@
 # TRD §14.2: multi-stage build on a pinned Temurin 25 JDK, running on the matching Temurin
 # 25 JRE. Both stages pin the exact patch build (25.0.4_7) the team already develops and
 # tests against (.mise.toml: temurin-25.0.4+7.0.LTS), so the image's JVM is never whatever
-# "25" happens to resolve to on the day of the build.
+# "25" happens to resolve to on the day of the build. Pinned by tag, not by digest: the tag
+# already fixes the exact JDK patch (the only thing that actually varies release to release),
+# stays human-readable in a diff, and needs no separate manual step to look up and bump a
+# digest on every Temurin patch release — a digest would add reproducibility only against a
+# registry retagging an existing version in place, which eclipse-temurin's own release
+# process does not do.
 
 FROM eclipse-temurin:25.0.4_7-jdk AS build
 WORKDIR /workspace

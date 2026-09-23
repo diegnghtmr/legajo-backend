@@ -1,11 +1,23 @@
 # TRD §14.1/§14.2: profiles select which services run. `ingest` is a one-shot, local-only
 # extraction step (GROBID) — never part of the `default` demo profile.
 #
-# The `backend` service below is the `default`-profile demo target, built from this
-# repository's own Dockerfile. The `frontend` service is not defined here yet: it depends
-# on the frontend repository having its own image (odd/tasks/containers.md, task F1), and on
-# this Compose file building it from `${LEGAJO_FRONTEND_DIR:-../frontend}` (task K4, TRD
-# §14.2) — a follow-up once that image exists, not a promised date.
+# `backend` and `frontend` are the `default`-profile demo target: `backend` builds from
+# this repository's own Dockerfile, `frontend` builds from the sibling frontend
+# repository's checkout (`${LEGAJO_FRONTEND_DIR:-../frontend}`, task K4, TRD §14.2) —
+# neither repository ever copies the other's source, only its build context path. Plain
+# `docker compose up --build` (no `--profile` flag) starts both: the frontend at
+# http://localhost, the API at http://localhost:8080.
+#
+# `frontend` has no `profiles:` key, same as `backend`, so it is part of the implicit
+# default profile like every service with no explicit list — NOT `profiles: ["default"]`,
+# which would be a profile named "default" that Compose does not treat specially: it would
+# still need an explicit `--profile default` flag and would then be absent from plain
+# `docker compose up`, defeating the "both services by default" requirement above. CI's
+# `image-smoke` job (backend.yml) runs `docker compose up -d --build --wait backend`,
+# naming only `backend` on the command line; Compose only builds/starts services actually
+# named (or their dependencies) — `frontend`'s build context is never resolved or touched
+# in that job, so a missing `../frontend` checkout there is harmless (verified: `up -d
+# --wait backend` with LEGAJO_FRONTEND_DIR pointed at a nonexistent path still succeeds).
 services:
   backend:
     build: .
@@ -24,6 +36,32 @@ services:
     # probe in two files would only be one more place for the two to drift apart. That
     # inherited healthcheck is what makes `docker compose up --wait` block until the backend
     # actually answers 200/UP on /actuator/health, not just until the process starts.
+
+  frontend:
+    build:
+      context: ${LEGAJO_FRONTEND_DIR:-../frontend}
+      args:
+        # The browser, not this container, is what talks to the API — so this must be an
+        # address the *host* (where the browser runs) can reach, not a Compose service
+        # name/Docker-network address. http://localhost:8080 is where `backend` publishes
+        # its port on the host (`ports:` above); the frontend image bakes this in at build
+        # time (its own Dockerfile requires the arg and fails the build without it, TRD
+        # Appendix A) so it cannot be changed after the image is built.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+    ports:
+      # nginx-unprivileged inside the image listens on :8080 (unprivileged ports only,
+      # frontend/Dockerfile); this maps it to the host's :80 that TRD §14.2 documents.
+      # LEGAJO_FRONTEND_PORT overrides the host side only, e.g. when :80 is already taken.
+      - "${LEGAJO_FRONTEND_PORT:-80}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    # No healthcheck override here either, same reasoning as `backend` above: the image's
+    # own HEALTHCHECK (frontend/Dockerfile, wget against :8080) is what `docker compose up
+    # --wait` uses to block until nginx is actually serving, and `depends_on: condition:
+    # service_healthy` needs `backend` to already report healthy before `frontend` even
+    # starts building/running — together, `docker compose up --wait` only returns once
+    # both services are healthy.
 
   grobid:
     image: lfoppiano/grobid:0.8.2

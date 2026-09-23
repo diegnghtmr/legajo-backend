@@ -42,17 +42,31 @@ MAX_TIME=15
 # give up (start_period=40s + retries=5 x interval=10s = 90s) plus margin for a genuinely
 # slow JVM cold start (e.g. Render's free tier suspending when idle, TRD §14.4 point 4) —
 # override with SMOKE_READY_TIMEOUT_SECONDS for an even slower environment.
-SMOKE_READY_TIMEOUT_SECONDS="${SMOKE_READY_TIMEOUT_SECONDS:-120}"
-case "$SMOKE_READY_TIMEOUT_SECONDS" in
-    ''|*[!0-9]*)
-        echo "SMOKE FAILED: SMOKE_READY_TIMEOUT_SECONDS must be a positive integer, got '$SMOKE_READY_TIMEOUT_SECONDS'" >&2
-        exit 1
-        ;;
-esac
-[ "$SMOKE_READY_TIMEOUT_SECONDS" -gt 0 ] || {
-    echo "SMOKE FAILED: SMOKE_READY_TIMEOUT_SECONDS must be a positive integer, got '$SMOKE_READY_TIMEOUT_SECONDS'" >&2
+# Validates that $2 is a positive, base-10 integer suitable for both a `[ -gt ]` comparison
+# and, later, $(( )) arithmetic (the health-readiness deadline below uses this value that
+# way) — one helper instead of one copy of the same message per validated variable. A leading
+# zero (other than the single digit "0", already rejected by requiring > 0) is rejected
+# outright rather than accepted and reinterpreted: POSIX shell arithmetic treats a
+# leading-zero numeric literal as octal (verified in busybox ash: $((010)) evaluates to 8,
+# not 10; $((099)) is an outright "arithmetic syntax error" since 9 is not a valid octal
+# digit), while the `[ -gt 0 ]` check just below reads the identical string as plain decimal —
+# two different readings of the same value, one of which crashes the script instead of
+# failing cleanly. Requiring no leading zero keeps both readings identical.
+# Usage: validate_positive_integer <name> <value>
+validate_positive_integer() {
+    name="$1"
+    value="$2"
+    case "$value" in
+        ''|*[!0-9]*) ;;
+        0|0[0-9]*) ;;
+        *) [ "$value" -gt 0 ] && return 0 ;;
+    esac
+    echo "SMOKE FAILED: $name must be a positive integer with no leading zero, got '$value'" >&2
     exit 1
 }
+
+SMOKE_READY_TIMEOUT_SECONDS="${SMOKE_READY_TIMEOUT_SECONDS:-120}"
+validate_positive_integer "SMOKE_READY_TIMEOUT_SECONDS" "$SMOKE_READY_TIMEOUT_SECONDS"
 HEALTH_WAIT_INTERVAL=2
 
 # The CORS preflight check's expected allowed origin (TRD §14.4): defaults to one of the two
@@ -77,8 +91,19 @@ REPLY_BODY=""
 http_request() {
     check_name="$1"
     shift
-    response="$(curl -s --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" -w '\n%{http_code}' "$@")" \
-        || fail "$check_name: request failed (connection error or timeout)" "$response"
+    # curl's own exit status is captured through an `if`, not a bare assignment followed by
+    # `curl_exit=$?`: under `set -eu`, a plain "response=$(curl ...)" that fails is itself a
+    # failing simple command, so the shell would exit right there before the next line ever
+    # ran, losing the exact code entirely (confirmed while writing this: reads as a bare
+    # `28`/`7`/etc. with none of this function's own message). An `if` condition is one of
+    # the constructs POSIX shells explicitly exempt from `set -e`, so both branches always run.
+    if response="$(curl -s --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" -w '\n%{http_code}' "$@")"; then
+        curl_exit=0
+    else
+        curl_exit=$?
+    fi
+    [ "$curl_exit" -eq 0 ] \
+        || fail "$check_name: request failed (curl exit $curl_exit — connection error or timeout)" "$response"
     status="$(printf '%s' "$response" | tail -n1)"
     REPLY_BODY="$(printf '%s' "$response" | sed '$d')"
     [ "$status" = "200" ] || fail "$check_name: expected HTTP 200, got $status" "$REPLY_BODY"
@@ -95,12 +120,22 @@ cors_preflight() {
     # curl's own exit status must drive the failure check, so it is captured on its own
     # (not piped straight into tr below — a trailing pipe would report tr's exit status
     # instead, silently masking a connection failure under `set -eu` with no pipefail in
-    # POSIX sh). Raw HTTP headers are CRLF-terminated; \r is stripped afterwards so the later
-    # exact-value comparison isn't thrown off by a trailing \r.
-    raw_headers="$(curl -s -D - -o /dev/null --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" \
+    # POSIX sh) and through an `if`, not a bare assignment: under `set -eu`, a plain
+    # "raw_headers=$(curl ...)" that fails is itself a failing simple command, so the shell
+    # would exit right there before a following "curl_exit=$?" line ever ran, losing the
+    # exact code entirely — an `if` condition is one of the constructs POSIX shells
+    # explicitly exempt from `set -e`, so both branches always run. Raw HTTP headers are
+    # CRLF-terminated; \r is stripped afterwards so the later exact-value comparison isn't
+    # thrown off by a trailing \r.
+    if raw_headers="$(curl -s -D - -o /dev/null --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" \
         -X OPTIONS "$BASE_URL/api/v1/corpus" \
-        -H "Origin: $origin" -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: Content-Type')" \
-        || fail "cors: preflight request failed (connection error or timeout)" "$raw_headers"
+        -H "Origin: $origin" -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: Content-Type')"; then
+        curl_exit=0
+    else
+        curl_exit=$?
+    fi
+    [ "$curl_exit" -eq 0 ] \
+        || fail "cors: preflight request failed (curl exit $curl_exit — connection error or timeout)" "$raw_headers"
     REPLY_HEADERS="$(printf '%s' "$raw_headers" | tr -d '\r')"
 }
 
@@ -113,7 +148,8 @@ echo "== smoke: $BASE_URL =="
 # terminal) — each retry echoes its own attempt number and elapsed time so the run is
 # visibly still making progress, not stuck.
 echo "-- GET /actuator/health"
-health_deadline=$(( $(date +%s) + SMOKE_READY_TIMEOUT_SECONDS ))
+health_start=$(date +%s)
+health_deadline=$(( health_start + SMOKE_READY_TIMEOUT_SECONDS ))
 health_attempt=1
 health_status=""
 health_body=""
@@ -127,7 +163,8 @@ while :; do
     if [ "$(date +%s)" -ge "$health_deadline" ]; then
         break
     fi
-    echo "   ...attempt $health_attempt not ready yet (status: ${health_status:-none}), retrying in ${HEALTH_WAIT_INTERVAL}s"
+    health_elapsed=$(( $(date +%s) - health_start ))
+    echo "   ...attempt $health_attempt not ready yet (status: ${health_status:-none}), ${health_elapsed}s elapsed, retrying in ${HEALTH_WAIT_INTERVAL}s"
     health_attempt=$((health_attempt + 1))
     sleep "$HEALTH_WAIT_INTERVAL"
 done

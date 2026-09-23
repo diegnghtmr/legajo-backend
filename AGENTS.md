@@ -89,7 +89,7 @@ Definidos por el TRD §13 y §14; `./scripts/gradle-in-docker.sh tasks` confirma
 | Solo pruebas | `./scripts/gradle-in-docker.sh test` |
 | Cobertura agregada (más del 85 % en los paquetes de algoritmos) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
 | Arrancar en local sin red | `docker compose up -d --wait backend` (perfil `default`; `LEGAJO_EMBEDDING_PROVIDER` ya es `cached` por defecto) |
-| Demo completa (backend `:8080`, frontend `:80`) | `docker compose up` (el servicio `frontend` llega con K4, ver `../odd/tasks/containers.md`) |
+| Demo completa (backend `:8080`, frontend `:80`) | `docker compose up -d --build --wait` (necesita la copia hermana `../frontend`, o `LEGAJO_FRONTEND_DIR`; README "Running with Docker") |
 | Ingesta de PDF, una sola vez, con GROBID | `docker compose --profile ingest up` |
 | Verificar el corpus después de la ingesta | `./scripts/gradle-in-docker.sh :bootstrap:verifyCorpus` (TRD §6.1) |
 | Precalcular embeddings tras una ingesta | `./scripts/gradle-in-docker.sh :bootstrap:precomputeEmbeddings` / `precomputeApiEmbeddings` (TRD §6.1 y §8); deja `corpusSha256` en las cachés |
