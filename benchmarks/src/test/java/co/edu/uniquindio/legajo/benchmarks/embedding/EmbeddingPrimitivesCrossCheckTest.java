@@ -37,7 +37,9 @@ class EmbeddingPrimitivesCrossCheckTest {
 
         // EmbeddingLocal.compute's rawValue is the dot product itself: over unit vectors it is
         // already the cosine, so no further transform separates the two values being compared.
-        assertThat(primitiveDotProduct).isEqualTo(result.rawValue());
+        // A small tolerance guards against floating-point summation-order drift between this
+        // loop and EmbeddingLocal's own, exactly like the sum-of-squared-differences check below.
+        assertThat(primitiveDotProduct).isEqualTo(result.rawValue(), within(1e-12));
     }
 
     @Test

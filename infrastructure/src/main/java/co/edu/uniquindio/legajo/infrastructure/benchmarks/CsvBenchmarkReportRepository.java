@@ -14,11 +14,9 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -57,13 +55,16 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
     static final String EXPORT_COMMAND = "./gradlew :benchmarks:jmh :benchmarks:jmhExport";
 
     /**
-     * A fixed order, not the incidental order {@link Set#of} or a hash-based set would give:
-     * when more than one key is missing from a harness header, {@link #toHarness} reports every
-     * missing key in this exact order, so re-running the export and re-reading the failure
-     * always names the same keys in the same order instead of shuffling between runs.
+     * A fixed order, not the incidental order {@link java.util.Set#of} or a hash-based set
+     * would give: when more than one key is missing from a harness header, {@link #toHarness}
+     * reports every missing key in this exact order, so re-running the export and re-reading
+     * the failure always names the same keys in the same order instead of shuffling between
+     * runs. An immutable {@link List} carries that ordering guarantee in its type, unlike
+     * {@code Set}, whose interface makes no ordering promise even when a particular
+     * implementation (such as {@code LinkedHashSet}) happens to keep insertion order.
      */
-    private static final Set<String> HARNESS_KEYS =
-            new LinkedHashSet<>(List.of("cpuModel", "logicalCores", "totalRamBytes", "jdk", "os", "utcDate"));
+    private static final List<String> HARNESS_KEYS =
+            List.of("cpuModel", "logicalCores", "totalRamBytes", "jdk", "os", "utcDate");
     private static final String RESULTS_COLUMN_HEADER = "benchmark,family,parameter,size,score,error,unit";
     private static final String SLOPES_COLUMN_HEADER = "family,points,empiricalSlope,theoreticalExponent";
 

@@ -108,6 +108,17 @@ tasks.register<JavaExec>("jmhHarnessSidecar") {
     }
 }
 
+// The marker is only ever (re)written by this task's own `doLast`, which -- like `doFirst`
+// above -- runs only when :benchmarks:jmh's actions actually execute. If a build ever reported
+// this task FROM-CACHE, UP-TO-DATE, or otherwise skipped, neither action would run, so no fresh
+// marker would exist for :benchmarks:jmhHarnessSidecar's `onlyIf` to find (any marker left over
+// from an earlier real run would already have been deleted by that earlier run's own
+// `doFirst`). That is deliberately fail-closed, not a caching bug to fix: a skipped/cached jmh
+// run means no fresh jmh-results.json was produced either, so the sidecar must not be captured
+// against one, and :benchmarks:jmhExport correctly stops on a missing harness sidecar instead
+// of silently pairing a stale marker with the wrong run. Once a sidecar is captured, the SHA-256
+// binding in HarnessInfo/JmhExportCli is what actually guards its integrity; this marker only
+// decides whether capture is attempted at all.
 tasks.named("jmh") {
     val successMarker = jmhSuccessMarkerFile()
     doFirst {
