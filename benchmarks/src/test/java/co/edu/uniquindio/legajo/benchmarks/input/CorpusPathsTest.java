@@ -1,6 +1,7 @@
 package co.edu.uniquindio.legajo.benchmarks.input;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -20,9 +21,26 @@ class CorpusPathsTest {
 
     private static final String OVERRIDE_PROPERTY = "legajo.benchmarks.corpusPath";
 
+    /** Null means the property was absent before the test, not set to the string {@code "null"}. */
+    private String overridePropertyBeforeTest;
+
+    @BeforeEach
+    void rememberOverrideProperty() {
+        overridePropertyBeforeTest = System.getProperty(OVERRIDE_PROPERTY);
+    }
+
+    /**
+     * Restores whatever this JVM's {@code OVERRIDE_PROPERTY} held before the test, instead of
+     * unconditionally clearing it: a plain {@code clearProperty} would erase a value a real
+     * {@code -D} invocation (or another test running in the same JVM) had already set.
+     */
     @AfterEach
-    void clearOverrideProperty() {
-        System.clearProperty(OVERRIDE_PROPERTY);
+    void restoreOverrideProperty() {
+        if (overridePropertyBeforeTest == null) {
+            System.clearProperty(OVERRIDE_PROPERTY);
+        } else {
+            System.setProperty(OVERRIDE_PROPERTY, overridePropertyBeforeTest);
+        }
     }
 
     @Test

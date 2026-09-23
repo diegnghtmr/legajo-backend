@@ -165,7 +165,12 @@ class JmhExportCliTest {
 
         assertThatThrownBy(() -> JmhExportCli.run(input, harness, resultsCsv, slopesCsv))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("25")
+                // "Eclipse Adoptium 25.0.4" itself already contains the substring "25", so
+                // asserting on that alone would pass even if the message never named the
+                // reported jdkVersion at all. Asserting on the quoted reported-version wording
+                // instead proves the message actually names "25" as the *reported* value, not
+                // merely that the harness string happens to contain that digit sequence.
+                .hasMessageContaining("jdkVersion '25'")
                 .hasMessageContaining("Eclipse Adoptium 25.0.4");
         assertThat(Files.exists(resultsCsv)).isFalse();
         assertThat(Files.exists(slopesCsv)).isFalse();
