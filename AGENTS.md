@@ -70,11 +70,14 @@ compilación, prueba o arranque corre sobre un JDK, Gradle o `mise` del sistema 
 la única herramienta que necesita la máquina del desarrollador es Docker.
 `scripts/gradle-in-docker.sh` es el ejecutor compartido: corre Gradle dentro de la misma
 imagen Temurin 25 JDK fijada que usa la etapa de compilación del `Dockerfile`, con el
-repositorio montado, una caché de Gradle persistente en un volumen nombrado y el socket de
-Docker accesible (para una prueba de integración basada en Testcontainers, si llega a
-añadirse). `.mise.toml` y el resolutor de toolchains de Gradle siguen fijados solo para que
-el IDE tenga un JDK local al que apuntar; no son una vía soportada de compilación o
-verificación.
+repositorio montado y una caché de Gradle persistente en un volumen nombrado. **No** monta
+el socket de Docker por defecto — ninguna prueba del repositorio lo necesita hoy (ver los
+comentarios del propio script) y hacerlo le daría al contenedor control equivalente a root
+sobre el daemon de Docker del anfitrión sin ningún beneficio a cambio. `LEGAJO_DOCKER_SOCKET=1`
+antes del comando lo habilita explícitamente, el día que se añada una prueba de integración
+basada en Testcontainers. `.mise.toml` y el resolutor de toolchains de Gradle siguen fijados
+solo para que el IDE tenga un JDK local al que apuntar; no son una vía soportada de
+compilación o verificación.
 
 ## Comandos
 

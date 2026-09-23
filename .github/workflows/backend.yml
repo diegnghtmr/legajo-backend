@@ -43,10 +43,16 @@ jobs:
       - name: Build the image and start the default-profile stack
         run: docker compose up -d --build --wait backend
 
-      - name: Run the smoke script (TRD §14.2 — curl/jq from a container, not the runner)
+      # TRD §14.2: curl/jq come from the container, never the runner. `alpine:3.20` installs
+      # them at run time rather than a custom pre-built image, keeping this job
+      # self-contained; the trailing "_" is a dummy $0 for the inline `sh -c` script, so
+      # smoke.sh's base-url argument lands in that script's $1 as intended.
+      - name: Run the smoke script
         run: |
-          docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
-            alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ http://localhost:8080
+          docker run --rm --network host \
+            -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
+            alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' \
+            _ http://localhost:8080
 
       - name: Dump backend logs on failure
         if: failure()

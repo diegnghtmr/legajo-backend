@@ -83,6 +83,14 @@ tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
     workingDir = rootProject.layout.projectDirectory.asFile
 }
 
+// Pins the boot jar's file name so the Dockerfile's COPY line never has to hard-code (and
+// keep in sync by hand) the project version embedded in Spring Boot's default archive name
+// (bootstrap-${version}.jar). A version bump would otherwise silently break that COPY the
+// next time the image is built.
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    archiveFileName.set("app.jar")
+}
+
 // TRD §6.1 ingestion entry points. Plain JavaExec tasks rather than Spring profiles: each
 // CLI is a one-shot offline batch job (see IngestCli's Javadoc), and JavaExec gets
 // `--args="..."` support from Gradle for free. Working directory is the backend project
