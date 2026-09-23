@@ -1,5 +1,6 @@
 package co.edu.uniquindio.legajo.benchmarks.export;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -72,9 +73,9 @@ public final class BenchmarkFamilies {
      *
      * <p>A non-numeric size value fails with an {@link IllegalArgumentException} naming the
      * benchmark, the offending parameter key and its raw value, rather than defaulting to a
-     * misleading number: callers exporting many records ({@link JmhResultsCsvWriter},
-     * {@link SlopesCsvWriter}) catch this per record and skip only that one, so one malformed
-     * result never aborts the whole export.
+     * misleading number. Callers exporting many records use {@link #classifyAll} instead of
+     * calling this method directly per record, so every unclassifiable record is reported
+     * together and the whole export fails atomically rather than silently dropping rows.
      */
     public static BenchmarkFamily classify(String benchmark, Map<String, String> params) {
         Objects.requireNonNull(benchmark, "benchmark");
@@ -123,5 +124,33 @@ public final class BenchmarkFamilies {
     /** The documented theoretical exponent for a base label (or family), if this table has one. */
     public static Optional<Double> theoreticalExponentOf(String baseLabelOrFamily) {
         return Optional.ofNullable(THEORETICAL_EXPONENTS.get(baseLabelOrFamily));
+    }
+
+    /**
+     * Classifies every record, or fails the whole export atomically. The versioned CSVs back
+     * the technical documentation (TAC-18), so an export missing rows it silently could not
+     * classify is worse than no export at all: unlike {@link #classify}, this never drops a
+     * record on its own. Every record is attempted (a first failure never short-circuits the
+     * rest), and if any record fails, {@link IllegalStateException} lists every one of them —
+     * the benchmark name and the classification failure reason — before either CSV writer
+     * ({@link JmhResultsCsvWriter}, {@link SlopesCsvWriter}) ever runs, so no partial CSV is
+     * ever written (R4-001/R3-001/R3-002, odd/tasks/jmh-benchmarks.md).
+     */
+    public static List<ClassifiedBenchmarkResult> classifyAll(List<JmhResultRecord> records) {
+        List<ClassifiedBenchmarkResult> classified = new ArrayList<>(records.size());
+        List<String> failures = new ArrayList<>();
+        for (JmhResultRecord record : records) {
+            try {
+                classified.add(new ClassifiedBenchmarkResult(record, classify(record.benchmark(), record.params())));
+            } catch (IllegalArgumentException e) {
+                failures.add("'" + record.benchmark() + "': " + e.getMessage());
+            }
+        }
+        if (!failures.isEmpty()) {
+            throw new IllegalStateException(
+                    "refusing to export: %d benchmark result(s) failed classification:\n  - %s"
+                            .formatted(failures.size(), String.join("\n  - ", failures)));
+        }
+        return classified;
     }
 }

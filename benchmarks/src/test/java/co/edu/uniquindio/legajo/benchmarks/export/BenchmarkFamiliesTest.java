@@ -3,6 +3,7 @@ package co.edu.uniquindio.legajo.benchmarks.export;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -119,10 +120,11 @@ class BenchmarkFamiliesTest {
         params.put("length", "50");
         params.put("n", "20");
 
+        // R2-ambiguous-size-test-trivial-assertion / R3-004: assert on the exact listed keys
+        // this branch produces, not on a bare "n" that would match almost any message.
         assertThatThrownBy(() -> BenchmarkFamilies.classify(benchmark, params))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("length")
-                .hasMessageContaining("n");
+                .hasMessageContaining("found [length, n]");
     }
 
     @Test
@@ -135,5 +137,40 @@ class BenchmarkFamiliesTest {
                 .hasMessageContaining("length")
                 .hasMessageContaining("not-a-number")
                 .hasMessageContaining(benchmark);
+    }
+
+    @Test
+    void classifyAllReturnsOneClassifiedResultPerRecordInOrder() {
+        List<JmhResultRecord> records = List.of(
+                recordWith("co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                        Map.of("length", "50")),
+                recordWith("co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute",
+                        Map.of("length", "100")));
+
+        List<ClassifiedBenchmarkResult> classified = BenchmarkFamilies.classifyAll(records);
+
+        assertThat(classified).hasSize(2);
+        assertThat(classified.get(0).family().family()).isEqualTo("levenshtein");
+        assertThat(classified.get(1).family().family()).isEqualTo("jaccard");
+    }
+
+    @Test
+    void classifyAllFailsAtomicallyListingEveryUnclassifiableRecordAndReason() {
+        List<JmhResultRecord> records = List.of(
+                recordWith("co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                        Map.of("length", "not-a-number")),
+                recordWith("co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute",
+                        Map.of("length", "also-not-numeric")));
+
+        assertThatThrownBy(() -> BenchmarkFamilies.classifyAll(records))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("LevenshteinBenchmark.pairwiseCompute")
+                .hasMessageContaining("not-a-number")
+                .hasMessageContaining("JaccardBenchmark.pairwiseCompute")
+                .hasMessageContaining("also-not-numeric");
+    }
+
+    private static JmhResultRecord recordWith(String benchmark, Map<String, String> params) {
+        return new JmhResultRecord(benchmark, params, 1.0, 0.0, "us/op", "avgt", 1, 3, "1 s", 5, "1 s");
     }
 }

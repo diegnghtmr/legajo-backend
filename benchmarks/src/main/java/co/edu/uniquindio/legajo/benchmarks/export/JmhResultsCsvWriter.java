@@ -11,10 +11,11 @@ import java.util.List;
 /**
  * Writes {@code benchmarks/results/jmh-results.csv} (TRD NFR-QA-10, TAC-18): the reference
  * harness as {@code #}-prefixed header lines, then a {@code
- * benchmark,family,parameter,size,score,error,unit} row per {@link JmhResultRecord}, each
- * classified through {@link BenchmarkFamilies}. A record {@link BenchmarkFamilies#classify}
- * cannot classify (e.g. a non-numeric size) is skipped on its own, with a diagnostic on
- * {@link System#err}, instead of aborting the whole export.
+ * benchmark,family,parameter,size,score,error,unit} row per {@link ClassifiedBenchmarkResult}.
+ * Every result this writer receives is already classified ({@link
+ * BenchmarkFamilies#classifyAll}, called once by {@link JmhExportCli} before either CSV writer
+ * runs): a record that could not be classified never reaches this writer at all, it aborts the
+ * whole export before any file is written, so this writer has nothing left to skip or degrade.
  */
 public final class JmhResultsCsvWriter {
 
@@ -24,17 +25,11 @@ public final class JmhResultsCsvWriter {
     }
 
     /** Writes {@code output}, overwriting any existing file at that path. */
-    public static void write(Path output, HarnessInfo harness, List<JmhResultRecord> records) {
+    public static void write(Path output, HarnessInfo harness, List<ClassifiedBenchmarkResult> results) {
         List<String> lines = new ArrayList<>(harness.toHeaderLines());
         lines.add(COLUMN_HEADER);
-        for (JmhResultRecord record : records) {
-            try {
-                lines.add(toCsvLine(record));
-            } catch (IllegalArgumentException e) {
-                System.err.println(
-                        "skipping benchmark result for jmh-results.csv, benchmark '" + record.benchmark() + "': "
-                                + e.getMessage());
-            }
+        for (ClassifiedBenchmarkResult result : results) {
+            lines.add(toCsvLine(result));
         }
         try {
             Files.createDirectories(output.toAbsolutePath().getParent());
@@ -44,8 +39,9 @@ public final class JmhResultsCsvWriter {
         }
     }
 
-    private static String toCsvLine(JmhResultRecord record) {
-        BenchmarkFamily family = BenchmarkFamilies.classify(record.benchmark(), record.params());
+    private static String toCsvLine(ClassifiedBenchmarkResult result) {
+        JmhResultRecord record = result.record();
+        BenchmarkFamily family = result.family();
         return String.join(",",
                 record.benchmark(),
                 family.family(),

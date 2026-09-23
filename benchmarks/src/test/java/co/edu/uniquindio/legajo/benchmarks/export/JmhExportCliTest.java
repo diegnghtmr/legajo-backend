@@ -52,6 +52,27 @@ class JmhExportCliTest {
         assertThat(slopesLines.get(0)).isEqualTo("family,points,empiricalSlope,theoreticalExponent");
     }
 
+    @Test
+    void failsAndWritesNoCsvWhenARecordCannotBeClassified(@TempDir Path tempDir) throws IOException {
+        Path input = tempDir.resolve("unclassifiable-jmh-results.json");
+        Files.writeString(input, """
+                [ { "benchmark": "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                    "mode": "avgt", "forks": 1, "warmupIterations": 3, "warmupTime": "1 s",
+                    "measurementIterations": 5, "measurementTime": "1 s",
+                    "params": { "length": "not-a-number" },
+                    "primaryMetric": { "score": 1.0, "scoreError": 0.0, "scoreUnit": "us/op" } } ]
+                """);
+        Path resultsCsv = tempDir.resolve("jmh-results.csv");
+        Path slopesCsv = tempDir.resolve("slopes.csv");
+
+        assertThatThrownBy(() -> JmhExportCli.run(input, resultsCsv, slopesCsv))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("LevenshteinBenchmark.pairwiseCompute")
+                .hasMessageContaining("not-a-number");
+        assertThat(Files.exists(resultsCsv)).isFalse();
+        assertThat(Files.exists(slopesCsv)).isFalse();
+    }
+
     private static Path copyFixtureTo(Path tempDir) throws IOException {
         Path target = tempDir.resolve("sample-jmh-results.json");
         try (InputStream in = JmhJsonResultsReaderTest.class.getResourceAsStream("sample-jmh-results.json")) {
