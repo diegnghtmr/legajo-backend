@@ -26,12 +26,20 @@ RUN --mount=type=cache,target=/root/.gradle \
 
 FROM eclipse-temurin:25.0.4_7-jre AS runtime
 
-# Container-aware JVM defaults. The JVM already auto-detects cgroup memory/CPU limits
-# (UseContainerSupport has been on by default since JDK 10), so this only tightens the heap
-# headroom explicitly rather than relying purely on the JVM's own default (25% of the
-# container limit) — reasonable on Render's free tier, where headroom for GC/off-heap
-# matters more than maximizing heap size.
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"
+# Container-aware JVM heap bounds, sized for Render's free tier (512 MB total container
+# memory, TRD §14.4). The JVM already auto-detects the cgroup memory limit
+# (UseContainerSupport has been on by default since JDK 10) and would otherwise default
+# MaxRAMPercentage to 25%; this sets it explicitly instead of relying on that default,
+# because the actual number needs to be justified against this specific container, not
+# assumed. At 512 MB, MaxRAMPercentage=50.0 caps the heap at ~256 MB, leaving ~256 MB of
+# headroom for everything that is *not* heap but still competes for the same container
+# limit: metaspace (unbounded by default — five Gradle modules' worth of loaded classes),
+# thread stacks (Tomcat's NIO worker pool), Tomcat's direct/off-heap NIO buffers, the JIT
+# code cache, and general OS/JVM overhead. InitialRAMPercentage is kept well below Max
+# (25.0, ~128 MB) so the process starts small during Render's cold start (TRD §14.4 point 4)
+# and only grows into that headroom under real load, instead of front-loading a large heap
+# it may never need.
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=50.0 -XX:InitialRAMPercentage=25.0"
 
 # TRD §14.2/§9: DomainConfiguration resolves data/corpus.json, data/embeddings-*.json and
 # benchmarks/results/*.csv relative to the process's working directory (bootstrap's
@@ -44,7 +52,10 @@ RUN groupadd --system legajo \
     && mkdir -p /app/data /app/benchmarks/results \
     && chown -R legajo:legajo /app
 
-COPY --from=build --chown=legajo:legajo /workspace/bootstrap/build/libs/bootstrap-0.1.0-SNAPSHOT.jar /app/app.jar
+# The jar's file name is pinned to app.jar by bootstrap/build.gradle.kts's bootJar
+# configuration, independent of the project version, so this COPY never breaks on a version
+# bump (R3-hardcoded-jar-version).
+COPY --from=build --chown=legajo:legajo /workspace/bootstrap/build/libs/app.jar /app/app.jar
 # Only the three generated, versioned data files the server actually reads (TRD §6.1):
 # never data/pdfs/ (git-ignored teacher PDFs, ingestion input only, not read at runtime) and
 # never data/corpus-review.md (a manual-review aid, regenerated as needed, not read either).

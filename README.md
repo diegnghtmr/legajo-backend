@@ -82,13 +82,17 @@ Every check below is the exact command a developer or CI runs — no host JDK, n
 | Tests only | `./scripts/gradle-in-docker.sh test` |
 | Aggregated coverage (JaCoCo, >85% in the algorithm packages) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
 | Start locally, no network | `docker compose up -d --wait backend` |
-| Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering) | `docker compose up -d --wait backend && docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ http://localhost:8080; docker compose down` |
+| Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | `docker compose up -d --wait backend && docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ http://localhost:8080; docker compose down` |
 | JMH performance curves + CSV export (NFR-QA-10; must run on the reference machine — see "Benchmarks" below) | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
 
 `scripts/gradle-in-docker.sh` runs the same pinned Temurin 25 JDK image the Dockerfile's
-build stage uses, with the repository bind-mounted, a named volume for the Gradle cache,
-and the host's Docker socket reachable (for a Testcontainers-backed adapter test, should one
-be added — see the script's own comments).
+build stage uses, with the repository bind-mounted and a named volume for the Gradle cache.
+It does **not** mount the host's Docker socket by default — no test in this repository needs
+it today (see the script's own comments) and it would otherwise grant the container
+root-equivalent control over the host's Docker daemon for no benefit. Set
+`LEGAJO_DOCKER_SOCKET=1` before the command (e.g. `LEGAJO_DOCKER_SOCKET=1
+./scripts/gradle-in-docker.sh build`) to opt in, the day a Testcontainers-backed adapter
+test is actually added.
 
 ## Environment variables
 

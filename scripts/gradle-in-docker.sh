@@ -10,25 +10,21 @@
 #   build cache survive across runs instead of being re-fetched every time.
 # - Runs as the invoking host uid/gid so files Gradle writes into the bind-mounted repo are
 #   owned by the developer, not root (constraint: no root-owned files left in the repo).
-# - Mounts the host's Docker socket, with the socket's group added as a supplementary group
-#   so the non-root container user can reach it, and adds a host-gateway alias, so a
-#   Testcontainers-backed integration test can still launch a sibling container and be
-#   reached back from inside this one (AGENTS.md's testing table lists Testcontainers as the
-#   GROBID client's integration-test tool). As verified for this task, the one GROBID
-#   adapter test in the repository today (GrobidPdfMetadataExtractorTest) does NOT use
-#   Testcontainers — it stubs GROBID with a plain JDK HttpServer — so `./gradlew build`
-#   does not currently need Docker-in-Docker access; this wiring is kept anyway so the
-#   documented (AGENTS.md) Testcontainers-based integration test works the day it is added,
-#   without a second pass over this script.
+# - Does NOT mount the host's Docker socket by default — see the LEGAJO_DOCKER_SOCKET
+#   section below.
 #
 # Usage: scripts/gradle-in-docker.sh <gradle args...>
 #   scripts/gradle-in-docker.sh build
 #   scripts/gradle-in-docker.sh jacocoRootReport
+#   LEGAJO_DOCKER_SOCKET=1 scripts/gradle-in-docker.sh build   # opt in to Docker-socket access
 
 set -eu
 
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 BACKEND_DIR="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
+# Kept in sync with the Dockerfile's own build-stage FROM line by hand: a Dockerfile and a
+# POSIX shell script have no shared templating in this project, so this is the one other
+# place the pinned Temurin JDK tag has to be repeated.
 IMAGE="eclipse-temurin:25.0.4_7-jdk"
 GRADLE_HOME_VOLUME="legajo-backend-gradle-home"
 
@@ -41,13 +37,28 @@ docker volume inspect "$GRADLE_HOME_VOLUME" >/dev/null 2>&1 \
 docker run --rm -v "$GRADLE_HOME_VOLUME:/gradle-home" "$IMAGE" \
     chown -R "$(id -u):$(id -g)" /gradle-home
 
-DOCKER_GID="$(getent group docker 2>/dev/null | cut -d: -f3 || true)"
-GROUP_ARGS=""
-if [ -n "$DOCKER_GID" ]; then
-    GROUP_ARGS="--group-add $DOCKER_GID"
+# Docker-socket access is opt-in, never the default (LEGAJO_DOCKER_SOCKET=1). Mounting the
+# host's Docker socket hands the container root-equivalent control over the host's Docker
+# daemon (anyone who can reach that socket can launch a privileged container and mount the
+# host filesystem through it) — too much ambient authority to grant an ordinary `./gradlew
+# build` by default. It also buys nothing today: verified for this task, the one GROBID
+# adapter test in this repository (GrobidPdfMetadataExtractorTest) stubs GROBID with a plain
+# JDK HttpServer, not Testcontainers, so `./gradlew build` does not need it. Set
+# LEGAJO_DOCKER_SOCKET=1 the day a Testcontainers-backed integration test is actually added
+# (AGENTS.md's testing table lists Testcontainers as that test's intended tool) — this then
+# also adds a host-gateway alias so such a test can reach a sibling container back from
+# inside this one.
+DOCKER_SOCKET_ARGS=""
+if [ "${LEGAJO_DOCKER_SOCKET:-0}" = "1" ]; then
+    DOCKER_GID="$(getent group docker 2>/dev/null | cut -d: -f3 || true)"
+    GROUP_ARGS=""
+    if [ -n "$DOCKER_GID" ]; then
+        GROUP_ARGS="--group-add $DOCKER_GID"
+    fi
+    DOCKER_SOCKET_ARGS="-v /var/run/docker.sock:/var/run/docker.sock --add-host=host.docker.internal:host-gateway -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal $GROUP_ARGS"
 fi
 
-# shellcheck disable=SC2086 # GROUP_ARGS is intentionally split (empty, or one --group-add token)
+# shellcheck disable=SC2086 # DOCKER_SOCKET_ARGS is intentionally word-split (empty, or several tokens)
 exec docker run --rm \
     --user "$(id -u):$(id -g)" \
     -e HOME=/gradle-home \
@@ -55,9 +66,6 @@ exec docker run --rm \
     -v "$BACKEND_DIR:/workspace" \
     -v "$GRADLE_HOME_VOLUME:/gradle-home" \
     -w /workspace \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    --add-host=host.docker.internal:host-gateway \
-    -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal \
-    $GROUP_ARGS \
+    $DOCKER_SOCKET_ARGS \
     "$IMAGE" \
     ./gradlew --no-daemon "$@"
