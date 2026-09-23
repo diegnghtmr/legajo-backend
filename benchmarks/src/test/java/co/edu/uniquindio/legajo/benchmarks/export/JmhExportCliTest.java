@@ -137,6 +137,40 @@ class JmhExportCliTest {
         assertThat(Files.exists(slopesCsv)).isFalse();
     }
 
+    /**
+     * A plain substring match ({@code String.contains}) would accept this case too: the
+     * harness sidecar's JDK is {@code "Eclipse Adoptium 25.0.4"} and the JMH-reported
+     * {@code jdkVersion} is just {@code "25"}, which is a substring of it, but the two do not
+     * describe the same JDK build — an export must not silently pass a run made on JDK 25.0.4
+     * off as one made on some other JDK 25.x that also happens to contain "25". Only the exact,
+     * normalized comparison rejects this.
+     */
+    @Test
+    void failsWhenTheReportedJdkVersionIsOnlyASubstringOfTheHarnessJdkVersion(@TempDir Path tempDir)
+            throws IOException {
+        Path input = tempDir.resolve("jdk-substring-jmh-results.json");
+        Files.writeString(input, """
+                [ { "benchmark": "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                    "mode": "avgt", "forks": 1, "warmupIterations": 3, "warmupTime": "1 s",
+                    "measurementIterations": 5, "measurementTime": "1 s",
+                    "jdkVersion": "25",
+                    "params": { "length": "50" },
+                    "primaryMetric": { "score": 1.0, "scoreError": 0.0, "scoreUnit": "us/op" } } ]
+                """);
+        Path harness = tempDir.resolve("harness.properties");
+        new HarnessInfo("Test CPU", 4, 8_000_000_000L, "Eclipse Adoptium 25.0.4", "Linux 6.0 (amd64)",
+                "2026-09-22T00:00:00Z").writeSidecar(harness, input);
+        Path resultsCsv = tempDir.resolve("jmh-results.csv");
+        Path slopesCsv = tempDir.resolve("slopes.csv");
+
+        assertThatThrownBy(() -> JmhExportCli.run(input, harness, resultsCsv, slopesCsv))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("25")
+                .hasMessageContaining("Eclipse Adoptium 25.0.4");
+        assertThat(Files.exists(resultsCsv)).isFalse();
+        assertThat(Files.exists(slopesCsv)).isFalse();
+    }
+
     /** A substring match ({@code String.contains}) would also accept this exact positive case,
      * so this proves the exact, normalized comparison still accepts a real JMH-style
      * {@code jdkVersion} (just the version number, as JMH itself reports it) against the

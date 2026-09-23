@@ -31,11 +31,12 @@ import java.util.concurrent.TimeUnit;
  * jmh-benchmarks.md).</b> {@link EmbeddingLocal#dotProduct} and
  * {@link EmbeddingApi#sumSquaredDifferences} are package-private static methods in
  * {@code co.edu.uniquindio.legajo.similarity}, unreachable from this module's
- * {@code co.edu.uniquindio.legajo.benchmarks.embedding} package. This class instead
- * hand-writes the exact same two single-pass loops those methods run (normalization/trace
- * overhead is out of scope per the feature document's decision), so what is measured is the
- * shared O(d) shape both embedding algorithms actually pay at compare time, not an
- * approximation of it.
+ * {@code co.edu.uniquindio.legajo.benchmarks.embedding} package. This class instead delegates
+ * to {@link EmbeddingPrimitives}, which hand-writes the exact same two single-pass loops those
+ * methods run (normalization/trace overhead is out of scope per the feature document's
+ * decision), so what is measured is the shared O(d) shape both embedding algorithms actually
+ * pay at compare time, not an approximation of it — {@code EmbeddingPrimitivesCrossCheckTest}
+ * proves those loops against the domain algorithms' own public {@code compute(...)}.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
@@ -61,21 +62,12 @@ public class EmbeddingPrimitiveBenchmark {
     /** Mirrors {@link EmbeddingLocal}'s cosine-by-dot-product primitive. */
     @Benchmark
     public double dotProduct() {
-        double sum = 0.0;
-        for (int i = 0; i < u.size(); i++) {
-            sum += u.get(i) * v.get(i);
-        }
-        return sum;
+        return EmbeddingPrimitives.dotProduct(u, v);
     }
 
     /** Mirrors {@link EmbeddingApi}'s Euclidean-distance-by-sum-of-squared-differences primitive. */
     @Benchmark
     public double euclideanSumOfSquaredDifferences() {
-        double sum = 0.0;
-        for (int i = 0; i < u.size(); i++) {
-            double diff = u.get(i) - v.get(i);
-            sum += diff * diff;
-        }
-        return sum;
+        return EmbeddingPrimitives.sumOfSquaredDifferences(u, v);
     }
 }
