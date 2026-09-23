@@ -152,7 +152,9 @@ benchmark class.
 | Embedding primitive | `embedding.EmbeddingPrimitiveBenchmark` | d ∈ {384, 1536}, one measurement each, no curve |
 | SLO benchmarks | `slo.ClassicPairwiseSloBenchmark` (NFR-QA-01, per classic algorithm), `slo.ClusteringSloBenchmark` (NFR-QA-02, all four linkages) | Fixed at the real reference corpus, n = 20, similarity cache never involved |
 
-Run the full protocol and export the CSVs:
+Run the full protocol and export the CSVs, in the same Gradle session on the reference
+machine (the harness is captured when `jmh` runs, not later when `jmhExport` runs, so both
+must run on the same machine for the header to describe it correctly):
 
 ```bash
 ./gradlew :benchmarks:jmh :benchmarks:jmhExport
@@ -166,10 +168,12 @@ Results land in `benchmarks/results/`, versioned in git:
   log-log slope of each curve next to the theoretical complexity TRD §6.3/§6.4/§6.5 document
   for that family (TAC-18). A fixed-n SLO family has no theoretical exponent and is excluded.
 
-The export is strict about classification: it writes neither CSV if any benchmark result
-cannot be classified into a family (every such record is listed, with its reason, in the
-failure) — the versioned CSVs back the technical documentation, so an incomplete export is an
-error, not a partial file to ignore.
+The export is strict: it writes neither CSV if any benchmark result cannot be classified into
+a family (every skipped record is listed, with its reason, in the failure), if the
+`build/results/jmh/harness.properties` sidecar `jmh` writes is missing or older than the JMH
+JSON it describes, or if the JDK JMH itself reports disagrees with that sidecar. The versioned
+CSVs back the technical documentation, so an incomplete or mismatched export is an error, not
+a partial file to ignore.
 
 A fast, non-representative smoke run (shrinks the protocol; never commit its numbers) is
 available by overriding the JMH Gradle plugin's properties and narrowing to a benchmark

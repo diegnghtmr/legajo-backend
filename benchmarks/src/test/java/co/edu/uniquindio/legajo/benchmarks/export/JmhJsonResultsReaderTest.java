@@ -9,6 +9,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -85,6 +86,31 @@ class JmhJsonResultsReaderTest {
         assertThatThrownBy(() -> JmhJsonResultsReader.read(resultsFile))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(resultsFile.toString());
+    }
+
+    @Test
+    void readsNoReportedJdkVersionWhenNoEntryDeclaresOne(@TempDir Path tempDir) throws IOException {
+        Path resultsFile = copyFixtureTo(tempDir);
+
+        Optional<String> jdkVersion = JmhJsonResultsReader.readReportedJdkVersion(resultsFile);
+
+        assertThat(jdkVersion).isEmpty();
+    }
+
+    @Test
+    void readsTheReportedJdkVersionWhenAnEntryDeclaresOne(@TempDir Path tempDir) throws IOException {
+        Path resultsFile = tempDir.resolve("jdk-version-jmh-results.json");
+        Files.writeString(resultsFile, """
+                [ { "benchmark": "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                    "mode": "avgt", "forks": 1, "warmupIterations": 3, "warmupTime": "1 s",
+                    "measurementIterations": 5, "measurementTime": "1 s", "jdkVersion": "25.0.4",
+                    "params": { "length": "50" },
+                    "primaryMetric": { "score": 1.0, "scoreError": 0.0, "scoreUnit": "us/op" } } ]
+                """);
+
+        Optional<String> jdkVersion = JmhJsonResultsReader.readReportedJdkVersion(resultsFile);
+
+        assertThat(jdkVersion).contains("25.0.4");
     }
 
     private static Path copyFixtureTo(Path tempDir) throws IOException {

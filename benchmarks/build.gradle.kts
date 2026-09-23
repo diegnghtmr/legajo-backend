@@ -67,18 +67,45 @@ tasks.named("check") {
     dependsOn("jmhClasses")
 }
 
+// Export-strictness hardening slice: the harness must describe the machine that actually
+// produced the numbers, so it is captured right when :benchmarks:jmh runs -- never later, when
+// :benchmarks:jmhExport happens to run on a different machine or session
+// (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md). This finalizer always
+// runs right after :benchmarks:jmh (even on failure, so the sidecar's absence/staleness is
+// itself the signal jmhExport checks for), and jmhExport reads its output instead of calling
+// HarnessInfo.collect() itself.
+tasks.register<JavaExec>("jmhHarnessSidecar") {
+    group = "verification"
+    description = "Captures the reference-harness metadata right when :benchmarks:jmh runs, into " +
+            "build/results/jmh/harness.properties, for :benchmarks:jmhExport to read later."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("co.edu.uniquindio.legajo.benchmarks.export.HarnessSidecarCli")
+    args("--output=${layout.buildDirectory.file("results/jmh/harness.properties").get().asFile}")
+}
+
+tasks.named("jmh") {
+    finalizedBy("jmhHarnessSidecar")
+}
+
 // J2: exports the last JMH run (build/results/jmh/jmh-results.json) into the two versioned
 // CSVs the technical documentation reads (TAC-18): benchmarks/results/jmh-results.csv and
 // benchmarks/results/slopes.csv. Run after :benchmarks:jmh, e.g.:
 //   ./gradlew :benchmarks:jmh :benchmarks:jmhExport
+// The export itself is strict (odd/tasks/jmh-benchmarks.md, export-strictness slice): it fails
+// before writing either CSV if the harness sidecar is missing/stale, its JDK disagrees with
+// what the JMH JSON itself reports, or any benchmark result cannot be classified.
 tasks.register<JavaExec>("jmhExport") {
     group = "verification"
     description = "Exports build/results/jmh/jmh-results.json to benchmarks/results/jmh-results.csv " +
             "and benchmarks/results/slopes.csv (TRD NFR-QA-10, TAC-18). Run :benchmarks:jmh first."
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("co.edu.uniquindio.legajo.benchmarks.export.JmhExportCli")
+    // Ordered after :benchmarks:jmh without forcing a JMH run: jmhExport alone can still
+    // re-export an existing build/results/jmh/jmh-results.json.
+    mustRunAfter("jmh")
     args(
         "--input=${layout.buildDirectory.file("results/jmh/jmh-results.json").get().asFile}",
+        "--harness=${layout.buildDirectory.file("results/jmh/harness.properties").get().asFile}",
         "--resultsCsv=${projectDir}/results/jmh-results.csv",
         "--slopesCsv=${projectDir}/results/slopes.csv",
     )

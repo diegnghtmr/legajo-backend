@@ -21,7 +21,7 @@ class JmhRawEntryTest {
     @Test
     void rejectsAMissingPrimaryMetric() {
         JmhRawEntry entry = new JmhRawEntry(
-                BENCHMARK, "avgt", 1, 3, "1 s", 5, "1 s", Map.of("length", "50"), null);
+                BENCHMARK, "avgt", 1, 3, "1 s", 5, "1 s", Map.of("length", "50"), null, null);
 
         assertThatThrownBy(entry::toResultRecord)
                 .isInstanceOf(IllegalStateException.class)
@@ -33,7 +33,7 @@ class JmhRawEntryTest {
     void rejectsAMissingScoreInsteadOfDefaultingToZero() {
         JmhRawMetric metricWithoutScore = new JmhRawMetric(null, 0.1, "us/op");
         JmhRawEntry entry = new JmhRawEntry(
-                BENCHMARK, "avgt", 1, 3, "1 s", 5, "1 s", Map.of("length", "50"), metricWithoutScore);
+                BENCHMARK, "avgt", 1, 3, "1 s", 5, "1 s", Map.of("length", "50"), metricWithoutScore, null);
 
         assertThatThrownBy(entry::toResultRecord)
                 .isInstanceOf(IllegalStateException.class)
