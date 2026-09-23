@@ -27,6 +27,21 @@ class JmhResultsCsvWriterTest {
     private static final HarnessInfo HARNESS =
             new HarnessInfo("Test CPU", 4, 8_000_000_000L, "Temurin 25", "Linux 6.0 (amd64)", "2026-09-22T00:00:00Z");
 
+    /**
+     * The exact lines {@link HarnessInfo#toHeaderLines()} must produce for {@link #HARNESS},
+     * spelled out literally instead of calling {@code HARNESS.toHeaderLines()} itself: a test
+     * that builds its own expectation from the very method it is testing can never catch a bug
+     * in that method's field order or {@code "# harness.<key> = "} formatting, since a wrong
+     * implementation and the test's "expected" value would drift together.
+     */
+    private static final List<String> EXPECTED_HARNESS_HEADER_LINES = List.of(
+            "# harness.cpuModel = Test CPU",
+            "# harness.logicalCores = 4",
+            "# harness.totalRamBytes = 8000000000",
+            "# harness.jdk = Temurin 25",
+            "# harness.os = Linux 6.0 (amd64)",
+            "# harness.utcDate = 2026-09-22T00:00:00Z");
+
     @Test
     void writesTheHarnessHeaderLinesFirst(@TempDir Path tempDir) throws IOException {
         Path output = tempDir.resolve("jmh-results.csv");
@@ -35,9 +50,8 @@ class JmhResultsCsvWriterTest {
         JmhResultsCsvWriter.write(output, HARNESS, results);
 
         List<String> lines = Files.readAllLines(output);
-        long headerLineCount = lines.stream().takeWhile(line -> line.startsWith("#")).count();
-        assertThat(headerLineCount).isEqualTo(HARNESS.toHeaderLines().size());
-        assertThat(lines.get(0)).isEqualTo(HARNESS.toHeaderLines().get(0));
+        assertThat(lines.subList(0, EXPECTED_HARNESS_HEADER_LINES.size()))
+                .isEqualTo(EXPECTED_HARNESS_HEADER_LINES);
     }
 
     @Test
@@ -48,7 +62,7 @@ class JmhResultsCsvWriterTest {
         JmhResultsCsvWriter.write(output, HARNESS, results);
 
         List<String> lines = Files.readAllLines(output);
-        assertThat(lines.get(HARNESS.toHeaderLines().size()))
+        assertThat(lines.get(EXPECTED_HARNESS_HEADER_LINES.size()))
                 .isEqualTo("benchmark,family,parameter,size,score,error,unit");
     }
 
@@ -60,7 +74,7 @@ class JmhResultsCsvWriterTest {
         JmhResultsCsvWriter.write(output, HARNESS, results);
 
         List<String> lines = Files.readAllLines(output);
-        int firstDataLine = HARNESS.toHeaderLines().size() + 1;
+        int firstDataLine = EXPECTED_HARNESS_HEADER_LINES.size() + 1;
         assertThat(lines).hasSize(firstDataLine + 2);
         assertThat(lines.get(firstDataLine)).isEqualTo(
                 "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute,"

@@ -24,12 +24,27 @@ public final class CorpusPaths {
      * {@code data/corpus.json} found while walking up from the current working directory.
      */
     public static Path resolveCorpusJson() {
+        return resolveCorpusJson(Path.of("").toAbsolutePath());
+    }
+
+    /**
+     * Same resolution {@link #resolveCorpusJson()} performs, but against an explicit starting
+     * directory instead of the real process working directory. Package-private so a test can
+     * exercise the "nothing found while walking up" failure from an isolated directory, without
+     * depending on (or having to fake) the actual working directory the test JVM started in.
+     */
+    static Path resolveCorpusJson(Path cwd) {
         String override = System.getProperty(OVERRIDE_PROPERTY);
         if (override != null && !override.isBlank()) {
-            return Path.of(override);
+            Path overridePath = Path.of(override);
+            if (!Files.isRegularFile(overridePath)) {
+                throw new IllegalStateException(
+                        "-D" + OVERRIDE_PROPERTY + "=" + override + " does not point to a regular file: "
+                                + overridePath);
+            }
+            return overridePath;
         }
 
-        Path cwd = Path.of("").toAbsolutePath();
         for (Path candidateDirectory = cwd; candidateDirectory != null;
                 candidateDirectory = candidateDirectory.getParent()) {
             Path candidate = candidateDirectory.resolve(RELATIVE_PATH);
