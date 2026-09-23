@@ -76,6 +76,24 @@ class CsvBenchmarkReportRepositoryTest {
         assertThat(report.slopes().getFirst().theoreticalExponent()).isEqualTo(2.0);
     }
 
+    /**
+     * {@link #STRICT_DECIMAL} deliberately allows an exponent suffix ({@code [eE][-+]?\d+}):
+     * both {@code Double.toString} and {@code "%.6f"} can legitimately emit one for a very
+     * small or very large magnitude, so a well-formed exponent-form number must still be
+     * accepted, not rejected as if it were one of the non-finite/hex/suffixed forms the strict
+     * pattern exists to reject.
+     */
+    @Test
+    void acceptsAnExponentFormNumberAsAScore() {
+        String rowWithExponentScore = "co.example.Bench.compare,levenshtein,length,50.0,4.2E-5,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(rowWithExponentScore));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        BenchmarkReport report = new CsvBenchmarkReportRepository(results, slopes).load();
+
+        assertThat(report.results().getFirst().score()).isEqualTo(4.2E-5);
+    }
+
     @Test
     void missingResultsFileFailsNamingTheFileAndTheExportCommand() {
         Path results = tempDir.resolve("does-not-exist-results.csv");

@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit test for the {@code :benchmarks:jmhHarnessSidecar} entry point: it must capture
@@ -43,6 +44,41 @@ class HarnessSidecarCliTest {
 
         assertThat(HarnessInfo.readRecordedJmhResultsSha256(output))
                 .isEqualTo(HarnessInfo.sha256Hex(jmhResults));
+    }
+
+    /**
+     * {@code main} shares {@link JmhExportCli#require} with {@link JmhExportCli}'s own entry
+     * point, so a missing {@code --output} must fail with a message naming that exact argument
+     * instead of an unhelpful {@link NullPointerException} once {@code main} tries to use it.
+     */
+    @Test
+    void mainFailsWhenTheOutputArgumentIsMissing() {
+        assertThatThrownBy(() -> HarnessSidecarCli.main(new String[] {"--input=jmh-results.json"}))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--output");
+    }
+
+    @Test
+    void mainFailsWhenTheInputArgumentIsMissing() {
+        assertThatThrownBy(() -> HarnessSidecarCli.main(new String[] {"--output=harness.properties"}))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--input");
+    }
+
+    @Test
+    void mainFailsWhenTheOutputArgumentIsBlank() {
+        assertThatThrownBy(() -> HarnessSidecarCli.main(
+                new String[] {"--output=", "--input=jmh-results.json"}))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--output");
+    }
+
+    @Test
+    void mainFailsWhenTheInputArgumentIsBlank() {
+        assertThatThrownBy(() -> HarnessSidecarCli.main(
+                new String[] {"--output=harness.properties", "--input="}))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("--input");
     }
 
     private static Path writeJmhResultsFixture(Path tempDir) throws IOException {
