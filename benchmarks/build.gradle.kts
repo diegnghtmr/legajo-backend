@@ -69,13 +69,11 @@ tasks.named("check") {
 
 // Export-strictness hardening slice: the harness must describe the machine that actually
 // produced the numbers, so it is captured right when :benchmarks:jmh runs -- never later, when
-// :benchmarks:jmhExport happens to run on a different machine or session
-// (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md). Gradle's `finalizedBy`
-// always runs a finalizer, even when the finalized task fails, so this task's own `onlyIf`
-// below skips it when :benchmarks:jmh itself failed -- otherwise a rerun after a failed jmh
-// task would still capture a "fresh-looking" sidecar next to a stale, unrelated
-// jmh-results.json left over from an earlier successful run
-// (R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 / R3-003). When it does run, the
+// :benchmarks:jmhExport happens to run on a different machine or session. Gradle's
+// `finalizedBy` always runs a finalizer, even when the finalized task fails, so this task's
+// own `onlyIf` below skips it when :benchmarks:jmh itself failed -- otherwise a rerun after a
+// failed jmh task would still capture a "fresh-looking" sidecar next to a stale, unrelated
+// jmh-results.json left over from an earlier successful run. When it does run, the
 // sidecar it writes is bound (by SHA-256, not by timestamp) to the exact
 // jmh-results.json it describes; :benchmarks:jmhExport reads that binding, and the sidecar's
 // fields, instead of calling HarnessInfo.collect() itself.

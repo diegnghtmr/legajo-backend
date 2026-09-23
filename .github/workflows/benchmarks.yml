@@ -20,7 +20,7 @@ jobs:
     # Generous but bounded: a full NFR-QA-10 run (four pairwise curves, four HAC linkages plus
     # two internal metrics, two embedding dimensions, two SLO suites) on a shared runner should
     # never legitimately need this long; it exists to fail a hung run instead of burning
-    # Actions minutes indefinitely (R4-002).
+    # Actions minutes indefinitely.
     timeout-minutes: 120
     steps:
       - name: Checkout
@@ -42,7 +42,7 @@ jobs:
         run: ./gradlew :benchmarks:jmhExport
 
       - name: Upload benchmark results
-        # Only on success (R3-002): the versioned CSVs are the exported, validated numbers this
+        # Only on success: the versioned CSVs are the exported, validated numbers this
         # job produced -- never upload them under the same artifact name a failed or partial
         # run could also produce, so nobody mistakes a failed run's leftovers for real results.
         if: success()
@@ -53,10 +53,10 @@ jobs:
           retention-days: 30
 
       - name: Upload benchmark diagnostics
-        # Only on failure (R3-002), under a clearly different artifact name than the results
-        # above: a partial jmh-results.json or the harness sidecar alone is still useful
-        # evidence for debugging a failed or timed-out run (R4-003), but it is never the
-        # exported, validated CSVs and must never be mistaken for them.
+        # Under a clearly different artifact name than the results above: a partial
+        # jmh-results.json or the harness sidecar alone is still useful evidence for debugging a
+        # failed or timed-out run, but it is never the exported, validated CSVs and must never
+        # be mistaken for them.
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

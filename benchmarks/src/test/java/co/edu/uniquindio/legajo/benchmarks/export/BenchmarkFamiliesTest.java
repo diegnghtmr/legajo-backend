@@ -120,8 +120,8 @@ class BenchmarkFamiliesTest {
         params.put("length", "50");
         params.put("n", "20");
 
-        // R2-ambiguous-size-test-trivial-assertion / R3-004: assert on the exact listed keys
-        // this branch produces, not on a bare "n" that would match almost any message.
+        // Assert on the exact listed keys this branch produces, not on a bare "n" that would
+        // match almost any message.
         assertThatThrownBy(() -> BenchmarkFamilies.classify(benchmark, params))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("found [length, n]");

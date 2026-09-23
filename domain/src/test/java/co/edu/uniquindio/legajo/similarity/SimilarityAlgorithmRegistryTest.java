@@ -12,10 +12,12 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link SimilarityAlgorithmRegistry} is the framework-free counterpart of the Spring
- * {@code @Component} list injection described in TRD §4.4: infrastructure collects every
- * permitted {@link SimilarityAlgorithm} bean into a {@code List} and hands it to this
- * registry's constructor, keeping the domain module itself Spring-free.
+ * {@link SimilarityAlgorithmRegistry} is the framework-free collector that {@code
+ * bootstrap}'s {@code DomainConfiguration} feeds: each of the six algorithms is declared
+ * as its own {@code @Bean} factory method, in TRD §6.3's fixed order, and Spring's ordered
+ * list injection collects the resulting {@code List<SimilarityAlgorithm>} into this
+ * registry's constructor — the domain module itself never depends on Spring, and never
+ * sees an annotation.
  */
 class SimilarityAlgorithmRegistryTest {
 

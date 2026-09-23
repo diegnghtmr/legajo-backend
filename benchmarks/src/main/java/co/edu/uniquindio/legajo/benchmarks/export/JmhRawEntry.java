@@ -12,8 +12,8 @@ import java.util.Map;
  * <p>{@code jdkVersion} is the JDK version JMH itself recorded while running (may be
  * {@code null} on older or trimmed JSON): {@link JmhJsonResultsReader#readReportedJdkVersion}
  * exposes it so {@link JmhExportCli} can cross-check it against the harness sidecar
- * {@link HarnessInfo} captured at {@code :benchmarks:jmh} run time
- * (R3-harness-captured-at-export-time).
+ * {@link HarnessInfo} captured at {@code :benchmarks:jmh} run time, when export may run later
+ * or on a different machine than the one that produced the measurements.
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 record JmhRawEntry(

@@ -9,15 +9,14 @@ import java.util.Map;
  * a {@code build/results/jmh/harness.properties} sidecar {@link JmhExportCli} reads later.
  * Capturing it here — not when {@code :benchmarks:jmhExport} runs — is what lets the CSV
  * header describe the machine that actually produced the numbers, even when export runs later
- * or on a different machine (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md).
+ * or on a different machine.
  *
  * <p>The Gradle task only invokes this when {@code :benchmarks:jmh} itself succeeded (see
  * {@code benchmarks/build.gradle.kts}'s {@code onlyIf} on {@code jmhHarnessSidecar}), and the
  * sidecar this CLI writes is bound to the exact JMH results file it is told to describe (its
  * SHA-256, via {@link HarnessInfo#writeSidecar(Path, Path)}), not just given a fresh timestamp
  * — a rerun after a failed {@code jmh} task must never let a stale JSON pass {@link
- * JmhExportCli}'s check just because the sidecar file happens to be newer
- * (R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 / R3-003, odd/tasks/jmh-benchmarks.md).
+ * JmhExportCli}'s check just because the sidecar file happens to be newer than it.
  * Arguments: {@code --output=<path>}, {@code --input=<path>} (the JMH results JSON this sidecar
  * describes).
  */
