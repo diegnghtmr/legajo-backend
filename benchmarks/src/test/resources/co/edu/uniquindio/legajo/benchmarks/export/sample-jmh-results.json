@@ -1,0 +1,81 @@
+[
+  {
+    "jmhVersion" : "1.37",
+    "benchmark" : "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+    "mode" : "avgt",
+    "threads" : 1,
+    "forks" : 1,
+    "jvmArgs" : [ "-Dfile.encoding=UTF-8" ],
+    "warmupIterations" : 3,
+    "warmupTime" : "1 s",
+    "warmupBatchSize" : 1,
+    "measurementIterations" : 5,
+    "measurementTime" : "1 s",
+    "measurementBatchSize" : 1,
+    "params" : {
+      "length" : "50"
+    },
+    "primaryMetric" : {
+      "score" : 10.5,
+      "scoreError" : NaN,
+      "scoreConfidence" : [ NaN, NaN ],
+      "scoreUnit" : "us/op",
+      "scorePercentiles" : { "0.0" : 10.5, "100.0" : 10.5 },
+      "rawData" : [ [ 10.5, 10.5, 10.5, 10.5, 10.5 ] ]
+    },
+    "secondaryMetrics" : { }
+  },
+  {
+    "jmhVersion" : "1.37",
+    "benchmark" : "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+    "mode" : "avgt",
+    "threads" : 1,
+    "forks" : 1,
+    "jvmArgs" : [ "-Dfile.encoding=UTF-8" ],
+    "warmupIterations" : 3,
+    "warmupTime" : "1 s",
+    "warmupBatchSize" : 1,
+    "measurementIterations" : 5,
+    "measurementTime" : "1 s",
+    "measurementBatchSize" : 1,
+    "params" : {
+      "length" : "100"
+    },
+    "primaryMetric" : {
+      "score" : 21.3,
+      "scoreError" : 0.42,
+      "scoreConfidence" : [ 20.0, 22.0 ],
+      "scoreUnit" : "us/op",
+      "scorePercentiles" : { "0.0" : 21.3, "100.0" : 21.3 },
+      "rawData" : [ [ 21.3, 21.3, 21.3, 21.3, 21.3 ] ]
+    },
+    "secondaryMetrics" : { }
+  },
+  {
+    "jmhVersion" : "1.37",
+    "benchmark" : "co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate",
+    "mode" : "avgt",
+    "threads" : 1,
+    "forks" : 1,
+    "jvmArgs" : [ "-Dfile.encoding=UTF-8" ],
+    "warmupIterations" : 3,
+    "warmupTime" : "1 s",
+    "warmupBatchSize" : 1,
+    "measurementIterations" : 5,
+    "measurementTime" : "1 s",
+    "measurementBatchSize" : 1,
+    "params" : {
+      "n" : "20",
+      "criterion" : "ward"
+    },
+    "primaryMetric" : {
+      "score" : 5.7,
+      "scoreError" : 0.1,
+      "scoreConfidence" : [ 5.6, 5.8 ],
+      "scoreUnit" : "ms/op",
+      "scorePercentiles" : { "0.0" : 5.7, "100.0" : 5.7 },
+      "rawData" : [ [ 5.7, 5.7, 5.7, 5.7, 5.7 ] ]
+    },
+    "secondaryMetrics" : { }
+  }
+]

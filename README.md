@@ -136,3 +136,66 @@ Re-running step 2 replaces `data/corpus.json` outright (TRD §3.1): every docume
 back to `manuallyValidated=false`, and any previously computed `data/embeddings-*.json`
 caches become stale (their `corpusSha256` no longer matches) until embeddings are
 recomputed for the new corpus.
+
+## Benchmarks
+
+`benchmarks/` measures the algorithms with JMH under the fixed protocol (TRD NFR-QA-10,
+"Protocolo de pruebas de rendimiento" and "Arnés de referencia") and proves the performance
+SLOs (TAC-07, NFR-QA-01/NFR-QA-02): `@BenchmarkMode(AverageTime)`, `@Fork(1)`,
+`@Warmup(iterations = 3, time = 1)`, `@Measurement(iterations = 5, time = 1)` on every
+benchmark class.
+
+| Family | Classes | What varies |
+|---|---|---|
+| Pairwise classic curves | `pairwise.LevenshteinBenchmark`, `NeedlemanWunschBenchmark`, `JaccardBenchmark`, `TfIdfCosineBenchmark` | Token-sequence length L ∈ {50, 100, 200, 400, 800}, built from real corpus tokens |
+| HAC curves | `hac.LanceWilliamsBenchmark` (× 4 linkage criteria), `hac.InternalMetricsBenchmark` (mean silhouette, Davies-Bouldin) | n ∈ {5, 10, 20, 40, 80} synthetic unit vectors |
+| Embedding primitive | `embedding.EmbeddingPrimitiveBenchmark` | d ∈ {384, 1536}, one measurement each, no curve |
+| SLO benchmarks | `slo.ClassicPairwiseSloBenchmark` (NFR-QA-01, per classic algorithm), `slo.ClusteringSloBenchmark` (NFR-QA-02, all four linkages) | Fixed at the real reference corpus, n = 20, similarity cache never involved |
+
+Run the full protocol and export the CSVs, in the same Gradle session on the reference
+machine (the harness is captured when `jmh` runs, not later when `jmhExport` runs, so both
+must run on the same machine for the header to describe it correctly):
+
+```bash
+./gradlew :benchmarks:jmh :benchmarks:jmhExport
+```
+
+Results land in `benchmarks/results/`, versioned in git:
+
+- `jmh-results.csv` — `#`-prefixed harness header (CPU model, logical cores, total RAM, JDK,
+  OS, UTC date) followed by `benchmark,family,parameter,size,score,error,unit` rows.
+- `slopes.csv` — `family,points,empiricalSlope,theoreticalExponent`: the least-squares
+  log-log slope of each curve next to the theoretical complexity TRD §6.3/§6.4/§6.5 document
+  for that family (TAC-18). A fixed-n SLO family has no theoretical exponent and is excluded.
+
+The export is strict: it writes neither CSV if any benchmark result cannot be classified into
+a family (every skipped record is listed, with its reason, in the failure), if the
+`build/results/jmh/harness.properties` sidecar `jmh` writes is missing or bound (by SHA-256) to
+a different JMH results file than the one being exported, or if the JDK JMH itself reports
+disagrees with that sidecar. `jmh`'s own sidecar-capturing step only runs when `jmh` itself
+succeeded, so a failed or partial run never leaves behind a sidecar that looks freshly captured
+next to a stale results file. The versioned CSVs back the technical documentation, so an
+incomplete or mismatched export is an error, not a partial file to ignore.
+
+`GET /api/v1/benchmarks` (TRD §6.6, fixed by TRD 1.3.10) serves these two versioned CSVs to
+the frontend as-is — it never runs JMH and never recalculates anything. If either file is
+missing or malformed, the server fails at startup naming the export command above, instead of
+exposing a broken endpoint.
+
+A fast, non-representative smoke run (shrinks the protocol; never commit its numbers) is
+available by overriding the JMH Gradle plugin's properties and narrowing to a benchmark
+subset with a regex:
+
+```bash
+./gradlew :benchmarks:jmh -Pjmh.fork=1 -Pjmh.warmupIterations=1 -Pjmh.iterations=1 \
+    -Pjmh.includes=Levenshtein
+```
+
+The reference harness is the machine recorded in `jmh-results.csv`'s header; TRD NFR-QA-10's
+baseline target is a 4 vCPU / 8 GB x86-64 machine. `.github/workflows/benchmarks.yml` runs the
+JMH suite manually (`workflow_dispatch`) or on a `bench-*` tag push, never on every push or
+pull request (TRD §14.3), and uploads `jmh-results.json` and the two CSVs as a build artifact.
+**The numbers that job produces are not the reference harness**: it runs on a shared,
+unpinned GitHub-hosted runner, not the documented machine. The versioned CSVs in
+`benchmarks/results/` — the ones the technical documentation cites (TAC-07, TAC-18) — always
+come from a local run on the reference harness, never from CI.

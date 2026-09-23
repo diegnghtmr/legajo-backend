@@ -1,7 +1,11 @@
 package co.edu.uniquindio.legajo;
 
+import co.edu.uniquindio.legajo.application.benchmarks.BenchmarkReportRepository;
+import co.edu.uniquindio.legajo.application.benchmarks.BenchmarksService;
 import co.edu.uniquindio.legajo.application.embedding.EmbeddingProviderMode;
 import co.edu.uniquindio.legajo.corpus.Corpus;
+import co.edu.uniquindio.legajo.infrastructure.benchmarks.CsvBenchmarkReportRepository;
+import co.edu.uniquindio.legajo.infrastructure.benchmarks.MemoizingBenchmarkReportRepository;
 import co.edu.uniquindio.legajo.infrastructure.corpus.JsonCorpusRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.JsonEmbeddingRepository;
 import co.edu.uniquindio.legajo.infrastructure.embedding.LiveApiEmbeddingRepository;
@@ -92,10 +96,46 @@ public class DomainConfiguration {
     private static final Path CORPUS_PATH = Path.of("data/corpus.json");
     private static final Path LOCAL_EMBEDDINGS_PATH = Path.of("data/embeddings-minilm.json");
     private static final Path API_EMBEDDINGS_PATH = Path.of("data/embeddings-openai.json");
+    private static final Path BENCHMARK_RESULTS_CSV = Path.of("benchmarks/results/jmh-results.csv");
+    private static final Path BENCHMARK_SLOPES_CSV = Path.of("benchmarks/results/slopes.csv");
 
     @Bean
     public CorpusRepository corpusRepository() {
         return new JsonCorpusRepository(CORPUS_PATH);
+    }
+
+    /**
+     * TRD §6.6, fixed by TRD 1.3.10: reads the two versioned JMH export CSVs, wrapped in
+     * {@link MemoizingBenchmarkReportRepository} for the same reason the two embedding
+     * repositories above are — {@link #benchmarksStartupValidator} calls {@code load()} once
+     * at boot, and {@code BenchmarksController} calls it again on every request; without the
+     * decorator both would re-read and re-parse the CSVs every time, even though they never
+     * change while the server runs. Paths are relative to the backend project root, the same
+     * convention {@link #CORPUS_PATH} uses (see this class's own Javadoc on
+     * {@code bootstrap/build.gradle.kts} pinning the working directory there).
+     */
+    @Bean
+    public BenchmarkReportRepository benchmarkReportRepository() {
+        return new MemoizingBenchmarkReportRepository(
+                new CsvBenchmarkReportRepository(BENCHMARK_RESULTS_CSV, BENCHMARK_SLOPES_CSV));
+    }
+
+    @Bean
+    public BenchmarksService benchmarksService(BenchmarkReportRepository benchmarkReportRepository) {
+        return new BenchmarksService(benchmarkReportRepository);
+    }
+
+    /**
+     * TRD §6.6, fixed by TRD 1.3.10 ("si los archivos faltan o están mal formados, el
+     * servidor falla al arrancar"): registered as a {@link SmartInitializingSingleton}, the
+     * same hook {@link #embeddingCacheStartupValidator} uses, so a missing or malformed
+     * benchmark CSV export stops {@code refresh()} instead of only surfacing on the first
+     * {@code GET /api/v1/benchmarks} request.
+     */
+    @Bean
+    public SmartInitializingSingleton benchmarksStartupValidator(BenchmarkReportRepository benchmarkReportRepository) {
+        BenchmarksStartupValidator validator = new BenchmarksStartupValidator(benchmarkReportRepository);
+        return validator::validate;
     }
 
     @Bean(name = "localEmbeddingRepository")
