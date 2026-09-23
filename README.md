@@ -24,41 +24,71 @@ workspace's `../docs/` (not part of this repository).
 
 Root package: `co.edu.uniquindio.legajo`.
 
-## JDK 25 note
+## Verification runs in containers (TRD §14.2)
 
-The machine's default JDK may be newer than 25 (Gradle 9.2 targets Java 25; AV-06
-warns Gradle 9.0 rejects JDK 25, so 9.1.0+ is required). Two ways to build reproducibly:
+**No check in this repository runs against a host JDK, host Gradle, or host `mise`
+install.** Every build, test, and smoke check runs inside a container, always — a
+developer machine only needs Docker. `.mise.toml` still pins `java =
+"temurin-25.0.4+7.0.LTS"`/`gradle = "9.2.1"` and `settings.gradle.kts` still applies the
+Foojay Toolchains Resolver, but both exist only so an IDE's language server has a local JDK
+to point at for autocomplete/navigation — neither is a supported way to build or verify
+this project. See "Checks run in containers" below for the container command for every
+check, and `scripts/gradle-in-docker.sh` for the Gradle runner they share.
 
-1. **mise (recommended).** `.mise.toml` pins `java = "temurin-25.0.4+7.0.LTS"` and
-   `gradle = "9.2.1"`. Run:
+CI's `build` job runs on GitHub-hosted runners via `actions/setup-java` (pinned to a commit
+SHA, currently v4.9.1) with `distribution: temurin`, `java-version: "25"` — a CI runner, not
+a developer's machine, so this does not conflict with the container-only rule above. CI's
+`image-smoke` job builds and exercises the image itself, the same way described below.
 
-   ```bash
-   mise install
-   mise exec -- ./gradlew build
-   ```
+## Running with Docker
 
-2. **Gradle toolchain auto-provisioning.** `settings.gradle.kts` applies the Foojay
-   Toolchains Resolver, so a plain `./gradlew build` auto-downloads a JDK 25 toolchain
-   if none is available locally, independent of the JDK running Gradle itself.
-
-CI always uses `actions/setup-java` (pinned to a commit SHA, currently v4.9.1) with
-`distribution: temurin`, `java-version: "25"`.
-
-## Build & test
+Build the image directly:
 
 ```bash
-./gradlew build            # compile, unit tests, ArchUnit
-./gradlew test             # tests only
-./gradlew jacocoRootReport # aggregated coverage across all modules
+docker build -t legajo-backend:local .
 ```
 
-Start locally without network access:
+Or run the `default`-profile demo stack with Compose (builds the image, publishes
+`:8080`, waits for the healthcheck):
 
 ```bash
-LEGAJO_EMBEDDING_PROVIDER=cached ./gradlew :bootstrap:bootRun
+docker compose up -d --wait backend
+docker compose down
 ```
 
-Health check: `GET /actuator/health`.
+Compose profiles (TRD §14.1):
+
+| Profile | Services | Purpose |
+|---|---|---|
+| `default` (no `--profile` flag) | `backend` | The demo stack; `LEGAJO_EMBEDDING_PROVIDER` defaults to `cached`, no network needed |
+| `ingest` | + `grobid` | One-shot corpus extraction only (see "Ingestion" below); never part of the demo |
+
+`LEGAJO_EMBEDDING_PROVIDER` and `LEGAJO_CORS_ORIGINS` pass straight through from the host
+environment into the `backend` service (`docker-compose.yml`); unset, they keep the
+documented defaults (`cached`, and the two hard-coded CORS origins respectively).
+
+Health check: `GET /actuator/health` (also the image's `HEALTHCHECK` and the Compose
+service's inherited healthcheck — see the Dockerfile's own comments for why there is no
+duplicate healthcheck definition in `docker-compose.yml`).
+
+## Checks run in containers
+
+Every check below is the exact command a developer or CI runs — no host JDK, no host
+`npm`/`mise`, ever (TRD §14.2).
+
+| Check | Container command |
+|---|---|
+| Full build (compile, unit tests, ArchUnit) | `./scripts/gradle-in-docker.sh build` |
+| Tests only | `./scripts/gradle-in-docker.sh test` |
+| Aggregated coverage (JaCoCo, >85% in the algorithm packages) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
+| Start locally, no network | `docker compose up -d --wait backend` |
+| Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering) | `docker compose up -d --wait backend && docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ http://localhost:8080; docker compose down` |
+| JMH performance curves + CSV export (NFR-QA-10; must run on the reference machine — see "Benchmarks" below) | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
+
+`scripts/gradle-in-docker.sh` runs the same pinned Temurin 25 JDK image the Dockerfile's
+build stage uses, with the repository bind-mounted, a named volume for the Gradle cache,
+and the host's Docker socket reachable (for a Testcontainers-backed adapter test, should one
+be added — see the script's own comments).
 
 ## Environment variables
 
@@ -92,8 +122,8 @@ batch job with no web or DI need). All commands run from `backend/`.
 
    ```bash
    docker compose --profile ingest up -d grobid
-   # wait until this returns "true":
-   curl -s http://localhost:8070/api/isalive
+   # wait until this returns "true" (containerized, no host curl — TRD §14.2):
+   docker run --rm --network host alpine:3.20 sh -c 'apk add --no-cache curl >/dev/null && curl -s http://localhost:8070/api/isalive'
    ```
 
 2. **Ingest.** Scans `--input` for `*.pdf` sorted by name, extracts each through GROBID
@@ -102,7 +132,7 @@ batch job with no web or DI need). All commands run from `backend/`.
    document `manuallyValidated=false`:
 
    ```bash
-   ./gradlew :bootstrap:ingest --args="--input=data/pdfs --output=data/corpus.json --grobid-url=http://localhost:8070"
+   ./scripts/gradle-in-docker.sh :bootstrap:ingest --args="--input=data/pdfs --output=data/corpus.json --grobid-url=http://localhost:8070"
    ```
 
 3. **Review each abstract by hand.** This is the only mandatory control (TRD §6.1, item
@@ -113,9 +143,9 @@ batch job with no web or DI need). All commands run from `backend/`.
    recomputes `corpusSha256`:
 
    ```bash
-   ./gradlew :bootstrap:validateCorpus --args="--ids=d01,d02"
+   ./scripts/gradle-in-docker.sh :bootstrap:validateCorpus --args="--ids=d01,d02"
    # or, once every document has been reviewed:
-   ./gradlew :bootstrap:validateCorpus --args="--all"
+   ./scripts/gradle-in-docker.sh :bootstrap:validateCorpus --args="--all"
    ```
 
 5. **Verify.** Exits non-zero and prints every violation (never just the first) if the
@@ -123,7 +153,7 @@ batch job with no web or DI need). All commands run from `backend/`.
    documents, and every document `manuallyValidated=true`:
 
    ```bash
-   ./gradlew :bootstrap:verifyCorpus
+   ./scripts/gradle-in-docker.sh :bootstrap:verifyCorpus
    ```
 
 6. **Stop GROBID** once ingestion is done — it is not part of the `default` demo profile:
@@ -157,7 +187,7 @@ machine (the harness is captured when `jmh` runs, not later when `jmhExport` run
 must run on the same machine for the header to describe it correctly):
 
 ```bash
-./gradlew :benchmarks:jmh :benchmarks:jmhExport
+./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport
 ```
 
 Results land in `benchmarks/results/`, versioned in git:
@@ -187,7 +217,7 @@ available by overriding the JMH Gradle plugin's properties and narrowing to a be
 subset with a regex:
 
 ```bash
-./gradlew :benchmarks:jmh -Pjmh.fork=1 -Pjmh.warmupIterations=1 -Pjmh.iterations=1 \
+./scripts/gradle-in-docker.sh :benchmarks:jmh -Pjmh.fork=1 -Pjmh.warmupIterations=1 -Pjmh.iterations=1 \
     -Pjmh.includes=Levenshtein
 ```
 
@@ -199,3 +229,30 @@ pull request (TRD §14.3), and uploads `jmh-results.json` and the two CSVs as a 
 unpinned GitHub-hosted runner, not the documented machine. The versioned CSVs in
 `benchmarks/results/` — the ones the technical documentation cites (TAC-07, TAC-18) — always
 come from a local run on the reference harness, never from CI.
+
+## Deployment (TRD §14.4, TAC-11)
+
+**Decided by the author: backend on Render, frontend on Vercel.** Render runs this
+repository's own image (this `Dockerfile`, built the way §14.2 describes) as a Docker web
+service; `docker compose up` here stays the reproducibility path, not the acceptance test —
+TAC-11 is the two public URLs below actually answering.
+
+- **API base URL (Render):** _pending deployment — not yet assigned. This placeholder is
+  replaced with the real Render URL once TAC-11's deployment step runs; it is never a
+  fabricated URL._
+- **Frontend URL (Vercel):** _pending deployment — set and documented by the frontend
+  repository once TAC-11 runs there; linked here for convenience once known._
+
+**Cold-start note.** Render's free tier suspends the service when idle; the first request
+after a period of inactivity is slow while the instance wakes up. Before a demo, poll the
+health endpoint until it answers and only then start the walkthrough:
+
+```bash
+docker run --rm alpine:3.20 sh -c 'apk add --no-cache curl >/dev/null && \
+  until curl -sf "$1/actuator/health" | grep -q "\"status\":\"UP\""; do sleep 3; done; \
+  echo "backend is warm"' _ https://<render-app>.onrender.com
+```
+
+CORS (TRD §14.4 point 3): `LEGAJO_CORS_ORIGINS` is set on Render to the exact public Vercel
+origin; an unset or empty value only ever falls back to the two localhost defaults
+(`http://localhost:5173`, `http://localhost`), never to a wildcard.
