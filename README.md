@@ -175,6 +175,11 @@ JSON it describes, or if the JDK JMH itself reports disagrees with that sidecar.
 CSVs back the technical documentation, so an incomplete or mismatched export is an error, not
 a partial file to ignore.
 
+`GET /api/v1/benchmarks` (TRD §6.6, fixed by TRD 1.3.10) serves these two versioned CSVs to
+the frontend as-is — it never runs JMH and never recalculates anything. If either file is
+missing or malformed, the server fails at startup naming the export command above, instead of
+exposing a broken endpoint.
+
 A fast, non-representative smoke run (shrinks the protocol; never commit its numbers) is
 available by overriding the JMH Gradle plugin's properties and narrowing to a benchmark
 subset with a regex:

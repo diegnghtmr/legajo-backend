@@ -268,6 +268,13 @@ class OpenApiContractConformanceTest {
     }
 
     @Test
+    void benchmarksConformsToTheContract() throws Exception {
+        mockMvc.perform(get("/api/v1/benchmarks"))
+                .andExpect(status().isOk())
+                .andExpect(openApi().isValid(validator));
+    }
+
+    @Test
     void healthConformsToTheContract() throws Exception {
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
