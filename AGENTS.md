@@ -33,7 +33,7 @@ archivo, nunca una copia.
 | Persistencia | Sin base de datos. `data/corpus.json` y `data/embeddings-*.json` versionados en git |
 | Embeddings | `all-MiniLM-L6-v2` local (DJL/ONNX, precómputo offline) y `gemini-embedding-2-preview` a 1536 dimensiones por API (Spring AI, capa compatible con OpenAI; ADR-015). En la demo, ambos desde caché; en modo `live`, `embedding-api` consulta la API en cada solicitud (TRD 1.3.7) |
 | Contrato | `docs/openapi-legajo.yaml` es la fuente de verdad; springdoc lo publica |
-| Imagen | `eclipse-temurin:25-jdk`, Docker Compose con perfiles `default` e `ingest` |
+| Imagen | Multietapa: `eclipse-temurin:25.0.4_7-jdk` compila, `eclipse-temurin:25.0.4_7-jre` ejecuta. Docker Compose con perfiles `default` e `ingest` |
 
 ## Mapa del repositorio
 
@@ -46,7 +46,7 @@ archivo, nunca una copia.
 | `benchmarks/` | Arnés JMH: curvas empíricas frente a la complejidad teórica | Pruebas unitarias |
 | `data/` | `corpus.json`, `embeddings-minilm.json`, `embeddings-openai.json` (versionados); `pdfs/` (ignorado por git) | Ediciones a mano |
 | `docs/` | Solo `openapi-legajo.yaml` | PRD, TRD, `DESIGN.md`: viven en `../docs/` |
-| `docker/`, `docker-compose.yml` | Imagen y perfiles | Secretos |
+| `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `scripts/*.sh` | Imagen, perfiles, ejecutores en contenedor | Secretos |
 | `.github/workflows/` | CI: build, ArchUnit, JaCoCo, smoke de la imagen | — |
 
 Dónde vive cada algoritmo, bajo el paquete raíz `co.edu.uniquindio.legajo`:
@@ -63,21 +63,35 @@ Dónde vive cada algoritmo, bajo el paquete raíz `co.edu.uniquindio.legajo`:
 Si el código ya existe y difiere de este mapa, el código manda en ubicación y el
 TRD en comportamiento. El mapa se actualiza en el mismo pull request.
 
+## Verificación solo en contenedores (TRD 1.3.11 §14.2)
+
+**Nada se prueba en el pc; todo se prueba en contenedores.** Ningún comando de
+compilación, prueba o arranque corre sobre un JDK, Gradle o `mise` del sistema anfitrión —
+la única herramienta que necesita la máquina del desarrollador es Docker.
+`scripts/gradle-in-docker.sh` es el ejecutor compartido: corre Gradle dentro de la misma
+imagen Temurin 25 JDK fijada que usa la etapa de compilación del `Dockerfile`, con el
+repositorio montado, una caché de Gradle persistente en un volumen nombrado y el socket de
+Docker accesible (para una prueba de integración basada en Testcontainers, si llega a
+añadirse). `.mise.toml` y el resolutor de toolchains de Gradle siguen fijados solo para que
+el IDE tenga un JDK local al que apuntar; no son una vía soportada de compilación o
+verificación.
+
 ## Comandos
 
-Definidos por el TRD §13 y §14; `./gradlew tasks` confirma los nombres reales.
+Definidos por el TRD §13 y §14; `./scripts/gradle-in-docker.sh tasks` confirma los nombres reales.
 
-| Para | Comando |
+| Para | Comando (en contenedor) |
 |---|---|
-| Compilar, pruebas y ArchUnit | `./gradlew build` |
-| Solo pruebas | `./gradlew test` |
-| Cobertura agregada (más del 85 % en los paquetes de algoritmos) | `./gradlew jacocoRootReport` |
-| Arrancar en local sin red | `LEGAJO_EMBEDDING_PROVIDER=cached ./gradlew :bootstrap:bootRun` |
-| Demo completa (backend `:8080`, frontend `:80`) | `docker compose up` |
+| Compilar, pruebas y ArchUnit | `./scripts/gradle-in-docker.sh build` |
+| Solo pruebas | `./scripts/gradle-in-docker.sh test` |
+| Cobertura agregada (más del 85 % en los paquetes de algoritmos) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
+| Arrancar en local sin red | `docker compose up -d --wait backend` (perfil `default`; `LEGAJO_EMBEDDING_PROVIDER` ya es `cached` por defecto) |
+| Demo completa (backend `:8080`, frontend `:80`) | `docker compose up` (el servicio `frontend` llega con K4, ver `../odd/tasks/containers.md`) |
 | Ingesta de PDF, una sola vez, con GROBID | `docker compose --profile ingest up` |
-| Verificar el corpus después de la ingesta | script `verify-corpus` (TRD §6.1) |
-| Precalcular embeddings tras una ingesta | tarea de precómputo (TRD §6.1 y §8); deja `corpusSha256` en las cachés |
-| Curvas de complejidad | tarea JMH del módulo `benchmarks` |
+| Verificar el corpus después de la ingesta | `./scripts/gradle-in-docker.sh :bootstrap:verifyCorpus` (TRD §6.1) |
+| Precalcular embeddings tras una ingesta | `./scripts/gradle-in-docker.sh :bootstrap:precomputeEmbeddings` / `precomputeApiEmbeddings` (TRD §6.1 y §8); deja `corpusSha256` en las cachés |
+| Curvas de complejidad | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
+| Prueba de humo de la imagen | `docker compose up -d --wait backend`, luego `scripts/smoke.sh` corrido dentro de un contenedor curl+jq (comando exacto en README, "Checks run in containers") |
 | Salud | `GET /actuator/health` |
 
 Variables de entorno: `LEGAJO_EMBEDDING_PROVIDER` (`cached` en la demo),
@@ -154,7 +168,7 @@ los casos degenerados (secuencias o conjuntos vacíos) en TRD §6.3.
 ## Siempre
 
 - Buscar la regla en el TRD antes de decidir; si no está, preguntar al autor.
-- Escribir la prueba antes del código y correr `./gradlew build` antes del commit.
+- Escribir la prueba antes del código y correr `./scripts/gradle-in-docker.sh build` antes del commit (nunca `./gradlew build` directo — TRD §14.2).
 - Mantener el mapa de este archivo al día cuando se mueve algo.
 
 ## Si algo no está claro
