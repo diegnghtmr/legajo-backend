@@ -13,8 +13,10 @@ services:
       - "8080:8080"
     environment:
       # TRD §14.1: the default profile needs no live embedding credentials — it serves the
-      # versioned caches under data/. LEGAJO_CORS_ORIGINS is passed through empty so the
-      # server falls back to its documented defaults (http://localhost:5173, http://localhost).
+      # versioned caches under data/. LEGAJO_CORS_ORIGINS passes through whatever the host
+      # has set (empty by default): unset, the server falls back to its documented defaults
+      # (http://localhost:5173, http://localhost); a host value (e.g. a real deployment's
+      # public frontend origin) replaces those defaults instead of adding to them.
       LEGAJO_EMBEDDING_PROVIDER: ${LEGAJO_EMBEDDING_PROVIDER:-cached}
       LEGAJO_CORS_ORIGINS: ${LEGAJO_CORS_ORIGINS:-}
     # No healthcheck override here: Compose inherits the image's own HEALTHCHECK

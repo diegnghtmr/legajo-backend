@@ -29,7 +29,11 @@ MAX_TIME=15
 # Bounded *wall-clock deadline* for the health-readiness wait, not an attempt count: an
 # attempt count times a fixed sleep interval silently understates the real bound, because it
 # ignores each attempt's own request time (up to MAX_TIME above) — this computes an actual
-# deadline with `date +%s` and checks elapsed time against it instead.
+# deadline with `date +%s` and checks elapsed time against it instead. The deadline is only
+# checked *between* attempts, not inside one, so the exact worst case before giving up is
+# SMOKE_READY_TIMEOUT_SECONDS + MAX_TIME seconds (one more attempt, already in flight when
+# the deadline passes, is still allowed to finish) — not a hard, unexceedable cutoff at
+# SMOKE_READY_TIMEOUT_SECONDS itself.
 # `docker compose up --wait` already blocks until the image's own HEALTHCHECK reports
 # healthy, but this script is also runnable stand-alone against a container that has only
 # just started (e.g. a plain `docker run -d` with no --wait), so it tolerates a service still
@@ -39,6 +43,16 @@ MAX_TIME=15
 # slow JVM cold start (e.g. Render's free tier suspending when idle, TRD §14.4 point 4) —
 # override with SMOKE_READY_TIMEOUT_SECONDS for an even slower environment.
 SMOKE_READY_TIMEOUT_SECONDS="${SMOKE_READY_TIMEOUT_SECONDS:-120}"
+case "$SMOKE_READY_TIMEOUT_SECONDS" in
+    ''|*[!0-9]*)
+        echo "SMOKE FAILED: SMOKE_READY_TIMEOUT_SECONDS must be a positive integer, got '$SMOKE_READY_TIMEOUT_SECONDS'" >&2
+        exit 1
+        ;;
+esac
+[ "$SMOKE_READY_TIMEOUT_SECONDS" -gt 0 ] || {
+    echo "SMOKE FAILED: SMOKE_READY_TIMEOUT_SECONDS must be a positive integer, got '$SMOKE_READY_TIMEOUT_SECONDS'" >&2
+    exit 1
+}
 HEALTH_WAIT_INTERVAL=2
 
 # The CORS preflight check's expected allowed origin (TRD §14.4): defaults to one of the two
@@ -92,9 +106,15 @@ cors_preflight() {
 
 echo "== smoke: $BASE_URL =="
 
-# 1. Health (bounded wall-clock wait for readiness — see SMOKE_READY_TIMEOUT_SECONDS above)
+# 1. Health (bounded wall-clock wait for readiness — see SMOKE_READY_TIMEOUT_SECONDS above).
+# Unlike the other five checks, this one can legitimately run silently for up to that many
+# seconds while a slow cold start comes up; without any output in between, a long wait here
+# is indistinguishable from a genuinely hung process (from a CI log or a developer's
+# terminal) — each retry echoes its own attempt number and elapsed time so the run is
+# visibly still making progress, not stuck.
 echo "-- GET /actuator/health"
 health_deadline=$(( $(date +%s) + SMOKE_READY_TIMEOUT_SECONDS ))
+health_attempt=1
 health_status=""
 health_body=""
 while :; do
@@ -104,7 +124,11 @@ while :; do
     if [ "$health_status" = "200" ] && printf '%s' "$health_body" | grep -q '"status":"UP"'; then
         break
     fi
-    [ "$(date +%s)" -ge "$health_deadline" ] && break
+    if [ "$(date +%s)" -ge "$health_deadline" ]; then
+        break
+    fi
+    echo "   ...attempt $health_attempt not ready yet (status: ${health_status:-none}), retrying in ${HEALTH_WAIT_INTERVAL}s"
+    health_attempt=$((health_attempt + 1))
     sleep "$HEALTH_WAIT_INTERVAL"
 done
 [ "$health_status" = "200" ] \
@@ -201,8 +225,13 @@ echo "-- OPTIONS /api/v1/corpus (CORS preflight, expecting $SMOKE_CORS_ALLOWED_O
 cors_preflight "$SMOKE_CORS_ALLOWED_ORIGIN"
 # Extracted and compared as a plain string, not matched by a regex built from
 # SMOKE_CORS_ALLOWED_ORIGIN, so a "." or any other regex metacharacter in the configured
-# origin can never change what this check actually matches.
-allowed_origin_header="$(printf '%s' "$REPLY_HEADERS" | grep -i '^Access-Control-Allow-Origin:' | sed 's/^[Aa]ccess-[Cc]ontrol-[Aa]llow-[Oo]rigin: *//')"
+# origin can never change what this check actually matches. The header *name* is matched
+# case-insensitively (grep -i) and the value is then taken as "everything after the first
+# colon", not by re-matching the header name's exact casing a second time in sed — HTTP
+# header names are case-insensitive (RFC 9110 §5.1), so a server sending
+# "ACCESS-CONTROL-ALLOW-ORIGIN:" (or any other casing) must extract the same value as the
+# lower/Title-cased form most servers use.
+allowed_origin_header="$(printf '%s' "$REPLY_HEADERS" | grep -i '^Access-Control-Allow-Origin:' | sed 's/^[^:]*: *//')"
 [ "$allowed_origin_header" = "$SMOKE_CORS_ALLOWED_ORIGIN" ] \
     || fail "cors: expected Access-Control-Allow-Origin: $SMOKE_CORS_ALLOWED_ORIGIN, got '${allowed_origin_header:-<absent>}' (TRD §14.4; override with SMOKE_CORS_ALLOWED_ORIGIN if this backend's LEGAJO_CORS_ORIGINS differs from the default)" "$REPLY_HEADERS"
 cors_preflight "http://smoke-test-unlisted-origin.invalid"
