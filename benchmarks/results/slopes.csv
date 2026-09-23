@@ -1,0 +1,13 @@
+family,points,empiricalSlope,theoreticalExponent
+davies-bouldin,5,1.010137,1.000000
+embedding-dot-product,2,1.055770,1.000000
+embedding-euclidean-sum-squared,2,1.022090,1.000000
+hac-average,5,2.225085,3.000000
+hac-complete,5,2.212863,3.000000
+hac-single,5,2.367838,3.000000
+hac-ward,5,2.207203,3.000000
+jaccard,5,1.478870,1.000000
+levenshtein,5,2.039288,2.000000
+mean-silhouette,5,1.459527,2.000000
+needleman-wunsch,5,2.009963,2.000000
+tfidf-cosine,5,1.246739,1.000000
