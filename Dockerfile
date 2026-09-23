@@ -54,7 +54,7 @@ RUN groupadd --system legajo \
 
 # The jar's file name is pinned to app.jar by bootstrap/build.gradle.kts's bootJar
 # configuration, independent of the project version, so this COPY never breaks on a version
-# bump (R3-hardcoded-jar-version).
+# bump.
 COPY --from=build --chown=legajo:legajo /workspace/bootstrap/build/libs/app.jar /app/app.jar
 # Only the three generated, versioned data files the server actually reads (TRD §6.1):
 # never data/pdfs/ (git-ignored teacher PDFs, ingestion input only, not read at runtime) and

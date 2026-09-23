@@ -31,8 +31,8 @@ jobs:
 
   # TRD §14.3: image smoke test (health, OpenAPI, corpus listing, a real comparison
   # including needleman-wunsch, and Ward clustering). Runs after `build` rather than in
-  # parallel: building and starting the image is comparatively expensive, and there is no
-  # point paying for it against code that does not even compile or pass its own tests.
+  # parallel: building and starting the image are comparatively expensive, and there is no
+  # point paying for either against code that does not even compile or pass its own tests.
   image-smoke:
     needs: build
     runs-on: ubuntu-latest

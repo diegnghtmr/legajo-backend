@@ -12,24 +12,55 @@
 # jq come from the container, never the host):
 #   docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
 #     alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ <base-url>
+#
+# Environment overrides (see each variable's own comment below for the full reasoning):
+#   SMOKE_READY_TIMEOUT_SECONDS  Wall-clock deadline for the health-readiness wait (default 120).
+#   SMOKE_CORS_ALLOWED_ORIGIN    Origin the CORS check expects to be allowed (default http://localhost).
 
 set -eu
 
 BASE_URL="${1:?usage: smoke.sh <base-url>}"
 
-# Bounded per-request timeouts (R3-curl-no-timeout/R4-smoke-no-timeouts): a hung TCP
-# handshake or a stalled response must never block the smoke run forever.
+# Bounded per-request timeouts: a hung TCP handshake or a stalled response must never block
+# the smoke run forever.
 CONNECT_TIMEOUT=5
 MAX_TIME=15
 
-# Bounded wait for the health check specifically: `docker compose up --wait` already blocks
-# until the image's own HEALTHCHECK reports healthy, but this script is also runnable
-# stand-alone against a container that has only just started (e.g. a plain `docker run -d`
-# with no --wait), so it tolerates a service still coming up instead of failing on the very
-# first, possibly-premature, request. 10 attempts x 2s = 20s bound, well inside the
-# Dockerfile HEALTHCHECK's own start_period=40s.
-HEALTH_WAIT_ATTEMPTS=10
+# Bounded *wall-clock deadline* for the health-readiness wait, not an attempt count: an
+# attempt count times a fixed sleep interval silently understates the real bound, because it
+# ignores each attempt's own request time (up to MAX_TIME above) — this computes an actual
+# deadline with `date +%s` and checks elapsed time against it instead. The deadline is only
+# checked *between* attempts, not inside one, so the exact worst case before giving up is
+# SMOKE_READY_TIMEOUT_SECONDS + MAX_TIME seconds (one more attempt, already in flight when
+# the deadline passes, is still allowed to finish) — not a hard, unexceedable cutoff at
+# SMOKE_READY_TIMEOUT_SECONDS itself.
+# `docker compose up --wait` already blocks until the image's own HEALTHCHECK reports
+# healthy, but this script is also runnable stand-alone against a container that has only
+# just started (e.g. a plain `docker run -d` with no --wait), so it tolerates a service still
+# coming up instead of failing on the very first, possibly-premature, request. Default 120s:
+# comfortably above the Dockerfile HEALTHCHECK's own worst case before Docker itself would
+# give up (start_period=40s + retries=5 x interval=10s = 90s) plus margin for a genuinely
+# slow JVM cold start (e.g. Render's free tier suspending when idle, TRD §14.4 point 4) —
+# override with SMOKE_READY_TIMEOUT_SECONDS for an even slower environment.
+SMOKE_READY_TIMEOUT_SECONDS="${SMOKE_READY_TIMEOUT_SECONDS:-120}"
+case "$SMOKE_READY_TIMEOUT_SECONDS" in
+    ''|*[!0-9]*)
+        echo "SMOKE FAILED: SMOKE_READY_TIMEOUT_SECONDS must be a positive integer, got '$SMOKE_READY_TIMEOUT_SECONDS'" >&2
+        exit 1
+        ;;
+esac
+[ "$SMOKE_READY_TIMEOUT_SECONDS" -gt 0 ] || {
+    echo "SMOKE FAILED: SMOKE_READY_TIMEOUT_SECONDS must be a positive integer, got '$SMOKE_READY_TIMEOUT_SECONDS'" >&2
+    exit 1
+}
 HEALTH_WAIT_INTERVAL=2
+
+# The CORS preflight check's expected allowed origin (TRD §14.4): defaults to one of the two
+# fallback origins a backend started with an unset/empty LEGAJO_CORS_ORIGINS falls back to.
+# A backend started with a non-default LEGAJO_CORS_ORIGINS (e.g. a Render deployment
+# configured with the Vercel origin) must pass its own origin here, or this check fails
+# against a correctly-configured backend for the wrong reason.
+SMOKE_CORS_ALLOWED_ORIGIN="${SMOKE_CORS_ALLOWED_ORIGIN:-http://localhost}"
 
 fail() {
     echo "SMOKE FAILED: $1" >&2
@@ -39,8 +70,8 @@ fail() {
 
 # Runs one HTTP request with the bounded timeouts above, fails clearly on a transport error
 # or a non-200 status (both routed through fail(), never a bare curl/shell exit), and leaves
-# the response body in REPLY_BODY for the caller to inspect further (R2-002: one shared
-# helper instead of five copies of the same curl/status-split/fail dance).
+# the response body in REPLY_BODY for the caller to inspect further — one shared helper
+# instead of a separate copy of the same curl/status-split/fail dance per check.
 # Usage: http_request <check-name> <curl-args...>
 REPLY_BODY=""
 http_request() {
@@ -53,18 +84,19 @@ http_request() {
     [ "$status" = "200" ] || fail "$check_name: expected HTTP 200, got $status" "$REPLY_BODY"
 }
 
-# Same request/response shape as http_request, but never fails the whole run on a non-200 —
-# the CORS check (5, below) needs to inspect a 403 response's headers, not treat it as a
-# transport failure.
-REPLY_STATUS=""
+# Same request/response shape as http_request, but deliberately does not treat a non-200
+# (e.g. Spring's 403 response to a disallowed preflight origin) as a transport failure — the
+# CORS check (6, below) needs to inspect which headers came back for both an allowed and a
+# disallowed origin, not have a non-200 short-circuit the run before it can look.
+# Usage: cors_preflight <origin>
 REPLY_HEADERS=""
 cors_preflight() {
     origin="$1"
     # curl's own exit status must drive the failure check, so it is captured on its own
     # (not piped straight into tr below — a trailing pipe would report tr's exit status
     # instead, silently masking a connection failure under `set -eu` with no pipefail in
-    # POSIX sh). Raw HTTP headers are CRLF-terminated; \r is stripped afterwards so a later
-    # `grep '...$'` anchor matches the header value itself, not "right before the \r".
+    # POSIX sh). Raw HTTP headers are CRLF-terminated; \r is stripped afterwards so the later
+    # exact-value comparison isn't thrown off by a trailing \r.
     raw_headers="$(curl -s -D - -o /dev/null --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" \
         -X OPTIONS "$BASE_URL/api/v1/corpus" \
         -H "Origin: $origin" -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: Content-Type')" \
@@ -74,25 +106,35 @@ cors_preflight() {
 
 echo "== smoke: $BASE_URL =="
 
-# 1. Health (bounded wait for readiness — see HEALTH_WAIT_ATTEMPTS/INTERVAL above)
+# 1. Health (bounded wall-clock wait for readiness — see SMOKE_READY_TIMEOUT_SECONDS above).
+# Unlike the other five checks, this one can legitimately run silently for up to that many
+# seconds while a slow cold start comes up; without any output in between, a long wait here
+# is indistinguishable from a genuinely hung process (from a CI log or a developer's
+# terminal) — each retry echoes its own attempt number and elapsed time so the run is
+# visibly still making progress, not stuck.
 echo "-- GET /actuator/health"
-attempt=1
+health_deadline=$(( $(date +%s) + SMOKE_READY_TIMEOUT_SECONDS ))
+health_attempt=1
 health_status=""
 health_body=""
-while [ "$attempt" -le "$HEALTH_WAIT_ATTEMPTS" ]; do
+while :; do
     health_response="$(curl -s --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" -w '\n%{http_code}' "$BASE_URL/actuator/health" 2>/dev/null || true)"
     health_status="$(printf '%s' "$health_response" | tail -n1)"
     health_body="$(printf '%s' "$health_response" | sed '$d')"
     if [ "$health_status" = "200" ] && printf '%s' "$health_body" | grep -q '"status":"UP"'; then
         break
     fi
-    attempt=$((attempt + 1))
-    [ "$attempt" -le "$HEALTH_WAIT_ATTEMPTS" ] && sleep "$HEALTH_WAIT_INTERVAL"
+    if [ "$(date +%s)" -ge "$health_deadline" ]; then
+        break
+    fi
+    echo "   ...attempt $health_attempt not ready yet (status: ${health_status:-none}), retrying in ${HEALTH_WAIT_INTERVAL}s"
+    health_attempt=$((health_attempt + 1))
+    sleep "$HEALTH_WAIT_INTERVAL"
 done
 [ "$health_status" = "200" ] \
-    || fail "health: expected HTTP 200 after ${HEALTH_WAIT_ATTEMPTS}x${HEALTH_WAIT_INTERVAL}s of retries, got $health_status" "$health_body"
+    || fail "health: expected HTTP 200 within ${SMOKE_READY_TIMEOUT_SECONDS}s, got $health_status" "$health_body"
 printf '%s' "$health_body" | grep -q '"status":"UP"' \
-    || fail "health: expected status UP after ${HEALTH_WAIT_ATTEMPTS}x${HEALTH_WAIT_INTERVAL}s of retries" "$health_body"
+    || fail "health: expected status UP within ${SMOKE_READY_TIMEOUT_SECONDS}s" "$health_body"
 echo "OK: health is UP"
 
 # 2. OpenAPI contract (TRD §6.6: docs/openapi-legajo.yaml served as-is at this path)
@@ -117,17 +159,24 @@ http_request "similarity/compare" -X POST "$BASE_URL/api/v1/similarity/compare" 
     -H 'Content-Type: application/json' \
     -d '{"documentIdA":"d01","documentIdB":"d02","algorithmIds":["needleman-wunsch"]}'
 compare_body="$REPLY_BODY"
-# TAC-05: normalizedScore must be a finite number in [0, 1]. jq -r prints the literal text
-# "null" for a JSON null, which is non-empty — a plain `[ -n "$score" ]` presence check would
-# wrongly pass a null score through undetected (R3-nw-score-null-passes). This instead
-# classifies the value inside jq itself (present-and-numeric-and-in-range vs. not) and routes
-# every non-OK case through fail() with a distinct message.
+# TAC-05: normalizedScore must be a finite number in [0, 1], and exactly one
+# needleman-wunsch result must be present. jq -r prints the literal text "null" for a JSON
+# null, which is non-empty — a plain `[ -n "$score" ]` presence check would wrongly pass a
+# null score through undetected. Collecting every match into an array first (instead of a
+# bare `select | as $score` pipeline, which would silently re-run the classification once
+# per match and only ever look at the last output line) also catches a second,
+# contract-violating match instead of letting it mask the first one. Every case is
+# classified inside jq itself and routed through fail() with a distinct message.
 nw_result="$(printf '%s' "$compare_body" | jq -r '
-    (.[] | select(.algorithmId == "needleman-wunsch") | .result.normalizedScore) as $score
-    | if $score == null then "MISSING"
-      elif ($score | type) != "number" then "NOT_A_NUMBER:\($score)"
-      elif $score < 0 or $score > 1 then "OUT_OF_RANGE:\($score)"
-      else "OK:\($score)"
+    [.[] | select(.algorithmId == "needleman-wunsch")] as $matches
+    | if ($matches | length) == 0 then "MISSING"
+      elif ($matches | length) > 1 then "MULTIPLE:\($matches | length)"
+      else ($matches[0].result.normalizedScore) as $score
+        | if $score == null then "MISSING"
+          elif ($score | type) != "number" then "NOT_A_NUMBER:\($score)"
+          elif $score < 0 or $score > 1 then "OUT_OF_RANGE:\($score)"
+          else "OK:\($score)"
+          end
       end
 ')" || fail "similarity/compare: could not parse the response as JSON (jq failed)" "$compare_body"
 case "$nw_result" in
@@ -136,6 +185,9 @@ case "$nw_result" in
         ;;
     ""|MISSING)
         fail "similarity/compare: no needleman-wunsch result in the response" "$compare_body"
+        ;;
+    MULTIPLE:*)
+        fail "similarity/compare: expected exactly one needleman-wunsch result, got ${nw_result#MULTIPLE:}" "$compare_body"
         ;;
     NOT_A_NUMBER:*)
         fail "similarity/compare: needleman-wunsch normalizedScore is not a number (${nw_result#NOT_A_NUMBER:})" "$compare_body"
@@ -166,15 +218,26 @@ echo "OK: ward linkage has 19 rows over 20 documents"
 # 6. CORS preflight (TRD §14.4 point 3: an empty/absent LEGAJO_CORS_ORIGINS falls back to
 # http://localhost:5173 and http://localhost — never to "allow every origin" — and a defined
 # list replaces those defaults rather than adding to them; CorsWebConfiguration only ever
-# registers the resolved, never-empty list, so an unlisted origin gets no CORS headers at all).
-echo "-- OPTIONS /api/v1/corpus (CORS preflight)"
-cors_preflight "http://localhost"
-printf '%s' "$REPLY_HEADERS" | grep -qi '^Access-Control-Allow-Origin: http://localhost$' \
-    || fail "cors: expected Access-Control-Allow-Origin: http://localhost for the default origin (TRD §14.4)" "$REPLY_HEADERS"
+# registers the resolved, never-empty list, so an unlisted origin gets no CORS headers at
+# all). Checks against SMOKE_CORS_ALLOWED_ORIGIN, not a hardcoded default, so this passes
+# against any correctly-configured deployment, not only the local Compose default.
+echo "-- OPTIONS /api/v1/corpus (CORS preflight, expecting $SMOKE_CORS_ALLOWED_ORIGIN to be allowed)"
+cors_preflight "$SMOKE_CORS_ALLOWED_ORIGIN"
+# Extracted and compared as a plain string, not matched by a regex built from
+# SMOKE_CORS_ALLOWED_ORIGIN, so a "." or any other regex metacharacter in the configured
+# origin can never change what this check actually matches. The header *name* is matched
+# case-insensitively (grep -i) and the value is then taken as "everything after the first
+# colon", not by re-matching the header name's exact casing a second time in sed — HTTP
+# header names are case-insensitive (RFC 9110 §5.1), so a server sending
+# "ACCESS-CONTROL-ALLOW-ORIGIN:" (or any other casing) must extract the same value as the
+# lower/Title-cased form most servers use.
+allowed_origin_header="$(printf '%s' "$REPLY_HEADERS" | grep -i '^Access-Control-Allow-Origin:' | sed 's/^[^:]*: *//')"
+[ "$allowed_origin_header" = "$SMOKE_CORS_ALLOWED_ORIGIN" ] \
+    || fail "cors: expected Access-Control-Allow-Origin: $SMOKE_CORS_ALLOWED_ORIGIN, got '${allowed_origin_header:-<absent>}' (TRD §14.4; override with SMOKE_CORS_ALLOWED_ORIGIN if this backend's LEGAJO_CORS_ORIGINS differs from the default)" "$REPLY_HEADERS"
 cors_preflight "http://smoke-test-unlisted-origin.invalid"
 if printf '%s' "$REPLY_HEADERS" | grep -qi '^Access-Control-Allow-Origin:'; then
     fail "cors: an unlisted origin must not receive Access-Control-Allow-Origin" "$REPLY_HEADERS"
 fi
-echo "OK: CORS preflight allows the default http://localhost origin, rejects an unlisted one"
+echo "OK: CORS preflight allows $SMOKE_CORS_ALLOWED_ORIGIN, rejects an unlisted origin"
 
 echo "== smoke: all checks passed =="

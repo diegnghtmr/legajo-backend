@@ -67,9 +67,9 @@ Compose profiles (TRD §14.1):
 environment into the `backend` service (`docker-compose.yml`); unset, they keep the
 documented defaults (`cached`, and the two hard-coded CORS origins respectively).
 
-Health check: `GET /actuator/health` (also the image's `HEALTHCHECK` and the Compose
-service's inherited healthcheck — see the Dockerfile's own comments for why there is no
-duplicate healthcheck definition in `docker-compose.yml`).
+Health check: `GET /actuator/health`, probed directly by the Dockerfile's own `HEALTHCHECK`,
+which the Compose `backend` service inherits unchanged (see the Dockerfile's own comments
+for why `docker-compose.yml` never redefines it).
 
 ## Checks run in containers
 
@@ -82,8 +82,28 @@ Every check below is the exact command a developer or CI runs — no host JDK, n
 | Tests only | `./scripts/gradle-in-docker.sh test` |
 | Aggregated coverage (JaCoCo, >85% in the algorithm packages) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
 | Start locally, no network | `docker compose up -d --wait backend` |
-| Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | `docker compose up -d --wait backend && docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ http://localhost:8080; docker compose down` |
+| Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | see below |
 | JMH performance curves + CSV export (NFR-QA-10; must run on the reference machine — see "Benchmarks" below) | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
+
+The image smoke test always tears the stack down, whether the smoke script passed or
+failed — and it must do so even under `set -e` (the safe default for a script, and this
+block is meant to be saved and run as one): a plain `cmd1; cmd2` sequence looks safe when
+typed by hand, but under `set -e` a failing `cmd1` aborts the script *before* `cmd2` (the
+teardown) ever runs, leaking a running container; and without `set -e`, a failed
+`docker compose up --wait` would silently fall through into running the smoke script anyway
+against a stack that never came up, masking the real failure behind a confusing, unrelated
+smoke error. An `EXIT` trap avoids both: it always runs, on success, on a `set -e` abort, or
+on an interrupt, and it explicitly re-exits with the status that triggered it, so the whole
+script's own exit code still reflects whichever step actually failed:
+
+```bash
+set -e
+trap 'status=$?; docker compose down; exit $status' EXIT
+docker compose up -d --wait backend
+docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
+    alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' \
+    _ http://localhost:8080
+```
 
 `scripts/gradle-in-docker.sh` runs the same pinned Temurin 25 JDK image the Dockerfile's
 build stage uses, with the repository bind-mounted and a named volume for the Gradle cache.
@@ -133,10 +153,16 @@ batch job with no web or DI need). All commands run from `backend/`.
 2. **Ingest.** Scans `--input` for `*.pdf` sorted by name, extracts each through GROBID
    with a PDFBox fallback (used automatically on a GROBID failure *or* an empty
    abstract), applies the ingestion cleaning step, and writes `--output` with every
-   document `manuallyValidated=false`:
+   document `manuallyValidated=false`. `IngestCli` resolves the GROBID endpoint from
+   `--grobid-url` (`LEGAJO_GROBID_URL`, then `http://localhost:8070`, TRD §8), and
+   `http://localhost:8070` only reaches step 1's `grobid` container when the ingest itself
+   also runs with host networking — otherwise "localhost" inside the ingest container is
+   its own loopback, not the host's, and the Compose-published port is unreachable.
+   `scripts/gradle-in-docker.sh` does not use host networking by default (least privilege —
+   see the script's own comments), so this one step opts in explicitly:
 
    ```bash
-   ./scripts/gradle-in-docker.sh :bootstrap:ingest --args="--input=data/pdfs --output=data/corpus.json --grobid-url=http://localhost:8070"
+   LEGAJO_NETWORK_HOST=1 ./scripts/gradle-in-docker.sh :bootstrap:ingest --args="--input=data/pdfs --output=data/corpus.json --grobid-url=http://localhost:8070"
    ```
 
 3. **Review each abstract by hand.** This is the only mandatory control (TRD §6.1, item
