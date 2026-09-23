@@ -170,6 +170,249 @@ class CsvBenchmarkReportRepositoryTest {
                 .hasMessageContaining(EXPORT_COMMAND);
     }
 
+    @Test
+    void rejectsNaNAsAScore() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,50.0,NaN,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("score")
+                .hasMessageContaining("NaN")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void rejectsPositiveInfinityAsAnError() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,50.0,123.45,Infinity,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("error")
+                .hasMessageContaining("Infinity")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void rejectsNegativeInfinityAsASize() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,-Infinity,123.45,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("size")
+                .hasMessageContaining("-Infinity")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void rejectsAnOverflowingDecimalThatParsesToInfinityAsAnEmpiricalSlope() {
+        Path results = writeResults(VALID_HEADER, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of("levenshtein,5,1e400,2.000000"));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("empiricalSlope")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void rejectsAHexFloatLiteralAsAScore() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,50.0,0x1.8p3,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("score")
+                .hasMessageContaining("0x1.8p3")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void rejectsADoubleSuffixOnAScore() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,50.0,123.45d,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("score")
+                .hasMessageContaining("123.45d")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void rejectsAFloatSuffixOnAnError() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,50.0,123.45,6.78f,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("error")
+                .hasMessageContaining("6.78f")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void rejectsSurroundingWhitespaceInAScore() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,50.0, 123.45 ,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("score")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void invalidUtf8BytesInTheResultsFileFailAsAnIllegalStateException() throws IOException {
+        Path results = tempDir.resolve("jmh-results-" + UUID.randomUUID() + ".csv");
+        List<String> validLines = new ArrayList<>(VALID_HEADER);
+        validLines.add(RESULTS_COLUMN_HEADER);
+        validLines.add(RESULTS_ROW);
+        try (var out = Files.newOutputStream(results)) {
+            out.write(String.join("\n", validLines).getBytes(StandardCharsets.UTF_8));
+            out.write('\n');
+            // A lone continuation byte is not valid UTF-8 on its own.
+            out.write(new byte[] {'b', 'a', 'd', (byte) 0x80, 'r', 'o', 'w', '\n'});
+        }
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(results.toString())
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void aDirectoryInPlaceOfTheResultsFileFailsAsAnIllegalStateExceptionNotAnUncheckedIOException()
+            throws IOException {
+        Path results = Files.createDirectory(tempDir.resolve("results-is-a-dir-" + UUID.randomUUID()));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(results.toString())
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void resultsFileWithAHeaderButZeroDataRowsFailsClosed() {
+        Path results = writeResults(VALID_HEADER, List.of());
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(results.toString())
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void slopesFileWithAHeaderButZeroDataRowsFailsClosed() {
+        Path results = writeResults(VALID_HEADER, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of());
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(slopes.toString())
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void blankCpuModelInTheHarnessHeaderFailsClosed() {
+        List<String> headerBlankCpu = VALID_HEADER.stream()
+                .map(line -> line.startsWith("# harness.cpuModel") ? "# harness.cpuModel =   " : line)
+                .toList();
+        Path results = writeResults(headerBlankCpu, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cpuModel")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void blankBenchmarkNameInAResultsRowFailsClosed() {
+        String badRow = ",levenshtein,length,50.0,123.45,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("benchmark")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void blankFamilyInAResultsRowFailsClosed() {
+        String badRow = "co.example.Bench.compare,,length,50.0,123.45,6.78,ns/op";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("family")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void blankUnitInAResultsRowFailsClosed() {
+        String badRow = "co.example.Bench.compare,levenshtein,length,50.0,123.45,6.78,";
+        Path results = writeResults(VALID_HEADER, List.of(badRow));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("unit")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void blankFamilyInASlopesRowFailsClosed() {
+        Path results = writeResults(VALID_HEADER, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(",5,2.039288,2.000000"));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("family")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void duplicateHarnessHeaderKeyFailsClosed() {
+        List<String> headerWithDuplicate = new ArrayList<>(VALID_HEADER);
+        headerWithDuplicate.add("# harness.cpuModel = a different cpu");
+        Path results = writeResults(headerWithDuplicate, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("duplicate")
+                .hasMessageContaining("cpuModel")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void unknownHarnessHeaderKeyFailsClosed() {
+        List<String> headerWithUnknown = new ArrayList<>(VALID_HEADER);
+        headerWithUnknown.add("# harness.gpuModel = RTX 4090");
+        Path results = writeResults(headerWithUnknown, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("gpuModel")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
     private Path writeResults(List<String> headerLines, List<String> rows) {
         Path path = tempDir.resolve("jmh-results-" + UUID.randomUUID() + ".csv");
         return writeCsv(path, headerLines, RESULTS_COLUMN_HEADER, rows);
