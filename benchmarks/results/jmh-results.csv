@@ -1,0 +1,66 @@
+# harness.cpuModel = 12th Gen Intel(R) Core(TM) i9-12900H
+# harness.logicalCores = 20
+# harness.totalRamBytes = 33363460096
+# harness.jdk = Eclipse Adoptium 25.0.4
+# harness.os = Linux 7.2.5-3-omarchy (amd64)
+# harness.utcDate = 2026-09-23T00:43:04.800549029Z
+benchmark,family,parameter,size,score,error,unit
+co.edu.uniquindio.legajo.benchmarks.embedding.EmbeddingPrimitiveBenchmark.dotProduct,embedding-dot-product,dimension,384.0,195.00280169854355,10.534507481508548,ns/op
+co.edu.uniquindio.legajo.benchmarks.embedding.EmbeddingPrimitiveBenchmark.dotProduct,embedding-dot-product,dimension,1536.0,842.7089779706293,61.82579803540056,ns/op
+co.edu.uniquindio.legajo.benchmarks.embedding.EmbeddingPrimitiveBenchmark.euclideanSumOfSquaredDifferences,embedding-euclidean-sum-squared,dimension,384.0,210.14716081598027,7.1890778759501375,ns/op
+co.edu.uniquindio.legajo.benchmarks.embedding.EmbeddingPrimitiveBenchmark.euclideanSumOfSquaredDifferences,embedding-euclidean-sum-squared,dimension,1536.0,866.7279267550826,41.70005112976963,ns/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.daviesBouldin,davies-bouldin,n,5.0,115.29738708132916,26.46340628963962,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.daviesBouldin,davies-bouldin,n,10.0,231.22690687127232,35.09319781767866,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.daviesBouldin,davies-bouldin,n,20.0,450.0543938876137,54.112914117795256,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.daviesBouldin,davies-bouldin,n,40.0,941.4569737859823,146.87858713968052,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.daviesBouldin,davies-bouldin,n,80.0,1893.8529007840698,367.6345106724753,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.meanSilhouette,mean-silhouette,n,5.0,0.20750998187823474,0.01764193107428866,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.meanSilhouette,mean-silhouette,n,10.0,0.7876661580480212,0.09789785478079024,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.meanSilhouette,mean-silhouette,n,20.0,1.8340039627401237,0.10428249412355055,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.meanSilhouette,mean-silhouette,n,40.0,4.0280020372073855,0.43390797354316246,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.InternalMetricsBenchmark.meanSilhouette,mean-silhouette,n,80.0,14.436823289875942,0.5888805109166261,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-single,n,5.0,0.31762529913002036,0.06125924599894951,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-single,n,10.0,0.9330350868485286,0.11626143093087882,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-single,n,20.0,3.7700004779610645,0.2584196737382695,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-single,n,40.0,17.549708770058515,1.5790140294940749,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-single,n,80.0,268.33695233770584,16.77794872304476,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-complete,n,5.0,0.3068709868946552,0.015768824117622822,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-complete,n,10.0,0.8719734472966826,0.17156463465609464,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-complete,n,20.0,3.333311723832492,0.49298985104397025,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-complete,n,40.0,15.626830966755417,1.1555272686949727,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-complete,n,80.0,155.22534344393125,3.594372626125489,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-average,n,5.0,0.32876825713079355,0.0030468827305660303,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-average,n,10.0,0.9663069691043251,0.11271780086510716,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-average,n,20.0,3.242280561172316,0.21124418584849775,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-average,n,40.0,16.32361407239538,1.8558597336001867,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-average,n,80.0,178.70041674753878,24.59470077440787,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-ward,n,5.0,0.3405933951521743,0.05616712601206025,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-ward,n,10.0,0.9119448248725928,0.07007171732218555,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-ward,n,20.0,3.512391729099144,0.6282261160157413,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-ward,n,40.0,16.41477434115538,1.8454971299598497,us/op
+co.edu.uniquindio.legajo.benchmarks.hac.LanceWilliamsBenchmark.agglomerate,hac-ward,n,80.0,168.56752747754152,26.76976796517627,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute,jaccard,length,50.0,4.528809314171616,0.6261463916564219,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute,jaccard,length,100.0,8.837539389393907,1.2579915914781792,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute,jaccard,length,200.0,20.32369604300735,1.6063222328321307,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute,jaccard,length,400.0,104.55011022858405,8.42924957098205,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.JaccardBenchmark.pairwiseCompute,jaccard,length,800.0,221.51756249988398,0.9735779274137343,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute,levenshtein,length,50.0,7.893776651306136,1.0946599763714326,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute,levenshtein,length,100.0,29.607255502434487,6.2475523652965945,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute,levenshtein,length,200.0,114.77625723239444,21.054095170644132,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute,levenshtein,length,400.0,499.03118525680765,21.089337567698923,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute,levenshtein,length,800.0,2256.0814053407903,34.7917483177824,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.NeedlemanWunschBenchmark.pairwiseCompute,needleman-wunsch,length,50.0,7.72033664191253,0.6774408761517392,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.NeedlemanWunschBenchmark.pairwiseCompute,needleman-wunsch,length,100.0,30.698191173099065,4.794761747266339,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.NeedlemanWunschBenchmark.pairwiseCompute,needleman-wunsch,length,200.0,125.1256805515417,30.065418315905053,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.NeedlemanWunschBenchmark.pairwiseCompute,needleman-wunsch,length,400.0,469.5485209741193,46.934884757500114,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.NeedlemanWunschBenchmark.pairwiseCompute,needleman-wunsch,length,800.0,2092.4193570525563,277.4659359745194,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.TfIdfCosineBenchmark.pairwiseCompute,tfidf-cosine,length,50.0,6.052298217336032,0.8099260077391054,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.TfIdfCosineBenchmark.pairwiseCompute,tfidf-cosine,length,100.0,12.044870467423898,1.7188416010991403,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.TfIdfCosineBenchmark.pairwiseCompute,tfidf-cosine,length,200.0,22.495208488332544,4.04250951648027,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.TfIdfCosineBenchmark.pairwiseCompute,tfidf-cosine,length,400.0,75.09934569065481,16.42806920135039,us/op
+co.edu.uniquindio.legajo.benchmarks.pairwise.TfIdfCosineBenchmark.pairwiseCompute,tfidf-cosine,length,800.0,182.40337279942042,6.348594444995925,us/op
+co.edu.uniquindio.legajo.benchmarks.slo.ClassicPairwiseSloBenchmark.allPairsForAlgorithm,slo-classic-levenshtein,n,20.0,11.601999419337536,1.0912580224647888,ms/op
+co.edu.uniquindio.legajo.benchmarks.slo.ClassicPairwiseSloBenchmark.allPairsForAlgorithm,slo-classic-needleman-wunsch,n,20.0,11.697206107960133,1.603624086086197,ms/op
+co.edu.uniquindio.legajo.benchmarks.slo.ClassicPairwiseSloBenchmark.allPairsForAlgorithm,slo-classic-jaccard,n,20.0,7.128447347151315,1.2443399408473652,ms/op
+co.edu.uniquindio.legajo.benchmarks.slo.ClassicPairwiseSloBenchmark.allPairsForAlgorithm,slo-classic-tfidf-cosine,n,20.0,7.2226396187429645,0.8715261317163199,ms/op
+co.edu.uniquindio.legajo.benchmarks.slo.ClusteringSloBenchmark.allFourLinkages,slo-clustering,n,20.0,0.017068362101902167,0.003285790387994938,ms/op
