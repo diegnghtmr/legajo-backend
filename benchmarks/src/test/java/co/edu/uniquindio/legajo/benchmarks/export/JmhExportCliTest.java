@@ -70,9 +70,8 @@ class JmhExportCliTest {
     }
 
     /** A sidecar bound (by content) to some other JMH results file must be rejected even when
-     * its mtime is newer than {@code input} (R4-sidecar-finalizer-refreshes-on-failed-jmh /
-     * R2-001 / R3-003): only the recorded SHA-256 binding, never a timestamp comparison, can
-     * tell the two files apart. */
+     * its mtime is newer than {@code input}: only the recorded SHA-256 binding, never a
+     * timestamp comparison, can tell the two files apart. */
     @Test
     void failsWhenTheHarnessSidecarWasCapturedForADifferentJmhResultsFile(@TempDir Path tempDir) throws IOException {
         Path input = copyFixtureTo(tempDir);
@@ -138,11 +137,11 @@ class JmhExportCliTest {
         assertThat(Files.exists(slopesCsv)).isFalse();
     }
 
-    /** R2-002/R3-001: the cross-check used to be a substring match ({@code String.contains}),
-     * which happened to also accept this exact positive case, so this proves the exact,
-     * normalized comparison still accepts a real JMH-style {@code jdkVersion} (just the
-     * version number, as JMH itself reports it) against the harness sidecar's own
-     * {@code "<vendor> <version>"} format ({@link HarnessInfo#collect()}). */
+    /** A substring match ({@code String.contains}) would also accept this exact positive case,
+     * so this proves the exact, normalized comparison still accepts a real JMH-style
+     * {@code jdkVersion} (just the version number, as JMH itself reports it) against the
+     * harness sidecar's own {@code "<vendor> <version>"} format ({@link
+     * HarnessInfo#collect()}). */
     @Test
     void succeedsWhenTheReportedJdkVersionExactlyMatchesTheHarnessSidecarsVersion(@TempDir Path tempDir)
             throws IOException {

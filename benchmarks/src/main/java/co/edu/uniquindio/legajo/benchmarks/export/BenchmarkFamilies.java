@@ -138,7 +138,7 @@ public final class BenchmarkFamilies {
      * rest), and if any record fails, {@link IllegalStateException} lists every one of them —
      * the benchmark name and the classification failure reason — before either CSV writer
      * ({@link JmhResultsCsvWriter}, {@link SlopesCsvWriter}) ever runs, so no partial CSV is
-     * ever written (R4-001/R3-001/R3-002, odd/tasks/jmh-benchmarks.md).
+     * ever written.
      */
     public static List<ClassifiedBenchmarkResult> classifyAll(List<JmhResultRecord> records) {
         List<ClassifiedBenchmarkResult> classified = new ArrayList<>(records.size());

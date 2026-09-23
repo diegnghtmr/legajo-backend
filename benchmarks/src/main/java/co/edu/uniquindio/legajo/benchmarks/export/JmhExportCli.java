@@ -18,8 +18,8 @@ import java.util.Optional;
  * <p>The export is strict: a missing harness sidecar, a sidecar bound to a different JMH
  * results file, a JMH-reported JDK version that disagrees with the sidecar, or any benchmark
  * result that cannot be classified all fail the whole export before either CSV is written,
- * rather than producing a silently incomplete file (R4-001/R3-001/R3-002,
- * R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md).
+ * rather than producing a silently incomplete file that looks published but omits data a
+ * reader would need to trust the numbers.
  */
 public final class JmhExportCli {
 
@@ -49,8 +49,7 @@ public final class JmhExportCli {
 
     /**
      * The harness sidecar must exist and its recorded {@code jmhResultsSha256} must match
-     * {@code input}'s actual content (R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 /
-     * R3-003, odd/tasks/jmh-benchmarks.md): a plain timestamp comparison cannot tell a sidecar
+     * {@code input}'s actual content: a plain timestamp comparison cannot tell a sidecar
      * that legitimately describes {@code input} apart from one refreshed by a finalizer that
      * ran after a failed {@code :benchmarks:jmh} task against a stale, unrelated results file —
      * that finalizer run still leaves the sidecar with a newer mtime than the stale JSON, even
@@ -76,12 +75,11 @@ public final class JmhExportCli {
     /**
      * A cheap sanity check: when the JMH JSON itself reports a {@code jdkVersion}, it must
      * agree, exactly, with the harness sidecar's recorded JDK version, since both are supposed
-     * to describe the same run. Compares normalized versions, not a substring
-     * (R2-002/R3-001, odd/tasks/jmh-benchmarks.md): the harness sidecar's own {@code jdk} field
-     * is {@code "<vendor> <version>"} ({@link HarnessInfo#collect()}), while JMH's own
-     * {@code jdkVersion} is just the version number, so the substring check this replaced would
-     * also have silently accepted an unrelated version number that happened to be a substring
-     * of the vendor name or another digit run in it.
+     * to describe the same run. Compares normalized versions, not a substring: the harness
+     * sidecar's own {@code jdk} field is {@code "<vendor> <version>"} ({@link
+     * HarnessInfo#collect()}), while JMH's own {@code jdkVersion} is just the version number,
+     * so a substring check would also silently accept an unrelated version number that happened
+     * to be a substring of the vendor name or another digit run in it.
      */
     private static void crossCheckReportedJdkVersion(HarnessInfo harness, Path input) {
         Optional<String> reportedJdkVersion = JmhJsonResultsReader.readReportedJdkVersion(input);

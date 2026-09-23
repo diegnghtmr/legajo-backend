@@ -49,8 +49,10 @@ public record HarnessInfo(
      * Writes this harness info as a small {@code key=value} sidecar file, overwriting any
      * existing file at {@code output}. Read back by {@link #readSidecar}. Used by the
      * {@code :benchmarks:jmhHarnessSidecar} Gradle task (a finalizer of {@code :benchmarks:jmh})
-     * to record the reference harness at JMH run time, not later when {@code jmhExport} runs
-     * (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md).
+     * to record the reference harness at JMH run time rather than later when {@code jmhExport}
+     * runs, since {@code jmhExport} can run on a different machine, or hours or days after the
+     * benchmark itself, and by then the CPU/RAM/JDK it would detect would no longer describe
+     * the machine that actually produced the measurements.
      */
     public void writeSidecar(Path output) {
         writeSidecarLines(output, baseSidecarLines());
@@ -62,10 +64,9 @@ public record HarnessInfo(
      * exact file's SHA-256 ({@link #sha256Hex}). {@code :benchmarks:jmhExport} reads this back
      * with {@link #readRecordedJmhResultsSha256} to refuse a sidecar captured for a different
      * (e.g. stale, or from an unrelated failed run) JMH results file, instead of only comparing
-     * file timestamps (R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 / R3-003,
-     * odd/tasks/jmh-benchmarks.md): a finalizer that reruns after a failed {@code jmh} task
-     * would still produce a fresher-looking sidecar file even though it describes a run that
-     * never produced new results, so only content, not mtime, can prove the two files match.
+     * file timestamps: a finalizer that reruns after a failed {@code jmh} task would still
+     * produce a fresher-looking sidecar file even though it describes a run that never produced
+     * new results, so only content, not mtime, can prove the two files match.
      */
     public void writeSidecar(Path output, Path jmhResultsJson) {
         List<String> lines = new ArrayList<>(baseSidecarLines());

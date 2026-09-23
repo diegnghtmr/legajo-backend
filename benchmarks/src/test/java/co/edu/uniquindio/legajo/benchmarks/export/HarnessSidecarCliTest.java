@@ -10,10 +10,10 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit test for the {@code :benchmarks:jmhHarnessSidecar} entry point (R3-harness-captured-at-
- * export-time, odd/tasks/jmh-benchmarks.md): it must capture {@link HarnessInfo} right when
- * {@code :benchmarks:jmh} runs, into a sidecar {@link JmhExportCli} later reads, instead of
- * whatever machine happens to run {@code :benchmarks:jmhExport}.
+ * Unit test for the {@code :benchmarks:jmhHarnessSidecar} entry point: it must capture
+ * {@link HarnessInfo} right when {@code :benchmarks:jmh} runs, into a sidecar
+ * {@link JmhExportCli} later reads, instead of whatever machine happens to run
+ * {@code :benchmarks:jmhExport}.
  */
 class HarnessSidecarCliTest {
 
@@ -30,9 +30,10 @@ class HarnessSidecarCliTest {
         assertThat(readBack.logicalCores()).isPositive();
     }
 
-    /** R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 / R3-003: the sidecar this CLI
-     * writes must be bound to the exact JMH results file it was told to describe, not just
-     * carry a fresher timestamp than it. */
+    /** The sidecar this CLI writes must be bound to the exact JMH results file it was told to
+     * describe, not just carry a fresher timestamp than it: a rerun after a failed
+     * {@code :benchmarks:jmh} task would still produce a fresher-looking sidecar next to a
+     * stale, unrelated results file. */
     @Test
     void theWrittenSidecarIsBoundToTheGivenJmhResultsFile(@TempDir Path tempDir) throws IOException {
         Path output = tempDir.resolve("harness.properties");
