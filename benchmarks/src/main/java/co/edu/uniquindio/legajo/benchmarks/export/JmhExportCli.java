@@ -11,6 +11,11 @@ import java.util.Map;
  * {@code benchmarks/results/slopes.csv} (TRD NFR-QA-10, TAC-18; odd/tasks/jmh-benchmarks.md,
  * task J2). Arguments: {@code --input=<path>}, {@code --resultsCsv=<path>},
  * {@code --slopesCsv=<path>}.
+ *
+ * <p>The export is strict: any benchmark result that {@link BenchmarkFamilies#classifyAll}
+ * cannot classify fails the whole export, with every offending record and its reason listed,
+ * before either CSV is written, rather than producing a silently incomplete file
+ * (R4-001/R3-001/R3-002, odd/tasks/jmh-benchmarks.md).
  */
 public final class JmhExportCli {
 
@@ -28,9 +33,10 @@ public final class JmhExportCli {
     /** Reads {@code input} and writes both CSVs; separated from {@link #main} so it is directly testable. */
     static void run(Path input, Path resultsCsv, Path slopesCsv) {
         List<JmhResultRecord> records = JmhJsonResultsReader.read(input);
+        List<ClassifiedBenchmarkResult> classified = BenchmarkFamilies.classifyAll(records);
         HarnessInfo harness = HarnessInfo.collect();
-        JmhResultsCsvWriter.write(resultsCsv, harness, records);
-        SlopesCsvWriter.write(slopesCsv, records);
+        JmhResultsCsvWriter.write(resultsCsv, harness, classified);
+        SlopesCsvWriter.write(slopesCsv, classified);
     }
 
     /** Parses {@code --key=value} arguments into a map, in encounter order. */

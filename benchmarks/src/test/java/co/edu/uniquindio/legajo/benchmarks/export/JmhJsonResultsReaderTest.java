@@ -81,7 +81,9 @@ class JmhJsonResultsReaderTest {
         Path resultsFile = tempDir.resolve("broken-jmh-results.json");
         Files.writeString(resultsFile, "{ this is not valid JMH JSON ");
 
+        // R3-005: assert the exception type the reader's catch produces, not just the message.
         assertThatThrownBy(() -> JmhJsonResultsReader.read(resultsFile))
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(resultsFile.toString());
     }
 

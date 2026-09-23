@@ -15,6 +15,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Unit tests for the {@code jmh-results.csv} writer (TRD NFR-QA-10, TAC-18: harness header +
  * {@code benchmark,family,parameter,size,score,error,unit} columns). Written before
  * {@link JmhResultsCsvWriter} exists (odd/tasks/jmh-benchmarks.md, task J2: strict TDD).
+ *
+ * <p>Every {@link ClassifiedBenchmarkResult} this writer receives is already classified
+ * ({@link BenchmarkFamilies#classifyAll}, called by {@link JmhExportCli} before either writer
+ * runs): an unclassifiable record can no longer reach this writer, it aborts the whole export
+ * before any file is written (see {@code JmhExportCliTest}), so this writer itself has nothing
+ * left to skip.
  */
 class JmhResultsCsvWriterTest {
 
@@ -24,9 +30,9 @@ class JmhResultsCsvWriterTest {
     @Test
     void writesTheHarnessHeaderLinesFirst(@TempDir Path tempDir) throws IOException {
         Path output = tempDir.resolve("jmh-results.csv");
-        List<JmhResultRecord> records = List.of(oneRecord());
+        List<ClassifiedBenchmarkResult> results = classifyAll(oneRecord());
 
-        JmhResultsCsvWriter.write(output, HARNESS, records);
+        JmhResultsCsvWriter.write(output, HARNESS, results);
 
         List<String> lines = Files.readAllLines(output);
         long headerLineCount = lines.stream().takeWhile(line -> line.startsWith("#")).count();
@@ -37,9 +43,9 @@ class JmhResultsCsvWriterTest {
     @Test
     void writesTheColumnHeaderRightAfterTheHarnessLines(@TempDir Path tempDir) throws IOException {
         Path output = tempDir.resolve("jmh-results.csv");
-        List<JmhResultRecord> records = List.of(oneRecord());
+        List<ClassifiedBenchmarkResult> results = classifyAll(oneRecord());
 
-        JmhResultsCsvWriter.write(output, HARNESS, records);
+        JmhResultsCsvWriter.write(output, HARNESS, results);
 
         List<String> lines = Files.readAllLines(output);
         assertThat(lines.get(HARNESS.toHeaderLines().size()))
@@ -49,9 +55,9 @@ class JmhResultsCsvWriterTest {
     @Test
     void writesOneDataRowPerRecord(@TempDir Path tempDir) throws IOException {
         Path output = tempDir.resolve("jmh-results.csv");
-        List<JmhResultRecord> records = List.of(oneRecord(), anotherRecord());
+        List<ClassifiedBenchmarkResult> results = classifyAll(oneRecord(), anotherRecord());
 
-        JmhResultsCsvWriter.write(output, HARNESS, records);
+        JmhResultsCsvWriter.write(output, HARNESS, results);
 
         List<String> lines = Files.readAllLines(output);
         int firstDataLine = HARNESS.toHeaderLines().size() + 1;
@@ -64,20 +70,8 @@ class JmhResultsCsvWriterTest {
                         + "levenshtein,length,100.0,21.3,0.42,us/op");
     }
 
-    @Test
-    void skipsARecordWithANonNumericSizeAndStillExportsTheOthers(@TempDir Path tempDir) throws IOException {
-        Path output = tempDir.resolve("jmh-results.csv");
-        JmhResultRecord badRecord = new JmhResultRecord(
-                "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
-                Map.of("length", "not-a-number"), 1.0, 0.0, "us/op", "avgt", 1, 3, "1 s", 5, "1 s");
-        List<JmhResultRecord> records = List.of(badRecord, oneRecord());
-
-        JmhResultsCsvWriter.write(output, HARNESS, records);
-
-        List<String> lines = Files.readAllLines(output);
-        int firstDataLine = HARNESS.toHeaderLines().size() + 1;
-        assertThat(lines).hasSize(firstDataLine + 1);
-        assertThat(lines.get(firstDataLine)).contains("levenshtein,length,50.0,10.5");
+    private static List<ClassifiedBenchmarkResult> classifyAll(JmhResultRecord... records) {
+        return BenchmarkFamilies.classifyAll(List.of(records));
     }
 
     private static JmhResultRecord oneRecord() {

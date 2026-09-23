@@ -166,6 +166,11 @@ Results land in `benchmarks/results/`, versioned in git:
   log-log slope of each curve next to the theoretical complexity TRD §6.3/§6.4/§6.5 document
   for that family (TAC-18). A fixed-n SLO family has no theoretical exponent and is excluded.
 
+The export is strict about classification: it writes neither CSV if any benchmark result
+cannot be classified into a family (every such record is listed, with its reason, in the
+failure) — the versioned CSVs back the technical documentation, so an incomplete export is an
+error, not a partial file to ignore.
+
 A fast, non-representative smoke run (shrinks the protocol; never commit its numbers) is
 available by overriding the JMH Gradle plugin's properties and narrowing to a benchmark
 subset with a regex:

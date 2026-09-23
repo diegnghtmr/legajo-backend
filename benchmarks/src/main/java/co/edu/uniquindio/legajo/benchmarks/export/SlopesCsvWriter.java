@@ -18,10 +18,12 @@ import java.util.Optional;
  * least two distinct sizes, giving the least-squares log-log slope of its empirical scores
  * ({@link LogLogSlope}) next to that theoretical exponent. A fixed-n SLO family (no
  * theoretical exponent) or a family with fewer than two distinct sizes (repeated
- * measurements of the very same size never make a curve) is not a curve and is silently
- * excluded, never reported with a nonsensical or undefined slope. A record
- * {@link BenchmarkFamilies#classify} cannot classify (e.g. a non-numeric size) is skipped on
- * its own, with a diagnostic on {@link System#err}, instead of aborting the whole export.
+ * measurements of the very same size never make a curve) is not a curve and is deliberately
+ * excluded, never reported with a nonsensical or undefined slope — this is a legitimate
+ * exclusion, not a classification failure. Every result this writer receives is already
+ * classified ({@link BenchmarkFamilies#classifyAll}, called once by {@link JmhExportCli}
+ * before either CSV writer runs): a record that could not be classified never reaches this
+ * writer at all, it aborts the whole export before any file is written.
  */
 public final class SlopesCsvWriter {
 
@@ -31,22 +33,14 @@ public final class SlopesCsvWriter {
     }
 
     /** Writes {@code output}, overwriting any existing file at that path. */
-    public static void write(Path output, List<JmhResultRecord> records) {
+    public static void write(Path output, List<ClassifiedBenchmarkResult> results) {
         Map<String, List<SizeScore>> pointsByFamily = new LinkedHashMap<>();
         Map<String, Optional<Double>> exponentByFamily = new LinkedHashMap<>();
 
-        for (JmhResultRecord record : records) {
-            BenchmarkFamily family;
-            try {
-                family = BenchmarkFamilies.classify(record.benchmark(), record.params());
-            } catch (IllegalArgumentException e) {
-                System.err.println(
-                        "skipping benchmark result for slopes.csv, benchmark '" + record.benchmark() + "': "
-                                + e.getMessage());
-                continue;
-            }
+        for (ClassifiedBenchmarkResult result : results) {
+            BenchmarkFamily family = result.family();
             pointsByFamily.computeIfAbsent(family.family(), key -> new ArrayList<>())
-                    .add(new SizeScore(family.size(), record.score()));
+                    .add(new SizeScore(family.size(), result.record().score()));
             exponentByFamily.put(family.family(), family.theoreticalExponent());
         }
 

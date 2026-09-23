@@ -17,6 +17,11 @@ permissions:
 jobs:
   jmh:
     runs-on: ubuntu-latest
+    # Generous but bounded: a full NFR-QA-10 run (four pairwise curves, four HAC linkages plus
+    # two internal metrics, two embedding dimensions, two SLO suites) on a shared runner should
+    # never legitimately need this long; it exists to fail a hung run instead of burning
+    # Actions minutes indefinitely (R4-002).
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -37,6 +42,10 @@ jobs:
         run: ./gradlew :benchmarks:jmhExport
 
       - name: Upload benchmark results
+        # Upload whatever exists even if an earlier step failed or timed out (R4-003): a
+        # partial jmh-results.json alone is still useful evidence, and never uploading
+        # anything on failure would silently discard it.
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jmh-benchmark-results
