@@ -73,9 +73,13 @@ public final class BenchmarkFamilies {
      *
      * <p>A non-numeric size value fails with an {@link IllegalArgumentException} naming the
      * benchmark, the offending parameter key and its raw value, rather than defaulting to a
-     * misleading number. Callers exporting many records use {@link #classifyAll} instead of
-     * calling this method directly per record, so every unclassifiable record is reported
-     * together and the whole export fails atomically rather than silently dropping rows.
+     * misleading number. This method itself never drops anything silently — it always throws
+     * on a record it cannot classify — but a caller exporting many records that calls this
+     * method directly in a loop and catches each failure individually would end up silently
+     * skipping unclassifiable rows one at a time. Callers exporting many records should use
+     * {@link #classifyAll} instead: it attempts every record, then fails the whole export
+     * atomically with every failure reported together, so no unclassifiable row is ever
+     * dropped without being reported.
      */
     public static BenchmarkFamily classify(String benchmark, Map<String, String> params) {
         Objects.requireNonNull(benchmark, "benchmark");

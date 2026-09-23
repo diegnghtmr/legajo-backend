@@ -138,6 +138,34 @@ class JmhExportCliTest {
         assertThat(Files.exists(slopesCsv)).isFalse();
     }
 
+    /** R2-002/R3-001: the cross-check used to be a substring match ({@code String.contains}),
+     * which happened to also accept this exact positive case, so this proves the exact,
+     * normalized comparison still accepts a real JMH-style {@code jdkVersion} (just the
+     * version number, as JMH itself reports it) against the harness sidecar's own
+     * {@code "<vendor> <version>"} format ({@link HarnessInfo#collect()}). */
+    @Test
+    void succeedsWhenTheReportedJdkVersionExactlyMatchesTheHarnessSidecarsVersion(@TempDir Path tempDir)
+            throws IOException {
+        String realRunningJdkVersion = System.getProperty("java.version");
+        Path input = tempDir.resolve("jdk-match-jmh-results.json");
+        Files.writeString(input, """
+                [ { "benchmark": "co.edu.uniquindio.legajo.benchmarks.pairwise.LevenshteinBenchmark.pairwiseCompute",
+                    "mode": "avgt", "forks": 1, "warmupIterations": 3, "warmupTime": "1 s",
+                    "measurementIterations": 5, "measurementTime": "1 s",
+                    "jdkVersion": "%s",
+                    "params": { "length": "50" },
+                    "primaryMetric": { "score": 1.0, "scoreError": 0.0, "scoreUnit": "us/op" } } ]
+                """.formatted(realRunningJdkVersion));
+        Path harness = writeHarnessSidecar(tempDir, input);
+        Path resultsCsv = tempDir.resolve("jmh-results.csv");
+        Path slopesCsv = tempDir.resolve("slopes.csv");
+
+        JmhExportCli.run(input, harness, resultsCsv, slopesCsv);
+
+        assertThat(Files.isRegularFile(resultsCsv)).isTrue();
+        assertThat(Files.isRegularFile(slopesCsv)).isTrue();
+    }
+
     private static Path writeHarnessSidecar(Path tempDir, Path jmhResultsJson) {
         Path harness = tempDir.resolve("harness.properties");
         HarnessInfo.collect().writeSidecar(harness, jmhResultsJson);
