@@ -413,6 +413,87 @@ class CsvBenchmarkReportRepositoryTest {
                 .hasMessageContaining(EXPORT_COMMAND);
     }
 
+    @Test
+    void unrecognizedHeaderLineShapeFailsClosed() {
+        List<String> headerWithComment = new ArrayList<>(VALID_HEADER);
+        headerWithComment.add(0, "# just a plain comment, not a harness key");
+        Path results = writeResults(headerWithComment, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("unrecognized")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void missingResultsColumnHeaderFailsClosed() {
+        Path results = writeCsv(
+                tempDir.resolve("jmh-results-" + UUID.randomUUID() + ".csv"),
+                VALID_HEADER, "wrong,column,header", List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("column header")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void missingSlopesColumnHeaderFailsClosed() {
+        Path results = writeResults(VALID_HEADER, List.of(RESULTS_ROW));
+        Path slopes = writeCsv(
+                tempDir.resolve("slopes-" + UUID.randomUUID() + ".csv"),
+                List.of(), "wrong,column,header", List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("column header")
+                .hasMessageContaining(EXPORT_COMMAND);
+    }
+
+    @Test
+    void blankLinesInResultsAreSkippedAndDoNotCountAsDataRows() {
+        Path results = writeResults(VALID_HEADER, List.of(RESULTS_ROW, "", RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        BenchmarkReport report = new CsvBenchmarkReportRepository(results, slopes).load();
+
+        assertThat(report.results()).hasSize(2);
+    }
+
+    /**
+     * Re-export drift guard: if a future {@code jmhExport} run changes the CSV shape (column
+     * order, harness keys, quoting) without updating this parser, this test fails against the
+     * real, versioned reference-harness files instead of only a hand-written fixture.
+     */
+    @Test
+    void loadsTheCommittedReferenceRunCsvFilesWithoutError() {
+        Path results = committedFile("benchmarks/results/jmh-results.csv");
+        Path slopes = committedFile("benchmarks/results/slopes.csv");
+
+        BenchmarkReport report = new CsvBenchmarkReportRepository(results, slopes).load();
+
+        assertThat(report.harness().cpuModel()).isNotBlank();
+        assertThat(report.results()).isNotEmpty();
+        assertThat(report.slopes()).isNotEmpty();
+    }
+
+    /** Resolves a path repository-relative regardless of whether the test JVM's working
+     * directory is the backend root or this module's own directory. */
+    private static Path committedFile(String repositoryRelativePath) {
+        Path fromBackendRoot = Path.of(repositoryRelativePath);
+        if (Files.exists(fromBackendRoot)) {
+            return fromBackendRoot;
+        }
+        Path fromModuleDirectory = Path.of("..").resolve(repositoryRelativePath);
+        if (Files.exists(fromModuleDirectory)) {
+            return fromModuleDirectory;
+        }
+        throw new AssertionError("could not locate " + repositoryRelativePath
+                + " from either the backend root or a module directory");
+    }
+
     private Path writeResults(List<String> headerLines, List<String> rows) {
         Path path = tempDir.resolve("jmh-results-" + UUID.randomUUID() + ".csv");
         return writeCsv(path, headerLines, RESULTS_COLUMN_HEADER, rows);
