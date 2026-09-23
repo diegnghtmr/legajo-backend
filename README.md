@@ -82,8 +82,23 @@ Every check below is the exact command a developer or CI runs — no host JDK, n
 | Tests only | `./scripts/gradle-in-docker.sh test` |
 | Aggregated coverage (JaCoCo, >85% in the algorithm packages) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
 | Start locally, no network | `docker compose up -d --wait backend` |
-| Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | `docker compose up -d --wait backend && docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ http://localhost:8080; docker compose down` |
+| Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | see below |
 | JMH performance curves + CSV export (NFR-QA-10; must run on the reference machine — see "Benchmarks" below) | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
+
+The image smoke test always tears the stack down, whether the smoke script passed or
+failed, so it cannot be one `&&`-joined line — but it still needs to end by propagating the
+smoke script's own exit status, not `docker compose down`'s (a trailing `; docker compose
+down` with nothing after it would mask a real smoke failure behind `down`'s own success):
+
+```bash
+docker compose up -d --wait backend
+docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
+    alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' \
+    _ http://localhost:8080
+smoke_status=$?
+docker compose down
+(exit "$smoke_status")   # the whole sequence's own $? now reflects the smoke script's result
+```
 
 `scripts/gradle-in-docker.sh` runs the same pinned Temurin 25 JDK image the Dockerfile's
 build stage uses, with the repository bind-mounted and a named volume for the Gradle cache.
