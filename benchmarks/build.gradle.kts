@@ -77,6 +77,21 @@ tasks.named("check") {
 // sidecar it writes is bound (by SHA-256, not by timestamp) to the exact
 // jmh-results.json it describes; :benchmarks:jmhExport reads that binding, and the sidecar's
 // fields, instead of calling HarnessInfo.collect() itself.
+//
+// The `onlyIf` below must decide this without reading :benchmarks:jmh's own `Task.state`:
+// under the configuration cache, a task action can only use values captured at configuration
+// time, and a live `Task` reference (or the `Project` it drags in through `tasks.named(...)`)
+// is not one of them -- `--configuration-cache --dry-run` reports it as an unsupported
+// `DefaultProject` reference. Instead, :benchmarks:jmh itself writes a plain marker file only
+// when it completes without throwing (`doLast` never runs after a failed action), and the
+// sidecar's `onlyIf` only ever checks that marker file's existence -- a File, not a Task, is
+// config-cache-safe to capture. Each task below computes its own local `File` reference
+// (rather than sharing one top-level script property) so the lambdas below capture only that
+// plain value, never an implicit reference to this build script object. The real guard
+// against a stale/mismatched pairing stays the SHA-256 binding in HarnessInfo/JmhExportCli;
+// this marker only decides whether the sidecar runs at all.
+fun jmhSuccessMarkerFile(): java.io.File = layout.buildDirectory.file("results/jmh/.jmh-succeeded").get().asFile
+
 tasks.register<JavaExec>("jmhHarnessSidecar") {
     group = "verification"
     description = "Captures the reference-harness metadata right when :benchmarks:jmh runs, into " +
@@ -87,12 +102,21 @@ tasks.register<JavaExec>("jmhHarnessSidecar") {
         "--output=${layout.buildDirectory.file("results/jmh/harness.properties").get().asFile}",
         "--input=${layout.buildDirectory.file("results/jmh/jmh-results.json").get().asFile}",
     )
+    val successMarker = jmhSuccessMarkerFile()
     onlyIf("the :benchmarks:jmh task must have succeeded") {
-        tasks.named("jmh").get().state.failure == null
+        successMarker.isFile
     }
 }
 
 tasks.named("jmh") {
+    val successMarker = jmhSuccessMarkerFile()
+    doFirst {
+        successMarker.delete()
+    }
+    doLast {
+        successMarker.parentFile.mkdirs()
+        successMarker.writeText("")
+    }
     finalizedBy("jmhHarnessSidecar")
 }
 

@@ -14,6 +14,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -55,8 +56,14 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
 
     static final String EXPORT_COMMAND = "./gradlew :benchmarks:jmh :benchmarks:jmhExport";
 
+    /**
+     * A fixed order, not the incidental order {@link Set#of} or a hash-based set would give:
+     * when more than one key is missing from a harness header, {@link #toHarness} reports every
+     * missing key in this exact order, so re-running the export and re-reading the failure
+     * always names the same keys in the same order instead of shuffling between runs.
+     */
     private static final Set<String> HARNESS_KEYS =
-            Set.of("cpuModel", "logicalCores", "totalRamBytes", "jdk", "os", "utcDate");
+            new LinkedHashSet<>(List.of("cpuModel", "logicalCores", "totalRamBytes", "jdk", "os", "utcDate"));
     private static final String RESULTS_COLUMN_HEADER = "benchmark,family,parameter,size,score,error,unit";
     private static final String SLOPES_COLUMN_HEADER = "family,points,empiricalSlope,theoreticalExponent";
 
@@ -154,10 +161,13 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
     }
 
     private static BenchmarkHarness toHarness(Map<String, String> fields, Path path) {
-        for (String key : HARNESS_KEYS) {
-            if (!fields.containsKey(key)) {
-                throw failure(path, "is missing header key 'harness." + key + "'");
-            }
+        List<String> missingKeys = HARNESS_KEYS.stream()
+                .filter(key -> !fields.containsKey(key))
+                .map(key -> "'harness." + key + "'")
+                .toList();
+        if (!missingKeys.isEmpty()) {
+            String label = missingKeys.size() == 1 ? "header key" : "header keys";
+            throw failure(path, "is missing " + label + " " + String.join(", ", missingKeys));
         }
         return new BenchmarkHarness(
                 requireNonBlank(fields.get("cpuModel"), path, "harness.cpuModel"),

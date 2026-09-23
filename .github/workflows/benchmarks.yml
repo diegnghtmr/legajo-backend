@@ -55,9 +55,11 @@ jobs:
       - name: Upload benchmark diagnostics
         # Under a clearly different artifact name than the results above: a partial
         # jmh-results.json or the harness sidecar alone is still useful evidence for debugging a
-        # failed or timed-out run, but it is never the exported, validated CSVs and must never
-        # be mistaken for them.
-        if: failure()
+        # failed, cancelled, or timed-out run, but it is never the exported, validated CSVs and
+        # must never be mistaken for them. Cancellation (e.g. the workflow's own timeout, or a
+        # manual stop) does not set the job's failure status, so `failure()` alone would leave a
+        # timed-out run with no diagnostics at all.
+        if: failure() || cancelled()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jmh-benchmark-diagnostics
