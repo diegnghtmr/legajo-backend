@@ -3,10 +3,13 @@ package co.edu.uniquindio.legajo.benchmarks.export;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -36,6 +39,66 @@ public record HarnessInfo(
                 "# harness.jdk = " + jdkVendorAndVersion,
                 "# harness.os = " + operatingSystem,
                 "# harness.utcDate = " + utcDate);
+    }
+
+    /**
+     * Writes this harness info as a small {@code key=value} sidecar file, overwriting any
+     * existing file at {@code output}. Read back by {@link #readSidecar}. Used by the
+     * {@code :benchmarks:jmhHarnessSidecar} Gradle task (a finalizer of {@code :benchmarks:jmh})
+     * to record the reference harness at JMH run time, not later when {@code jmhExport} runs
+     * (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md).
+     */
+    public void writeSidecar(Path output) {
+        List<String> lines = List.of(
+                "cpuModel=" + cpuModel,
+                "logicalCores=" + logicalCores,
+                "totalRamBytes=" + totalRamBytes,
+                "jdk=" + jdkVendorAndVersion,
+                "os=" + operatingSystem,
+                "utcDate=" + utcDate);
+        try {
+            Path parent = output.toAbsolutePath().getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            Files.write(output, lines, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to write harness sidecar " + output, e);
+        }
+    }
+
+    /**
+     * Reads a sidecar file previously written by {@link #writeSidecar}. Fails with a message
+     * naming the sidecar and the missing key when any field is absent, rather than silently
+     * defaulting it.
+     */
+    public static HarnessInfo readSidecar(Path sidecar) {
+        Map<String, String> values = new LinkedHashMap<>();
+        try {
+            for (String line : Files.readAllLines(sidecar, StandardCharsets.UTF_8)) {
+                int separator = line.indexOf('=');
+                if (separator >= 0) {
+                    values.put(line.substring(0, separator), line.substring(separator + 1));
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to read harness sidecar " + sidecar, e);
+        }
+        return new HarnessInfo(
+                requireField(values, sidecar, "cpuModel"),
+                Integer.parseInt(requireField(values, sidecar, "logicalCores")),
+                Long.parseLong(requireField(values, sidecar, "totalRamBytes")),
+                requireField(values, sidecar, "jdk"),
+                requireField(values, sidecar, "os"),
+                requireField(values, sidecar, "utcDate"));
+    }
+
+    private static String requireField(Map<String, String> values, Path sidecar, String key) {
+        String value = values.get(key);
+        if (value == null) {
+            throw new IllegalStateException("harness sidecar " + sidecar + " is missing '" + key + "'");
+        }
+        return value;
     }
 
     private static String detectCpuModel() {

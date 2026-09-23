@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for the reference-harness metadata the CSV header reports (TRD NFR-QA-10:
@@ -90,4 +91,28 @@ class HarnessInfoTest {
 
         assertThat(modelName).isEmpty();
     }
+
+    @Test
+    void writesAndReadsBackASidecarRoundTrip(@TempDir Path tempDir) {
+        Path sidecar = tempDir.resolve("harness.properties");
+        HarnessInfo original = HARNESS_SAMPLE;
+
+        original.writeSidecar(sidecar);
+        HarnessInfo readBack = HarnessInfo.readSidecar(sidecar);
+
+        assertThat(readBack).isEqualTo(original);
+    }
+
+    @Test
+    void failsToReadASidecarMissingAField(@TempDir Path tempDir) throws IOException {
+        Path sidecar = tempDir.resolve("harness.properties");
+        Files.writeString(sidecar, "cpuModel=Test CPU\n");
+
+        assertThatThrownBy(() -> HarnessInfo.readSidecar(sidecar))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("logicalCores");
+    }
+
+    private static final HarnessInfo HARNESS_SAMPLE =
+            new HarnessInfo("Test CPU", 4, 8_000_000_000L, "Temurin 25", "Linux 6.0 (amd64)", "2026-09-22T00:00:00Z");
 }
