@@ -6,7 +6,11 @@ import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,13 +53,37 @@ public record HarnessInfo(
      * (R3-harness-captured-at-export-time, odd/tasks/jmh-benchmarks.md).
      */
     public void writeSidecar(Path output) {
-        List<String> lines = List.of(
+        writeSidecarLines(output, baseSidecarLines());
+    }
+
+    /**
+     * Writes this harness info as a sidecar bound to {@code jmhResultsJson}: the same fields
+     * {@link #writeSidecar(Path)} writes, plus a {@code jmhResultsSha256} line recording that
+     * exact file's SHA-256 ({@link #sha256Hex}). {@code :benchmarks:jmhExport} reads this back
+     * with {@link #readRecordedJmhResultsSha256} to refuse a sidecar captured for a different
+     * (e.g. stale, or from an unrelated failed run) JMH results file, instead of only comparing
+     * file timestamps (R4-sidecar-finalizer-refreshes-on-failed-jmh / R2-001 / R3-003,
+     * odd/tasks/jmh-benchmarks.md): a finalizer that reruns after a failed {@code jmh} task
+     * would still produce a fresher-looking sidecar file even though it describes a run that
+     * never produced new results, so only content, not mtime, can prove the two files match.
+     */
+    public void writeSidecar(Path output, Path jmhResultsJson) {
+        List<String> lines = new ArrayList<>(baseSidecarLines());
+        lines.add("jmhResultsSha256=" + sha256Hex(jmhResultsJson));
+        writeSidecarLines(output, lines);
+    }
+
+    private List<String> baseSidecarLines() {
+        return List.of(
                 "cpuModel=" + cpuModel,
                 "logicalCores=" + logicalCores,
                 "totalRamBytes=" + totalRamBytes,
                 "jdk=" + jdkVendorAndVersion,
                 "os=" + operatingSystem,
                 "utcDate=" + utcDate);
+    }
+
+    private static void writeSidecarLines(Path output, List<String> lines) {
         try {
             Path parent = output.toAbsolutePath().getParent();
             if (parent != null) {
@@ -67,12 +95,44 @@ public record HarnessInfo(
         }
     }
 
+    /** The lowercase hex SHA-256 digest of {@code file}'s bytes. */
+    public static String sha256Hex(Path file) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(Files.readAllBytes(file)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new AssertionError("SHA-256 must be available on every JDK", e);
+        } catch (IOException e) {
+            throw new UncheckedIOException("failed to hash " + file, e);
+        }
+    }
+
     /**
-     * Reads a sidecar file previously written by {@link #writeSidecar}. Fails with a message
-     * naming the sidecar and the missing key when any field is absent, rather than silently
-     * defaulting it.
+     * Reads a sidecar file previously written by {@link #writeSidecar(Path)}. Fails with a
+     * message naming the sidecar and the missing key when any field is absent, rather than
+     * silently defaulting it.
      */
     public static HarnessInfo readSidecar(Path sidecar) {
+        Map<String, String> values = readKeyValueLines(sidecar);
+        return new HarnessInfo(
+                requireField(values, sidecar, "cpuModel"),
+                parseIntField(values, sidecar, "logicalCores"),
+                parseLongField(values, sidecar, "totalRamBytes"),
+                requireField(values, sidecar, "jdk"),
+                requireField(values, sidecar, "os"),
+                requireField(values, sidecar, "utcDate"));
+    }
+
+    /**
+     * Reads back the {@code jmhResultsSha256} a sidecar was written with by
+     * {@link #writeSidecar(Path, Path)}. Fails naming the sidecar when it was written by the
+     * plain {@link #writeSidecar(Path)} (no binding recorded at all).
+     */
+    public static String readRecordedJmhResultsSha256(Path sidecar) {
+        return requireField(readKeyValueLines(sidecar), sidecar, "jmhResultsSha256");
+    }
+
+    private static Map<String, String> readKeyValueLines(Path sidecar) {
         Map<String, String> values = new LinkedHashMap<>();
         try {
             for (String line : Files.readAllLines(sidecar, StandardCharsets.UTF_8)) {
@@ -84,13 +144,7 @@ public record HarnessInfo(
         } catch (IOException e) {
             throw new UncheckedIOException("failed to read harness sidecar " + sidecar, e);
         }
-        return new HarnessInfo(
-                requireField(values, sidecar, "cpuModel"),
-                Integer.parseInt(requireField(values, sidecar, "logicalCores")),
-                Long.parseLong(requireField(values, sidecar, "totalRamBytes")),
-                requireField(values, sidecar, "jdk"),
-                requireField(values, sidecar, "os"),
-                requireField(values, sidecar, "utcDate"));
+        return values;
     }
 
     private static String requireField(Map<String, String> values, Path sidecar, String key) {
@@ -99,6 +153,26 @@ public record HarnessInfo(
             throw new IllegalStateException("harness sidecar " + sidecar + " is missing '" + key + "'");
         }
         return value;
+    }
+
+    private static int parseIntField(Map<String, String> values, Path sidecar, String key) {
+        String raw = requireField(values, sidecar, key);
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException(
+                    "harness sidecar " + sidecar + " has a non-numeric '" + key + "': '" + raw + "'", e);
+        }
+    }
+
+    private static long parseLongField(Map<String, String> values, Path sidecar, String key) {
+        String raw = requireField(values, sidecar, key);
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException e) {
+            throw new IllegalStateException(
+                    "harness sidecar " + sidecar + " has a non-numeric '" + key + "': '" + raw + "'", e);
+        }
     }
 
     private static String detectCpuModel() {

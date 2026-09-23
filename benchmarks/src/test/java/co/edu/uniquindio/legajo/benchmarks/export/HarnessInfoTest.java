@@ -113,6 +113,78 @@ class HarnessInfoTest {
                 .hasMessageContaining("logicalCores");
     }
 
+    @Test
+    void failsToReadASidecarWithANonNumericLogicalCoresNamingTheSidecarAndKey(@TempDir Path tempDir) throws IOException {
+        Path sidecar = tempDir.resolve("harness.properties");
+        Files.writeString(sidecar, """
+                cpuModel=Test CPU
+                logicalCores=not-a-number
+                totalRamBytes=8000000000
+                jdk=Temurin 25
+                os=Linux 6.0 (amd64)
+                utcDate=2026-09-22T00:00:00Z
+                """);
+
+        assertThatThrownBy(() -> HarnessInfo.readSidecar(sidecar))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(sidecar.toString())
+                .hasMessageContaining("logicalCores")
+                .hasMessageContaining("not-a-number");
+    }
+
+    @Test
+    void failsToReadASidecarWithANonNumericTotalRamBytesNamingTheSidecarAndKey(@TempDir Path tempDir) throws IOException {
+        Path sidecar = tempDir.resolve("harness.properties");
+        Files.writeString(sidecar, """
+                cpuModel=Test CPU
+                logicalCores=4
+                totalRamBytes=not-a-number
+                jdk=Temurin 25
+                os=Linux 6.0 (amd64)
+                utcDate=2026-09-22T00:00:00Z
+                """);
+
+        assertThatThrownBy(() -> HarnessInfo.readSidecar(sidecar))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(sidecar.toString())
+                .hasMessageContaining("totalRamBytes")
+                .hasMessageContaining("not-a-number");
+    }
+
+    @Test
+    void writesASidecarBoundToTheGivenJmhResultsFileAndReadingItBackAgrees(@TempDir Path tempDir) throws IOException {
+        Path sidecar = tempDir.resolve("harness.properties");
+        Path jmhResults = tempDir.resolve("jmh-results.json");
+        Files.writeString(jmhResults, "[ { \"benchmark\": \"x\" } ]");
+
+        HARNESS_SAMPLE.writeSidecar(sidecar, jmhResults);
+
+        assertThat(HarnessInfo.readSidecar(sidecar)).isEqualTo(HARNESS_SAMPLE);
+        assertThat(HarnessInfo.readRecordedJmhResultsSha256(sidecar))
+                .isEqualTo(HarnessInfo.sha256Hex(jmhResults));
+    }
+
+    @Test
+    void sha256HexChangesWhenTheFileContentChanges(@TempDir Path tempDir) throws IOException {
+        Path fileA = tempDir.resolve("a.json");
+        Path fileB = tempDir.resolve("b.json");
+        Files.writeString(fileA, "content-a");
+        Files.writeString(fileB, "content-b");
+
+        assertThat(HarnessInfo.sha256Hex(fileA)).isNotEqualTo(HarnessInfo.sha256Hex(fileB));
+    }
+
+    @Test
+    void readRecordedJmhResultsSha256FailsWhenTheSidecarWasWrittenWithoutABinding(@TempDir Path tempDir) {
+        Path sidecar = tempDir.resolve("harness.properties");
+        HARNESS_SAMPLE.writeSidecar(sidecar);
+
+        assertThatThrownBy(() -> HarnessInfo.readRecordedJmhResultsSha256(sidecar))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining(sidecar.toString())
+                .hasMessageContaining("jmhResultsSha256");
+    }
+
     private static final HarnessInfo HARNESS_SAMPLE =
             new HarnessInfo("Test CPU", 4, 8_000_000_000L, "Temurin 25", "Linux 6.0 (amd64)", "2026-09-22T00:00:00Z");
 }

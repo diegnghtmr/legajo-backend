@@ -170,10 +170,12 @@ Results land in `benchmarks/results/`, versioned in git:
 
 The export is strict: it writes neither CSV if any benchmark result cannot be classified into
 a family (every skipped record is listed, with its reason, in the failure), if the
-`build/results/jmh/harness.properties` sidecar `jmh` writes is missing or older than the JMH
-JSON it describes, or if the JDK JMH itself reports disagrees with that sidecar. The versioned
-CSVs back the technical documentation, so an incomplete or mismatched export is an error, not
-a partial file to ignore.
+`build/results/jmh/harness.properties` sidecar `jmh` writes is missing or bound (by SHA-256) to
+a different JMH results file than the one being exported, or if the JDK JMH itself reports
+disagrees with that sidecar. `jmh`'s own sidecar-capturing step only runs when `jmh` itself
+succeeded, so a failed or partial run never leaves behind a sidecar that looks freshly captured
+next to a stale results file. The versioned CSVs back the technical documentation, so an
+incomplete or mismatched export is an error, not a partial file to ignore.
 
 `GET /api/v1/benchmarks` (TRD §6.6, fixed by TRD 1.3.10) serves these two versioned CSVs to
 the frontend as-is — it never runs JMH and never recalculates anything. If either file is

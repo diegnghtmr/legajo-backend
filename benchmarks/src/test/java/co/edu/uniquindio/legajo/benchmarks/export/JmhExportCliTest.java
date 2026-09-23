@@ -40,7 +40,7 @@ class JmhExportCliTest {
     @Test
     void runProducesBothCsvFiles(@TempDir Path tempDir) throws IOException {
         Path input = copyFixtureTo(tempDir);
-        Path harness = writeHarnessSidecar(tempDir);
+        Path harness = writeHarnessSidecar(tempDir, input);
         Path resultsCsv = tempDir.resolve("jmh-results.csv");
         Path slopesCsv = tempDir.resolve("slopes.csv");
 
@@ -69,17 +69,27 @@ class JmhExportCliTest {
         assertThat(Files.exists(slopesCsv)).isFalse();
     }
 
+    /** A sidecar bound (by content) to some other JMH results file must be rejected even when
+     * its mtime is newer than {@code input} (R4-sidecar-finalizer-refreshes-on-failed-jmh /
+     * R2-001 / R3-003): only the recorded SHA-256 binding, never a timestamp comparison, can
+     * tell the two files apart. */
     @Test
-    void failsWhenTheHarnessSidecarIsOlderThanTheJmhResults(@TempDir Path tempDir) throws IOException {
+    void failsWhenTheHarnessSidecarWasCapturedForADifferentJmhResultsFile(@TempDir Path tempDir) throws IOException {
         Path input = copyFixtureTo(tempDir);
-        Path harness = writeHarnessSidecar(tempDir);
-        Files.setLastModifiedTime(harness, FileTime.from(Instant.EPOCH));
+        Path unrelatedJmhResults = tempDir.resolve("unrelated-jmh-results.json");
+        Files.writeString(unrelatedJmhResults, "[ { \"benchmark\": \"unrelated\" } ]");
+        Path harness = tempDir.resolve("harness.properties");
+        HarnessInfo.collect().writeSidecar(harness, unrelatedJmhResults);
+        // Give the sidecar a strictly newer mtime than the real input, proving the check below
+        // cannot be satisfied by a timestamp comparison alone.
+        Files.setLastModifiedTime(harness, FileTime.from(Instant.now().plusSeconds(3600)));
         Path resultsCsv = tempDir.resolve("jmh-results.csv");
         Path slopesCsv = tempDir.resolve("slopes.csv");
 
         assertThatThrownBy(() -> JmhExportCli.run(input, harness, resultsCsv, slopesCsv))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("older");
+                .hasMessageContaining(harness.toString())
+                .hasMessageContaining(input.toString());
         assertThat(Files.exists(resultsCsv)).isFalse();
         assertThat(Files.exists(slopesCsv)).isFalse();
     }
@@ -94,7 +104,7 @@ class JmhExportCliTest {
                     "params": { "length": "not-a-number" },
                     "primaryMetric": { "score": 1.0, "scoreError": 0.0, "scoreUnit": "us/op" } } ]
                 """);
-        Path harness = writeHarnessSidecar(tempDir);
+        Path harness = writeHarnessSidecar(tempDir, input);
         Path resultsCsv = tempDir.resolve("jmh-results.csv");
         Path slopesCsv = tempDir.resolve("slopes.csv");
 
@@ -117,7 +127,7 @@ class JmhExportCliTest {
                     "params": { "length": "50" },
                     "primaryMetric": { "score": 1.0, "scoreError": 0.0, "scoreUnit": "us/op" } } ]
                 """);
-        Path harness = writeHarnessSidecar(tempDir);
+        Path harness = writeHarnessSidecar(tempDir, input);
         Path resultsCsv = tempDir.resolve("jmh-results.csv");
         Path slopesCsv = tempDir.resolve("slopes.csv");
 
@@ -128,9 +138,9 @@ class JmhExportCliTest {
         assertThat(Files.exists(slopesCsv)).isFalse();
     }
 
-    private static Path writeHarnessSidecar(Path tempDir) {
+    private static Path writeHarnessSidecar(Path tempDir, Path jmhResultsJson) {
         Path harness = tempDir.resolve("harness.properties");
-        HarnessInfo.collect().writeSidecar(harness);
+        HarnessInfo.collect().writeSidecar(harness, jmhResultsJson);
         return harness;
     }
 
