@@ -110,6 +110,26 @@ class CsvBenchmarkReportRepositoryTest {
                 .hasMessageContaining(EXPORT_COMMAND);
     }
 
+    /**
+     * With two missing keys, the failure must list both, in the registry's fixed order
+     * (cpuModel, logicalCores, totalRamBytes, jdk, os, utcDate), never just the first one it
+     * happens to notice missing — otherwise fixing one key at a time would hide the other
+     * failure behind a new error on every re-run.
+     */
+    @Test
+    void missingTwoHarnessHeaderKeysListsBothInTheFixedOrder() {
+        List<String> headerMissingJdkAndCpuModel = VALID_HEADER.stream()
+                .filter(line -> !line.contains("harness.jdk") && !line.contains("harness.cpuModel"))
+                .toList();
+        Path results = writeResults(headerMissingJdkAndCpuModel, List.of(RESULTS_ROW));
+        Path slopes = writeSlopes(List.of(SLOPES_ROW));
+
+        assertThatThrownBy(() -> new CsvBenchmarkReportRepository(results, slopes).load())
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage(results + " is missing header keys 'harness.cpuModel', 'harness.jdk'; re-run "
+                        + EXPORT_COMMAND);
+    }
+
     @Test
     void wrongColumnCountInAResultsRowFails() {
         Path results = writeResults(VALID_HEADER, List.of("levenshtein,length,50.0"));
