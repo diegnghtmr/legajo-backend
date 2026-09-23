@@ -7,7 +7,7 @@ import co.edu.uniquindio.legajo.application.benchmarks.BenchmarkResult;
 import co.edu.uniquindio.legajo.application.benchmarks.BenchmarkSlope;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.nio.charset.MalformedInputException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -17,6 +17,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Infrastructure adapter for {@link BenchmarkReportRepository}: reads the two versioned JMH
@@ -39,22 +41,36 @@ import java.util.Objects;
  * unit string ({@code ns/op}, {@code us/op}, {@code ms/op}) — none can contain a comma, so a
  * plain {@code split(",", -1)} is exact, not an approximation.
  *
- * <p>Every failure mode (missing file, a header line missing one of the six harness keys, a
- * data row with the wrong column count, or a value that does not parse as the expected
- * number) throws {@link IllegalStateException} naming the offending file and the export
- * command to re-run ({@value #EXPORT_COMMAND}) — the same fail-closed contract {@code
- * EmbeddingCacheStartupValidator} already applies to a missing/malformed embedding cache
- * (TRD §9): the versioned results files are deployment data, and an incomplete or corrupt one
- * must stop the server from starting, never serve a partial or wrong report.
+ * <p>Every failure mode (missing or unreadable file, a header line missing, duplicating, or
+ * not recognizing one of the six harness keys, a data row with the wrong column count, a blank
+ * required field, a non-numeric or non-finite value where a number is expected, or a file with
+ * a column header but zero data rows) throws {@link IllegalStateException} naming the
+ * offending file and the export command to re-run ({@value #EXPORT_COMMAND}) — the same
+ * fail-closed contract {@code EmbeddingCacheStartupValidator} already applies to a
+ * missing/malformed embedding cache (TRD §9): the versioned results files are deployment data,
+ * and an incomplete or corrupt one must stop the server from starting, never serve a partial or
+ * wrong report.
  */
 public final class CsvBenchmarkReportRepository implements BenchmarkReportRepository {
 
     static final String EXPORT_COMMAND = "./gradlew :benchmarks:jmh :benchmarks:jmhExport";
 
-    private static final List<String> HARNESS_KEYS =
-            List.of("cpuModel", "logicalCores", "totalRamBytes", "jdk", "os", "utcDate");
+    private static final Set<String> HARNESS_KEYS =
+            Set.of("cpuModel", "logicalCores", "totalRamBytes", "jdk", "os", "utcDate");
     private static final String RESULTS_COLUMN_HEADER = "benchmark,family,parameter,size,score,error,unit";
     private static final String SLOPES_COLUMN_HEADER = "family,points,empiricalSlope,theoreticalExponent";
+
+    /**
+     * A plain decimal number: optional sign, digits, optional fractional part, optional
+     * exponent — exactly what {@code JmhResultsCsvWriter}'s {@code Double.toString} and
+     * {@code SlopesCsvWriter}'s {@code "%.6f"} ever emit. Deliberately narrower than
+     * {@link Double#parseDouble(String)}, which also accepts hex floating-point literals
+     * ({@code 0x1.8p3}), a trailing {@code d}/{@code D}/{@code f}/{@code F} suffix, the literal
+     * words {@code NaN}/{@code Infinity}/{@code -Infinity}, and leading/trailing whitespace —
+     * none of which a well-formed export ever writes, so every one of them is treated as
+     * corruption (R3-nonfinite-doubles-accepted / R3-nan-score-error).
+     */
+    private static final Pattern STRICT_DECIMAL = Pattern.compile("-?\\d+(\\.\\d+)?([eE][-+]?\\d+)?");
 
     private final Path resultsCsv;
     private final Path slopesCsv;
@@ -85,6 +101,9 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
             }
             results.add(toResult(line, i + 1, resultsCsv));
         }
+        if (results.isEmpty()) {
+            throw failure(resultsCsv, "has a column header but no data rows");
+        }
 
         List<String> slopesLines = readLines(slopesCsv);
         int slopesCursor = expectColumnHeader(slopesLines, 0, SLOPES_COLUMN_HEADER, slopesCsv);
@@ -96,6 +115,9 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
             }
             slopes.add(toSlope(line, i + 1, slopesCsv));
         }
+        if (slopes.isEmpty()) {
+            throw failure(slopesCsv, "has a column header but no data rows");
+        }
 
         return new BenchmarkReport(harness, results, slopes);
     }
@@ -105,8 +127,10 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
             return Files.readAllLines(path, StandardCharsets.UTF_8);
         } catch (NoSuchFileException e) {
             throw failure(path, "is missing");
+        } catch (MalformedInputException e) {
+            throw failure(path, "is not valid UTF-8", e);
         } catch (IOException e) {
-            throw new UncheckedIOException("failed to read " + path + "; re-run " + EXPORT_COMMAND, e);
+            throw failure(path, "could not be read (" + e.getMessage() + ")", e);
         }
     }
 
@@ -120,6 +144,12 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
         }
         String key = withoutHash.substring(dot + 1, equals).strip();
         String value = withoutHash.substring(equals + 1).strip();
+        if (!HARNESS_KEYS.contains(key)) {
+            throw failure(path, "has an unrecognized header key 'harness." + key + "'");
+        }
+        if (target.containsKey(key)) {
+            throw failure(path, "has a duplicate header key 'harness." + key + "'");
+        }
         target.put(key, value);
     }
 
@@ -130,12 +160,12 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
             }
         }
         return new BenchmarkHarness(
-                fields.get("cpuModel"),
+                requireNonBlank(fields.get("cpuModel"), path, "harness.cpuModel"),
                 parseInt(fields.get("logicalCores"), path, "harness.logicalCores"),
                 parseLong(fields.get("totalRamBytes"), path, "harness.totalRamBytes"),
-                fields.get("jdk"),
-                fields.get("os"),
-                fields.get("utcDate"));
+                requireNonBlank(fields.get("jdk"), path, "harness.jdk"),
+                requireNonBlank(fields.get("os"), path, "harness.os"),
+                requireNonBlank(fields.get("utcDate"), path, "harness.utcDate"));
     }
 
     private static String field(int lineNumber, String name) {
@@ -152,20 +182,30 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
     private static BenchmarkResult toResult(String line, int lineNumber, Path path) {
         String[] columns = splitColumns(line, 7, lineNumber, path);
         return new BenchmarkResult(
-                columns[0], columns[1], columns[2],
+                requireNonBlank(columns[0], path, field(lineNumber, "benchmark")),
+                requireNonBlank(columns[1], path, field(lineNumber, "family")),
+                requireNonBlank(columns[2], path, field(lineNumber, "parameter")),
                 parseDouble(columns[3], path, field(lineNumber, "size")),
                 parseDouble(columns[4], path, field(lineNumber, "score")),
                 parseDouble(columns[5], path, field(lineNumber, "error")),
-                columns[6]);
+                requireNonBlank(columns[6], path, field(lineNumber, "unit")));
     }
 
     private static BenchmarkSlope toSlope(String line, int lineNumber, Path path) {
         String[] columns = splitColumns(line, 4, lineNumber, path);
         return new BenchmarkSlope(
-                columns[0],
+                requireNonBlank(columns[0], path, field(lineNumber, "family")),
                 parseInt(columns[1], path, field(lineNumber, "points")),
                 parseDouble(columns[2], path, field(lineNumber, "empiricalSlope")),
                 parseDouble(columns[3], path, field(lineNumber, "theoreticalExponent")));
+    }
+
+    /** {@code context} is either {@code "harness.<key>"} or {@link #field(int, String)}'s output. */
+    private static String requireNonBlank(String value, Path path, String context) {
+        if (value.isBlank()) {
+            throw failure(path, context + " is blank");
+        }
+        return value;
     }
 
     /** No CSV quoting is needed (see class Javadoc), so a plain comma split is exact. */
@@ -195,15 +235,28 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
         }
     }
 
+    /**
+     * Accepts only a plain decimal ({@link #STRICT_DECIMAL}) and then requires it to be finite:
+     * a well-formed export never writes {@code NaN}, {@code Infinity}, a hex float literal, a
+     * {@code d}/{@code f} suffix, surrounding whitespace, or a decimal so large it overflows to
+     * an infinite {@code double} (R3-nonfinite-doubles-accepted / R3-nan-score-error).
+     */
     private static double parseDouble(String value, Path path, String context) {
-        try {
-            return Double.parseDouble(value);
-        } catch (NumberFormatException e) {
+        if (!STRICT_DECIMAL.matcher(value).matches()) {
             throw failure(path, context + " has a non-numeric value: '" + value + "'");
         }
+        double parsed = Double.parseDouble(value);
+        if (!Double.isFinite(parsed)) {
+            throw failure(path, context + " has a non-finite value: '" + value + "'");
+        }
+        return parsed;
     }
 
     private static IllegalStateException failure(Path path, String reason) {
         return new IllegalStateException(path + " " + reason + "; re-run " + EXPORT_COMMAND);
+    }
+
+    private static IllegalStateException failure(Path path, String reason, Throwable cause) {
+        return new IllegalStateException(path + " " + reason + "; re-run " + EXPORT_COMMAND, cause);
     }
 }
