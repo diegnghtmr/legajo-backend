@@ -42,15 +42,27 @@ jobs:
         run: ./gradlew :benchmarks:jmhExport
 
       - name: Upload benchmark results
-        # Upload whatever exists even if an earlier step failed or timed out (R4-003): a
-        # partial jmh-results.json or the harness sidecar alone is still useful evidence, and
-        # never uploading anything on failure would silently discard it.
-        if: always()
+        # Only on success (R3-002): the versioned CSVs are the exported, validated numbers this
+        # job produced -- never upload them under the same artifact name a failed or partial
+        # run could also produce, so nobody mistakes a failed run's leftovers for real results.
+        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jmh-benchmark-results
+          path: benchmarks/results/*.csv
+          retention-days: 30
+
+      - name: Upload benchmark diagnostics
+        # Only on failure (R3-002), under a clearly different artifact name than the results
+        # above: a partial jmh-results.json or the harness sidecar alone is still useful
+        # evidence for debugging a failed or timed-out run (R4-003), but it is never the
+        # exported, validated CSVs and must never be mistaken for them.
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: jmh-benchmark-diagnostics
           path: |
             benchmarks/build/results/jmh/jmh-results.json
             benchmarks/build/results/jmh/harness.properties
-            benchmarks/results/*.csv
+          if-no-files-found: ignore
           retention-days: 30

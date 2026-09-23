@@ -75,18 +75,37 @@ public final class JmhExportCli {
 
     /**
      * A cheap sanity check: when the JMH JSON itself reports a {@code jdkVersion}, it must
-     * agree with the harness sidecar's recorded JDK, since both are supposed to describe the
-     * same run.
+     * agree, exactly, with the harness sidecar's recorded JDK version, since both are supposed
+     * to describe the same run. Compares normalized versions, not a substring
+     * (R2-002/R3-001, odd/tasks/jmh-benchmarks.md): the harness sidecar's own {@code jdk} field
+     * is {@code "<vendor> <version>"} ({@link HarnessInfo#collect()}), while JMH's own
+     * {@code jdkVersion} is just the version number, so the substring check this replaced would
+     * also have silently accepted an unrelated version number that happened to be a substring
+     * of the vendor name or another digit run in it.
      */
     private static void crossCheckReportedJdkVersion(HarnessInfo harness, Path input) {
         Optional<String> reportedJdkVersion = JmhJsonResultsReader.readReportedJdkVersion(input);
         reportedJdkVersion.ifPresent(reported -> {
-            if (!harness.jdkVendorAndVersion().contains(reported)) {
+            String normalizedHarnessVersion = normalizeJdkVersion(harness.jdkVendorAndVersion());
+            String normalizedReportedVersion = normalizeJdkVersion(reported);
+            if (!normalizedHarnessVersion.equals(normalizedReportedVersion)) {
                 throw new IllegalStateException(
                         "JMH results " + input + " report jdkVersion '" + reported + "', which does not match "
                                 + "the harness sidecar's JDK '" + harness.jdkVendorAndVersion() + "'");
             }
         });
+    }
+
+    /**
+     * Extracts the version number to compare: the harness sidecar's {@code jdk} field is
+     * {@code "<vendor words...> <version>"}, so its last whitespace-separated token is the
+     * version; a value with no whitespace (JMH's own {@code jdkVersion}, already just a
+     * version) is returned unchanged.
+     */
+    private static String normalizeJdkVersion(String value) {
+        String trimmed = value.strip();
+        int lastSpace = trimmed.lastIndexOf(' ');
+        return lastSpace < 0 ? trimmed : trimmed.substring(lastSpace + 1);
     }
 
     /** Parses {@code --key=value} arguments into a map, in encounter order. */
