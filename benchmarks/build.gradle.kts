@@ -2,6 +2,13 @@
 // (NFR-QA-10's fixed performance-test protocol), plus the SLO benchmarks for NFR-QA-01/02
 // and a CSV/slopes exporter (odd/tasks/jmh-benchmarks.md, tasks J1/J2).
 
+// Plain imports, not fully-qualified inline references: Gradle's Kotlin DSL exposes a `java(...)`
+// extension function on `Project` for configuring `JavaPluginExtension`, which shadows the root
+// `java` package when a fully-qualified name like `java.security.MessageDigest` is used inline in
+// an expression (unlike a type position such as `java.io.File`, which resolves without issue).
+import java.security.MessageDigest
+import java.util.HexFormat
+
 plugins {
     alias(libs.plugins.jmh)
     alias(libs.plugins.spring.dependency.management)
@@ -78,19 +85,45 @@ tasks.named("check") {
 // jmh-results.json it describes; :benchmarks:jmhExport reads that binding, and the sidecar's
 // fields, instead of calling HarnessInfo.collect() itself.
 //
+// Two independent guards, not one, make it impossible to bind a stale run's success marker to
+// a fresh (or merely still-present) JSON on a different machine:
+//
+// 1. :benchmarks:jmh itself (below) is marked `upToDateWhen { false }` / `cacheIf { false }`:
+//    Gradle can never report it UP-TO-DATE or FROM-CACHE, so whenever it is part of the task
+//    graph its `doFirst`/`doLast` always both run for real. A prior design left the marker
+//    file's mere existence as the only signal, reasoning that a skipped jmh run leaves "no
+//    fresh marker" for the sidecar to find -- that reasoning was wrong: a skipped run leaves
+//    the *previous* successful run's marker sitting there untouched, which still exists, so
+//    the sidecar's old existence-only `onlyIf` still ran and captured the current machine
+//    against whatever stale jmh-results.json happened to be on disk. Forcing jmh to always
+//    execute when scheduled removes that failure mode outright: there is no "skipped but the
+//    marker survives" case left to guard against.
+// 2. As defense in depth for any other way the marker and the JSON could end up mismatched
+//    (a partial run, a manual copy, invoking `jmhHarnessSidecar` on its own against leftover
+//    build output), the marker itself is no longer an empty flag file: :benchmarks:jmh writes
+//    the SHA-256 of the exact jmh-results.json it just produced into it, and the sidecar's
+//    `onlyIf` recomputes that JSON's current SHA-256 and only proceeds when the two match. A
+//    marker whose recorded hash does not match the JSON currently on disk can never describe
+//    that JSON, no matter how it got there.
+//
 // The `onlyIf` below must decide this without reading :benchmarks:jmh's own `Task.state`:
 // under the configuration cache, a task action can only use values captured at configuration
 // time, and a live `Task` reference (or the `Project` it drags in through `tasks.named(...)`)
 // is not one of them -- `--configuration-cache --dry-run` reports it as an unsupported
-// `DefaultProject` reference. Instead, :benchmarks:jmh itself writes a plain marker file only
-// when it completes without throwing (`doLast` never runs after a failed action), and the
-// sidecar's `onlyIf` only ever checks that marker file's existence -- a File, not a Task, is
-// config-cache-safe to capture. Each task below computes its own local `File` reference
-// (rather than sharing one top-level script property) so the lambdas below capture only that
-// plain value, never an implicit reference to this build script object. The real guard
-// against a stale/mismatched pairing stays the SHA-256 binding in HarnessInfo/JmhExportCli;
-// this marker only decides whether the sidecar runs at all.
+// `DefaultProject` reference. Both the marker file and the JSON file it is checked against are
+// plain `File` values, not `Task` references, so they stay config-cache-safe to capture. Each
+// task below computes its own local `File` references (rather than sharing one top-level script
+// property) so the lambdas below capture only those plain values, never an implicit reference
+// to this build script object.
 fun jmhSuccessMarkerFile(): java.io.File = layout.buildDirectory.file("results/jmh/.jmh-succeeded").get().asFile
+fun jmhResultsJsonFile(): java.io.File = layout.buildDirectory.file("results/jmh/jmh-results.json").get().asFile
+
+// Locally computed rather than delegating to `HarnessInfo.sha256Hex`: this build script's
+// classpath does not include this module's own `main` source set, only the reverse.
+fun sha256Hex(file: java.io.File): String {
+    val digest = MessageDigest.getInstance("SHA-256").digest(file.readBytes())
+    return HexFormat.of().formatHex(digest)
+}
 
 tasks.register<JavaExec>("jmhHarnessSidecar") {
     group = "verification"
@@ -103,30 +136,33 @@ tasks.register<JavaExec>("jmhHarnessSidecar") {
         "--input=${layout.buildDirectory.file("results/jmh/jmh-results.json").get().asFile}",
     )
     val successMarker = jmhSuccessMarkerFile()
-    onlyIf("the :benchmarks:jmh task must have succeeded") {
-        successMarker.isFile
+    val resultsJson = jmhResultsJsonFile()
+    onlyIf("the :benchmarks:jmh task must have succeeded and the marker must be bound to the " +
+            "exact jmh-results.json currently on disk") {
+        successMarker.isFile && resultsJson.isFile && successMarker.readText() == sha256Hex(resultsJson)
     }
 }
 
-// The marker is only ever (re)written by this task's own `doLast`, which -- like `doFirst`
-// above -- runs only when :benchmarks:jmh's actions actually execute. If a build ever reported
-// this task FROM-CACHE, UP-TO-DATE, or otherwise skipped, neither action would run, so no fresh
-// marker would exist for :benchmarks:jmhHarnessSidecar's `onlyIf` to find (any marker left over
-// from an earlier real run would already have been deleted by that earlier run's own
-// `doFirst`). That is deliberately fail-closed, not a caching bug to fix: a skipped/cached jmh
-// run means no fresh jmh-results.json was produced either, so the sidecar must not be captured
-// against one, and :benchmarks:jmhExport correctly stops on a missing harness sidecar instead
-// of silently pairing a stale marker with the wrong run. Once a sidecar is captured, the SHA-256
-// binding in HarnessInfo/JmhExportCli is what actually guards its integrity; this marker only
-// decides whether capture is attempted at all.
+// The marker is only ever (re)written by this task's own `doLast`, and only ever records the
+// SHA-256 of the jmh-results.json this exact run produced. `upToDateWhen { false }` and
+// `cacheIf { false }` below mean Gradle never treats this task as UP-TO-DATE or FROM-CACHE, so
+// whenever :benchmarks:jmh is scheduled it always truly executes -- `doFirst` always deletes any
+// marker left over from a previous run before this run starts, and `doLast` always writes a
+// fresh one bound to this run's own JSON before finishing. Once a sidecar is captured, the
+// SHA-256 binding in HarnessInfo/JmhExportCli guards jmhExport's own read of it; the marker's own
+// SHA-256 binding (checked by jmhHarnessSidecar's `onlyIf` above) is what stops that sidecar from
+// ever being captured against a JSON the marker does not actually describe.
 tasks.named("jmh") {
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
     val successMarker = jmhSuccessMarkerFile()
+    val resultsJson = jmhResultsJsonFile()
     doFirst {
         successMarker.delete()
     }
     doLast {
         successMarker.parentFile.mkdirs()
-        successMarker.writeText("")
+        successMarker.writeText(sha256Hex(resultsJson))
     }
     finalizedBy("jmhHarnessSidecar")
 }

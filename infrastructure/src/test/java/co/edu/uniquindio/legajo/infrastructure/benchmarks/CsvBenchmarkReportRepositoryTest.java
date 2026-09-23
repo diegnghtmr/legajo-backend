@@ -77,11 +77,13 @@ class CsvBenchmarkReportRepositoryTest {
     }
 
     /**
-     * {@link #STRICT_DECIMAL} deliberately allows an exponent suffix ({@code [eE][-+]?\d+}):
-     * both {@code Double.toString} and {@code "%.6f"} can legitimately emit one for a very
-     * small or very large magnitude, so a well-formed exponent-form number must still be
-     * accepted, not rejected as if it were one of the non-finite/hex/suffixed forms the strict
-     * pattern exists to reject.
+     * {@code CsvBenchmarkReportRepository}'s strict-decimal pattern deliberately allows an
+     * exponent suffix ({@code [eE][-+]?\d+}): {@code JmhResultsCsvWriter} formats the score
+     * column with {@code Double.toString}, which can legitimately emit one for a very small or
+     * very large magnitude -- unlike {@code SlopesCsvWriter}'s fixed {@code "%.6f"}, which never
+     * emits an exponent -- so a well-formed exponent-form score must still be accepted, not
+     * rejected as if it were one of the non-finite/hex/suffixed forms the strict pattern exists
+     * to reject.
      */
     @Test
     void acceptsAnExponentFormNumberAsAScore() {
