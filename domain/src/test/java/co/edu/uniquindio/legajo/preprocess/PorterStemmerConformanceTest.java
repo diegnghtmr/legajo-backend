@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <a href="https://tartarus.org/martin/PorterStemmer/output.txt">tartarus.org/martin/PorterStemmer/output.txt</a>
  * — 23,531 line-aligned input words and the stems produced by Porter's own
  * reference implementation. They are the closest thing to an authoritative oracle
- * for this algorithm: TRD §3.3 requires Porter to be hand-written (R-02), so there
+ * for this algorithm: Porter is required to be hand-written, so there
  * is no library to defer correctness to, and the paper's worked examples alone
  * (already covered by {@link PorterStemmerTest}) are too few to catch rule
  * ordering and edge-case bugs. This test is the regression guard for those.

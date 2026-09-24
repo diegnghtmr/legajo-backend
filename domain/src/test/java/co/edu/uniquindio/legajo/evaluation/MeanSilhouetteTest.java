@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Mean silhouette against D at a fixed k (TRD §6.5, "Definición de la silueta media"),
+ * Mean silhouette against D at a fixed k,
  * including the singleton s(i) = 0 convention (Rousseeuw).
  *
  * <p><b>Shared fixture, hand-derived independently of the implementation.</b> Four 2D unit

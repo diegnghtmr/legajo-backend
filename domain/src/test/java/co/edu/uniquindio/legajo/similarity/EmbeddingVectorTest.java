@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * {@link EmbeddingVector} carries one document's cached embedding (TRD §6.3, "Invariante de
- * norma unitaria (fijado)"): {@code values} must always be L2-normalized to unit length
+ * {@link EmbeddingVector} carries one document's cached embedding (the fixed unit-norm
+ * invariant): {@code values} must always be L2-normalized to unit length
  * (validated structurally, within 1e-9), while {@code preNormL2} is provenance from
  * precompute time — the norm of the raw pooled vector <em>before</em> that normalization —
  * and is not itself constrained to be close to 1.

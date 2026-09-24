@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * jqwik properties for {@code embedding-local} (TRD §6.3): symmetry (cosine is commutative),
+ * jqwik properties for {@code embedding-local}: symmetry (cosine is commutative),
  * identity (a vector compared with itself scores 1.0 within 1e-9), and the normalized score
  * staying within the closed [0,1] range regardless of how negative the raw cosine is.
  */

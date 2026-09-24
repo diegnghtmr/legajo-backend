@@ -12,12 +12,11 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
-// NFR-QA-06 / TAC-08 (TRD §15): "Cobertura de líneas > 85 % en esos paquetes", where
-// "esos paquetes" are the three named in NFR-QA-06's Artefacto row: similarity, clustering,
-// evaluation. The rule is scoped to exactly those packages, not to this module as a whole
-// (this module also holds preprocess/corpus/port, which the TRD does not name here) and not
-// to an aggregate across the multi-module build (jacocoRootReport already aggregates the
-// whole codebase for reporting, which is a broader scope than the TRD's gate). `check`
+// Line coverage must exceed 85% in the algorithm packages named below: similarity,
+// clustering, evaluation. The rule is scoped to exactly those packages, not to this module
+// as a whole (this module also holds preprocess/corpus/port, which is not named here) and
+// not to an aggregate across the multi-module build (jacocoRootReport already aggregates the
+// whole codebase for reporting, which is a broader scope than this gate). `check`
 // depends on this task so a coverage regression fails `./gradlew build`, not just the report.
 val algorithmPackages = listOf("similarity", "clustering", "evaluation")
 val algorithmPackageRoot = "co/edu/uniquindio/legajo"
@@ -25,8 +24,8 @@ val algorithmPackagePaths = algorithmPackages.map { "$algorithmPackageRoot/$it/*
 
 // The gate is checked per package, not over their union. A single union-wide ratio lets a
 // well-covered package carry a bare one: with similarity at ~98% and ~800 lines, a brand-new
-// clustering package could land at 0% and the union would still clear 85%. The TRD gates
-// "esos paquetes" — each of them — so each package answers for its own ratio. JaCoCo skips a
+// clustering package could land at 0% and the union would still clear 85%. This rule gates
+// those named packages — each of them — so each package answers for its own ratio. JaCoCo skips a
 // limit whose counter total is zero, so the packages that hold only package-info.java today
 // are not failed for being empty; they start answering the moment they hold real code.
 

@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * One linkage criterion's evaluation summary (TRD §6.5): the cophenetic correlation (primary,
+ * One linkage criterion's evaluation summary: the cophenetic correlation (primary,
  * against the whole tree) plus the two partition-quality metrics at {@code k_ref}. This is
  * the per-linkage row {@link ClusteringRanking} consumes.
  */

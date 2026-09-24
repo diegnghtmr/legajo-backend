@@ -10,11 +10,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
- * Structural invariants of {@link TfIdfCosineTrace} (TRD §6.3: per-term rows, dot product,
- * both raw norms, cosine, angle°). TRD's fixed-formula paragraph states "el coseno es el
- * producto punto de los vectores normalizados", so {@code cosine} must equal {@code
+ * Structural invariants of {@link TfIdfCosineTrace} (per-term rows, dot product,
+ * both raw norms, cosine, angle°). The fixed formula states that the cosine is the dot
+ * product of the normalized vectors, so {@code cosine} must equal {@code
  * dotProduct} (both are the same number, kept as two labeled trace fields per the
- * enumeration in TRD §6.3 / PRD HU-1.3, which lists "producto punto" and "coseno" as
+ * evidence enumeration, which lists the dot product and the cosine as
  * separate evidence rows even though the fixed formula makes them numerically identical
  * once the dot product is taken over the L2-normalized vectors).
  *
@@ -135,10 +135,10 @@ class TfIdfCosineTraceTest {
 
     @Test
     void rejectsADotProductThatIsNotOneOfTheFixedDegenerateConventionValuesWhenTermsIsEmpty() {
-        // R3-tfidf-empty-terms-dotproduct: with terms empty, the dotProduct==sum-over-terms
+        // With terms empty, the dotProduct==sum-over-terms
         // check is skipped entirely (there is nothing to sum), so dotProduct/cosine/
         // angleDegrees were only checked against EACH OTHER for internal consistency, never
-        // against the two fixed TRD §6.3 convention values (1.0 both-empty, 0.0 one-empty).
+        // against the two fixed convention values (1.0 both-empty, 0.0 one-empty).
         // 0.5/60 degrees is internally consistent (cosine==dotProduct,
         // angle==degrees(acos(cosine))) but is not a valid degenerate value.
         assertThatIllegalArgumentException()

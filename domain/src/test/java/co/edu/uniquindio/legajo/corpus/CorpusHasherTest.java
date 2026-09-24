@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Golden sha256 values computed independently with the shell, not with Java, to avoid
- * validating the implementation against itself (TRD §6.1):
+ * validating the implementation against itself:
  *
  * <pre>
  * printf '%s' "Test abstract one." | sha256sum
@@ -25,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </pre>
  *
  * <p>Note: the printf must be piped directly into sha256sum. Capturing it first with
- * {@code $(...)} command substitution strips the trailing newline that TRD §6.1
- * requires after the last document and silently produces a different hash.
+ * {@code $(...)} command substitution strips the trailing newline that is
+ * required after the last document and silently produces a different hash.
  */
 class CorpusHasherTest {
 

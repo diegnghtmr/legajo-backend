@@ -15,10 +15,10 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Pearson correlation between a tree's cophenetic distances and D (TRD §6.5), RF2's
+ * Pearson correlation between a tree's cophenetic distances and D, the
  * <b>primary</b> ranking signal. {@link CopheneticCorrelation} cannot take an arbitrary
  * {@code double[][]} as its D operand — {@link DistanceMatrix}'s constructor is
- * package-private to {@code clustering} (TRD §13) — so every fixture here is built through
+ * package-private to {@code clustering} — so every fixture here is built through
  * {@link DistanceMatrix#cosineDistance(List)}, the same toy unit vectors
  * {@code WardLinkageMandatoryTest} uses: v0=(1,0), v1=(0,1), v2=(-1,0), giving
  * D=[[0,1,2],[1,0,1],[2,1,0]].
@@ -54,9 +54,9 @@ class CopheneticCorrelationTest {
 
     @Test
     void isInvariantToWardsTwoTimesScale() {
-        // TRD §6.5: "La correlación de Pearson es invariante a la escala 2x de Ward, de modo
-        // que los cuatro enlaces siguen siendo comparables." Ward always clusters on
-        // D_w = 2*D (TRD §6.4); this proves that scaling both the tree's heights and the
+        // Pearson correlation is invariant to Ward's 2x scale, so all four linkages stay
+        // comparable. Ward always clusters on
+        // D_w = 2*D; this proves that scaling both the tree's heights and the
         // reference distances by the same factor leaves the correlation unchanged, which is
         // exactly what makes Ward's cophenetic value comparable to the other three linkages'
         // (all computed against their own, unscaled D).
@@ -68,7 +68,7 @@ class CopheneticCorrelationTest {
 
         // Both sides correlate against the SAME reference D. Scaling the reference too would
         // scale both Pearson operands at once, which is invariant for any correlation and so
-        // proves nothing about Ward: the case RF2 actually runs is Ward's doubled heights
+        // proves nothing about Ward: the case actually run is Ward's doubled heights
         // measured against the same unscaled D the other three linkages are measured against.
         double correlationOnD = CopheneticCorrelation.of(onD, d);
         double correlationOnDoubledD = CopheneticCorrelation.of(onDoubledD, d);

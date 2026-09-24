@@ -10,10 +10,10 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * {@code embedding-local} capability (TRD §6.3, "Capacidades de embedding (fijadas)"):
+ * {@code embedding-local} capability:
  * cosine over cached MiniLM unit vectors, {@code normalizedScore = clamp(cos, 0, 1)},
  * {@code rawValue = cos}. The metric (dot product over unit vectors == cosine), the clamp,
- * and the angle are hand-written (TRD §3.3).
+ * and the angle are hand-written; no library implements them.
  *
  * <p>Goldens below are hand-computed (not read off a running implementation), using two
  * exact unit vectors that do not require floating-point approximation to build:
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.within;
  * Golden 2 (opposite unit vectors, negative cosine):
  *   u = (1.0, 0.0, 0.0), v = (-1.0, 0.0, 0.0)
  *   dot = cosine = -1.0; angle = degrees(acos(-1.0)) = 180.0
- *   normalizedScore = clamp(-1.0, 0, 1) = 0.0 (TRD: negative cosines report similarity 0)
+ *   normalizedScore = clamp(-1.0, 0, 1) = 0.0 (negative cosines report similarity 0)
  * </pre>
  */
 class EmbeddingLocalTest {

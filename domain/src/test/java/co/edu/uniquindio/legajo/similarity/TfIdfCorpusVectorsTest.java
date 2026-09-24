@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Full-vocabulary, L2-normalized TF-IDF vectors for the whole corpus (TRD §6.3's formulas,
- * needed by RF2's Davies–Bouldin metric, TRD §6.5, which needs every document's vector in
+ * Full-vocabulary, L2-normalized TF-IDF vectors for the whole corpus (the fixed formulas,
+ * needed by the Davies–Bouldin metric, which needs every document's vector in
  * one shared space to take centroids and Euclidean distances — unlike {@link TfIdfCosine},
  * which only ever needs a pair's cosine and can safely restrict itself to the union of the
  * pair's own terms).
@@ -94,7 +94,7 @@ class TfIdfCorpusVectorsTest {
 
     @Test
     void vectorsOfRejectsAnEmptyTokenStreamDocumentAsAnAllZeroVector() {
-        // No TRD-fixed convention exists for a full-corpus all-zero TF-IDF vector (only for
+        // No fixed convention exists for a full-corpus all-zero TF-IDF vector (only for
         // tfidf-cosine's own pairwise degenerate case); this fails closed, matching
         // EmbeddingVector.normalize's convention for an all-zero raw vector.
         List<List<String>> corpusWithAnEmptyDocument = List.of(

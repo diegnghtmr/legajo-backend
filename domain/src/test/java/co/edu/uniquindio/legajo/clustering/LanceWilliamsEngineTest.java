@@ -11,11 +11,11 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * The naive Lance-Williams agglomeration loop (TRD §6.4): repeatedly merges the pair with
+ * The naive Lance-Williams agglomeration loop: repeatedly merges the pair with
  * the smallest current distance, recomputes distances to every other active cluster via
  * {@link LinkageCriterion#coefficients(int, int, int)}, and records one {@link LinkageStep}
  * per merge until a single cluster remains. Deliberately O(n^3) time / O(n^2) space
- * (SLINK/CLINK are explicit non-goals, TRD §6.4) — clarity over micro-optimization at the
+ * (SLINK/CLINK are explicit non-goals) — clarity over micro-optimization at the
  * n=20 reference corpus scale.
  *
  * <p><b>n=5 golden fixture, hand-derived independently of this class.</b> Five points on a
@@ -60,7 +60,7 @@ import static org.assertj.core.api.Assertions.within;
  * Rows: (0,1,1,2), (3,4,1,2), (2,5,1.5,3), (6,7,9.5,5) — heights 1,1,1.5,9.5, monotone.
  *
  * <p><b>Ward linkage</b> (applied directly to this D, not the D_w=2·D base — that
- * specific relationship is R4's separate mandatory test): step 1 merges (0,1) at 1 into
+ * specific relationship is pinned by a separate mandatory test): step 1 merges (0,1) at 1 into
  * cluster 5 (n_i=n_j=1, size 2). For each k, n_T=3, alphaI=alphaJ=2/3, beta=-1/3:
  * d(5,2)=(2/3)*2+(2/3)*1-(1/3)*1=5/3, d(5,3)=(2/3)*10+(2/3)*9-(1/3)*1=37/3,
  * d(5,4)=(2/3)*11+(2/3)*10-(1/3)*1=41/3. Step 2 merges (3,4) at 1 into cluster 6 (n_i=n_j=1,
@@ -155,7 +155,7 @@ class LanceWilliamsEngineTest {
 
     @Test
     void sameInputTwiceProducesByteIdenticalLinkageMatrices() {
-        // NFR-QA-04 / TAC-10: determinism, including tie resolution.
+        // Determinism requirement, including tie resolution.
         DistanceMatrix distances = fiveByFiveLineDistances();
 
         LinkageMatrix first = engine.agglomerate(distances, new AverageLinkage());
@@ -192,9 +192,9 @@ class LanceWilliamsEngineTest {
 
     @Test
     void engineExposesNoWayToAgglomerateOverAnArbitraryMatrix() throws NoSuchMethodException {
-        // TRD §13: "el constructor acepta únicamente D derivada de la representación
-        // seleccionada (sin entrada de matriz arbitraria)". DistanceMatrix's own
-        // constructor is already package-private (R1); this pins that the engine's public
+        // The fixed rule that the constructor accepts only D derived from the selected
+        // representation, never a raw matrix input. DistanceMatrix's own
+        // constructor is already package-private; this pins that the engine's public
         // API never reintroduces a bypass by accepting a raw double[][] (or similar) in
         // place of a validated DistanceMatrix.
         Method agglomerate =

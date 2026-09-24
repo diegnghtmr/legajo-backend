@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
  * Direct construction of {@link ClusterAssignment}, which re-validates its own shape rather
- * than trusting {@link LinkageCut} (TRD §6.4, "corte solo por k"). Going through the cut only
+ * than trusting {@link LinkageCut} (cuts happen by k alone). Going through the cut only
  * ever produces well-formed assignments, so the invariant's own branches need a test that
  * builds the record by hand.
  */
@@ -26,7 +26,7 @@ class ClusterAssignmentTest {
     /**
      * The shape range-checking alone lets through: every label sits inside [0, k), but three
      * of the five advertised clusters have no member. Every fixed-k consumer downstream —
-     * mean silhouette, Davies-Bouldin, the ranking rule (TRD §6.5) — iterates 0..k-1 and
+     * mean silhouette, Davies-Bouldin, the ranking rule — iterates 0..k-1 and
      * would divide by an empty cluster's size.
      */
     @Test

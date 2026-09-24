@@ -8,8 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * The crossing-free leaf ordering a dendrogram needs (TRD §6.4: "leafOrder para un SVG sin
- * cruces"). The order-correctness property itself (every merge's leaves form a contiguous
+ * The crossing-free leaf ordering a dendrogram needs. The order-correctness property itself
+ * (every merge's leaves form a contiguous
  * run) is proved generatively by {@link LeafOrderPropertyTest}; this class pins the
  * documented traversal rule (depth-first, {@code idx1} before {@code idx2}) against one
  * concrete tree and the degenerate {@code n=1} case.
@@ -63,7 +63,7 @@ class LeafOrderTest {
 
     @Test
     void sameInputTwiceProducesTheSameOrder() {
-        // NFR-QA-04 / TAC-10: determinism.
+        // Determinism requirement.
         List<Integer> first = LeafOrder.of(fiveByFiveSingleLinkageGolden());
         List<Integer> second = LeafOrder.of(fiveByFiveSingleLinkageGolden());
 

@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * Validated invariants of {@link EmbeddingApiTrace} (TRD §6.3's embedding-api trace row):
+ * Validated invariants of {@link EmbeddingApiTrace} (the embedding-api trace row):
  * {@code vectorA}/{@code vectorB} must match {@code dimension}; the excerpts must be exactly
  * the first {@code min(8, dimension)} components of the corresponding full vector;
  * {@code sumSquaredDiff} must equal the hand-computed sum of squared differences of the two
@@ -130,7 +130,7 @@ class EmbeddingApiTraceTest {
                 .withMessageContaining("distance");
     }
 
-    // R3-expected-side-rejection-unproved: isOutOfTolerance already rejects when the
+    // isOutOfTolerance already rejects when the
     // *expected* (derived) side of a comparison is non-finite, not just the raw field value
     // passed in — but that path was only ever exercised indirectly (by passing a non-finite
     // field directly above). This proves the rejection when the field ITSELF is finite and

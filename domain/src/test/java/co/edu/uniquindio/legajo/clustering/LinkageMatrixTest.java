@@ -10,9 +10,9 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The full linkage matrix (TRD §6.4): n-1 {@link LinkageStep} rows in merge order, with
- * merge distances monotone non-decreasing (TRD §6.4, "distancias de fusión monótonas no
- * decrecientes"). {@link LanceWilliamsEngine} (R3) is the only intended producer, but this
+ * The full linkage matrix: n-1 {@link LinkageStep} rows in merge order, with
+ * merge distances monotone non-decreasing. {@link LanceWilliamsEngine} is the only
+ * intended producer, but this
  * type validates the invariant itself — a hand-built violating list must still be rejected,
  * following the house rule that a validated value type re-derives and checks its own
  * invariants rather than trusting its caller.

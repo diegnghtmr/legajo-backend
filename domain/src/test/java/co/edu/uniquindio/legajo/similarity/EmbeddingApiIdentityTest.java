@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@link SimilarityAlgorithm} identity contract for {@link EmbeddingApi} (TRD §6.3):
+ * {@link SimilarityAlgorithm} identity contract for {@link EmbeddingApi}:
  * {@code id}/{@code displayName} for the registry and UI, {@code kind} groups it with
  * {@code embedding-local} as an AI capability, not a classical one.
  */
@@ -14,7 +14,7 @@ class EmbeddingApiIdentityTest {
     private final EmbeddingApi embeddingApi = new EmbeddingApi();
 
     @Test
-    void hasTheTrdAssignedIdAndDisplayName() {
+    void hasTheAssignedIdAndDisplayName() {
         assertThat(embeddingApi.id()).isEqualTo("embedding-api");
         assertThat(embeddingApi.displayName()).isNotBlank();
     }

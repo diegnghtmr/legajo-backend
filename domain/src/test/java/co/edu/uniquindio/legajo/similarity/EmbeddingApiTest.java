@@ -10,10 +10,11 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * {@code embedding-api} capability (TRD §6.3, "Capacidades de embedding (fijadas)"; ADR-015):
+ * {@code embedding-api} capability:
  * Euclidean distance over cached {@code gemini-embedding-2-preview} unit vectors,
  * {@code normalizedScore = clamp(1 - d/sqrt(2), 0, 1)}, {@code rawValue = d}. The metric
- * (sum of squared differences, the square root, and the clamp) is hand-written (TRD §3.3).
+ * (sum of squared differences, the square root, and the clamp) is hand-written; no library
+ * implements it.
  *
  * <p>Goldens below are hand-computed (not read off a running implementation), reusing
  * {@code embedding-local}'s exact unit vectors so both capabilities' trace/case-study pages
@@ -117,7 +118,7 @@ class EmbeddingApiTest {
     }
 
     /**
-     * TRD 1.3.7 §6.3: in live mode the vectors come from the remote model at request time, so
+     * In live mode the vectors come from the remote model at request time, so
      * a trace that still said "cached" would misreport the provider state it exists to show.
      */
     @Test

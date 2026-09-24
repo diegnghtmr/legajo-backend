@@ -7,7 +7,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The Levenshtein DP core is generic over {@code List<T>} (TRD §13): this is the
+ * The Levenshtein DP core is generic over {@code List<T>}: this is the
  * mandatory character-level test of that generic core (list elements are
  * {@link Character}), kept distinct from the token-level golden tests of
  * {@link LevenshteinTest}, which exercise the {@code levenshtein} capability itself.

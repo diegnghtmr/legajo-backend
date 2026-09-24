@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.within;
 
 /**
  * {@link TfIdfCorpusIndex} computes {@code df(t)} and {@code N} over the whole corpus of
- * preprocessed token streams it is built from (TRD §6.3, "Fórmulas TF-IDF (fijadas)") — never
+ * preprocessed token streams it is built from — never
  * over any two documents selected for a pairwise comparison. This is exactly why
  * {@code TfIdfCosine} needs corpus-wide state through {@link SimilarityContext} instead of
  * deriving df/N from its own two {@link SimilarityInput} arguments.

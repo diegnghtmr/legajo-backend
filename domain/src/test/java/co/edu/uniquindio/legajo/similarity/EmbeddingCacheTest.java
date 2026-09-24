@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * {@link EmbeddingCache} is the domain shape of one {@code embeddings-*.json} cache file
- * (TRD §9): a {@code corpusVersion}/{@code corpusSha256} binding, {@code model}/{@code
+ * {@link EmbeddingCache} is the domain shape of one {@code embeddings-*.json} cache file:
+ * a {@code corpusVersion}/{@code corpusSha256} binding, {@code model}/{@code
  * dimension} metadata, and the per-document {@link EmbeddingVector} entries.
  */
 class EmbeddingCacheTest {

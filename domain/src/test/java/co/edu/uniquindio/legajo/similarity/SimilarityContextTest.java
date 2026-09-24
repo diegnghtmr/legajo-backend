@@ -8,10 +8,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link SimilarityContext} is the extension point for cross-cutting, corpus-wide state a
- * capability may need. Levenshtein (S2), Needleman-Wunsch (S3), and Jaccard (S4) need none,
+ * capability may need. Levenshtein, Needleman-Wunsch, and Jaccard need none,
  * so the no-arg constructor and {@link SimilarityContext#EMPTY} still carry a {@code null}
- * {@code tfIdfIndex}. {@code tfidf-cosine} (S5) is the first capability that needs the
- * corpus-wide df/N statistics of TRD §6.3, carried by {@link TfIdfCorpusIndex} — added here
+ * {@code tfIdfIndex}. {@code tfidf-cosine} is the first capability that needs the
+ * corpus-wide df/N statistics, carried by {@link TfIdfCorpusIndex} — added here
  * without changing the {@code compute(a, b, context)} shape on the sealed contract.
  */
 class SimilarityContextTest {

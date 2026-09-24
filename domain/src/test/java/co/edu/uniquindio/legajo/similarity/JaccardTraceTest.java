@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
- * Structural invariants of {@link JaccardTrace} (TRD §6.3, PRD HU-1.6): the four listed sets
+ * Structural invariants of {@link JaccardTrace}: the four listed sets
  * must each be sorted ascending with no duplicates (the fixed deterministic order for this
  * trace, documented on the type itself), the size fields must match their listing's actual
  * size, {@code intersection} must equal {@code setA ∩ setB}, {@code union} must equal

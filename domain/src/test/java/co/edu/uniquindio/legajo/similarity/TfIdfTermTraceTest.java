@@ -8,8 +8,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
- * Structural invariants of one {@link TfIdfTermTrace} row (TRD §6.3: "por término f(t,d),
- * tf, df, idf, peso bruto y peso normalizado"): non-negative frequencies/df, a term present
+ * Structural invariants of one {@link TfIdfTermTrace} row: non-negative frequencies/df, a
+ * term present
  * in at least one of the two documents (a row for a term absent from both would be all
  * zeros and carries no evidence), and {@code tf == 0} exactly when {@code frequency == 0}
  * ({@code tf(t,d) = 1 + ln f(t,d)} is always {@code >= 1} for any integer {@code f >= 1}).
@@ -73,7 +73,7 @@ class TfIdfTermTraceTest {
                 .withMessageContaining("tfB");
     }
 
-    // R3-tfidfterm-partial-migration: rawWeightA/rawWeightB were already migrated onto
+    // rawWeightA/rawWeightB were already migrated onto
     // NumericGuards (below), but tfA/tfB/idf themselves were only ever implicitly protected
     // (a non-finite one of these propagates into rawWeightA/rawWeightB via tf*idf, which the
     // rawWeight checks then reject) — finishing the migration validates each field directly,

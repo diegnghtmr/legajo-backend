@@ -7,12 +7,12 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Average linkage (TRD §6.4 table, "Promedio"): alphaI = n_i/(n_i+n_j),
+ * Average linkage: alphaI = n_i/(n_i+n_j),
  * alphaJ = n_j/(n_i+n_j), beta = 0, gamma = 0 — size-weighted so the Lance-Williams update
  * equals the true mean distance between every member of the merged cluster and k (UPGMA),
  * not merely the average of the two parent clusters' distances. {@code sizeK} is unused by
- * this criterion (the TRD table has no k-dependent term for "Promedio") but is still part
- * of the interface's uniform signature (R2), so it is accepted and ignored, not rejected.
+ * this criterion (there is no k-dependent term for average linkage) but is still part
+ * of the interface's uniform signature, so it is accepted and ignored, not rejected.
  *
  * <p>Golden case (hand-computed): n_i=2, n_j=3 -&gt; alphaI = 2/5 = 0.4, alphaJ = 3/5 = 0.6.
  */

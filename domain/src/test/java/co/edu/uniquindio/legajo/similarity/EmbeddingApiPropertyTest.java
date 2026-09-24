@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * jqwik properties for {@code embedding-api} (TRD §6.3): symmetry (Euclidean distance is
+ * jqwik properties for {@code embedding-api}: symmetry (Euclidean distance is
  * symmetric), identity (a vector compared with itself scores 1.0 within 1e-9), and the
  * normalized score staying within the closed [0,1] range regardless of how far apart the two
  * unit vectors are (max distance between unit vectors is 2, clamped to 0 beyond sqrt(2)).

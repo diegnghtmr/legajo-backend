@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * {@link SimilarityAlgorithmRegistry} is the framework-free collector that {@code
  * bootstrap}'s {@code DomainConfiguration} feeds: each of the six algorithms is declared
- * as its own {@code @Bean} factory method, in TRD §6.3's fixed order, and Spring's ordered
+ * as its own {@code @Bean} factory method, in the fixed order, and Spring's ordered
  * list injection collects the resulting {@code List<SimilarityAlgorithm>} into this
  * registry's constructor — the domain module itself never depends on Spring, and never
  * sees an annotation.

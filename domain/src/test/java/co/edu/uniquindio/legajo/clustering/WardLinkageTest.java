@@ -7,12 +7,12 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Ward linkage (TRD §6.4 table, "Ward"): alphaI = (n_i+n_k)/n_T, alphaJ = (n_j+n_k)/n_T,
+ * Ward linkage: alphaI = (n_i+n_k)/n_T, alphaJ = (n_j+n_k)/n_T,
  * beta = -n_k/n_T, gamma = 0, where n_T = n_i+n_j+n_k. Unlike the other three criteria this
- * one genuinely needs all three sizes; {@link LanceWilliamsEngine} (R3) is what feeds it
- * the merge distance and {@link DistanceMatrix#wardBase()}'s D_w = 2·D (R4) — this class
- * only ever produces coefficients, never touches a {@link DistanceMatrix} (TRD §6.4, "el
- * motor solo comparte el bucle de fusión").
+ * one genuinely needs all three sizes; {@link LanceWilliamsEngine} is what feeds it
+ * the merge distance and {@link DistanceMatrix#wardBase()}'s D_w = 2·D — this class
+ * only ever produces coefficients, never touches a {@link DistanceMatrix} — the merge
+ * engine owns only the merge loop.
  *
  * <p>Golden case (hand-computed): n_i=2, n_j=3, n_k=4 -&gt; n_T=9, alphaI=6/9=0.6666...,
  * alphaJ=7/9=0.7777..., beta=-4/9=-0.4444....
@@ -36,7 +36,7 @@ class WardLinkageTest {
     @Test
     void equalSizesGiveTheSymmetricGolden() {
         // n_T = 3, alphaI = alphaJ = 2/3, beta = -1/3 -- the first-merge case every
-        // WardMandatoryTest (R4) golden derivation starts from.
+        // WardLinkageMandatoryTest golden derivation starts from.
         LanceWilliamsCoefficients coefficients = criterion.coefficients(1, 1, 1);
 
         assertThat(coefficients.alphaI()).isCloseTo(2.0 / 3.0, within(TOLERANCE));
