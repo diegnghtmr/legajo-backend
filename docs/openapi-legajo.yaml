@@ -2,8 +2,8 @@ openapi: 3.0.3
 info:
   title: Legajo API
   description: >-
-    REST contract for Legajo's RF1 (six similarity capabilities) and RF2
-    (hierarchical clustering with four linkage criteria) over the reference
+    REST contract for Legajo's six similarity capabilities and its
+    hierarchical clustering with four linkage criteria over the reference
     corpus. This file is the contract's source of
     truth: it describes exactly what the running server accepts and
     returns today, never an aspiration. The frontend generates its TypeScript
@@ -27,9 +27,9 @@ tags:
   - name: corpus
     description: The reference corpus.
   - name: similarity
-    description: RF1 — six similarity capabilities.
+    description: Six similarity capabilities.
   - name: clustering
-    description: RF2 — hierarchical clustering, four linkage criteria.
+    description: Hierarchical clustering, four linkage criteria.
   - name: embeddings
     description: Status of the two embedding families.
   - name: benchmarks
