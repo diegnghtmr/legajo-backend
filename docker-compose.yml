@@ -58,10 +58,14 @@ services:
         condition: service_healthy
     # No healthcheck override here either, same reasoning as `backend` above: the image's
     # own HEALTHCHECK (frontend/Dockerfile, wget against :8080) is what `docker compose up
-    # --wait` uses to block until nginx is actually serving, and `depends_on: condition:
-    # service_healthy` needs `backend` to already report healthy before `frontend` even
-    # starts building/running — together, `docker compose up --wait` only returns once
-    # both services are healthy.
+    # --wait` uses to block until nginx is actually serving. `depends_on: condition:
+    # service_healthy` only gates the `frontend` *container start*, never its *build*:
+    # Compose builds images independently of the dependency graph (verified empirically —
+    # with one service's build made deliberately slow, a dependent service's own build still
+    # started and finished while the slow one was still building), so `frontend`'s image can
+    # build in parallel with `backend`'s build. It is only the `frontend` container that
+    # Compose holds back from starting until `backend` reports healthy — together,
+    # `docker compose up --wait` still only returns once both containers are healthy.
 
   grobid:
     image: lfoppiano/grobid:0.8.2

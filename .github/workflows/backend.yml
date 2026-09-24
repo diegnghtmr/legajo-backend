@@ -20,18 +20,21 @@ jobs:
       # TRD §14.2: runs the exact same containerized path a developer uses locally
       # (scripts/gradle-in-docker.sh, README "Verification runs in containers") instead of a
       # separate actions/setup-java host JDK — the documented developer path is what this CI
-      # now exercises, not a parallel one that could drift from it. `</dev/null` gives the
-      # step no TTY (a GitHub-hosted runner's own steps have none either way): the script
-      # itself never passes `-t`/`-i` to `docker run`, so this is only confirming that
-      # explicitly, not fixing anything the script would otherwise get wrong. The script
-      # resolves the invoking uid/gid itself (`$(id -u):$(id -g)`, its own comments) and
-      # reuses one named Docker volume for GRADLE_USER_HOME across both steps below, so the
-      # dependency/build cache the first step downloads is not re-fetched by the second.
+      # now exercises, not a parallel one that could drift from it. No `</dev/null` redirect
+      # on the steps below: the script's own `docker run` never passes `-t`/`-i`, so the
+      # container gets no stdin regardless of what the runner's shell has, and a GitHub-hosted
+      # runner already runs each step's script non-interactively with no stdin of its own —
+      # redirecting an already-empty stdin to /dev/null changes nothing observable here, so it
+      # is left out rather than kept as a comment describing an effect the command does not
+      # have. The script resolves the invoking uid/gid itself (`$(id -u):$(id -g)`, its own
+      # comments) and reuses one named Docker volume for GRADLE_USER_HOME across both steps
+      # below, so the dependency/build cache the first step downloads is not re-fetched by the
+      # second.
       - name: Build (compile, test, ArchUnit)
-        run: ./scripts/gradle-in-docker.sh build </dev/null
+        run: ./scripts/gradle-in-docker.sh build
 
       - name: Aggregate coverage report
-        run: ./scripts/gradle-in-docker.sh jacocoRootReport </dev/null
+        run: ./scripts/gradle-in-docker.sh jacocoRootReport
 
   # TRD §14.3: image smoke test (health, OpenAPI, corpus listing, a real comparison
   # including needleman-wunsch, and Ward clustering). Runs after `build` rather than in
