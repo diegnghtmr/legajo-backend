@@ -22,6 +22,38 @@ clustering linkages, and their internal metrics, exposed over a REST API.
 
 Root package: `co.edu.uniquindio.legajo`.
 
+## Conventions
+
+How the code is kept, not just what it does.
+
+| `domain` package | Owns |
+|---|---|
+| `similarity` | `levenshtein`, `needleman-wunsch`, `jaccard`, `tfidf-cosine`, `embedding-local`, `embedding-api` — one class per capability |
+| `clustering` | The Lance-Williams merge engine and the four linkages: `SingleLinkage`, `CompleteLinkage`, `AverageLinkage`, `WardLinkage` |
+| `evaluation` | Cophenetic correlation, mean silhouette, Davies-Bouldin |
+| `preprocess` | NFC normalization, lowercasing, tokenization, English stopword removal, optional Porter stemming (off by default) |
+| `corpus` | The corpus model (`Corpus`, `CorpusDocument`), SHA-256 hashing, `CorpusVerifier` |
+| `port` | The embeddings port and the corpus port |
+
+- **Hand-written algorithms.** Levenshtein, Needleman-Wunsch, Jaccard, TF-IDF and cosine,
+  the embeddings similarity metric, text preprocessing, Lance-Williams, cophenetic
+  correlation, mean silhouette, and Davies-Bouldin are all written by hand with basic
+  language constructs — no library implements any of them. Delegable: PDF parsing, the
+  embedding model's own inference, the web framework, JSON, caching, packaging.
+- **Fixed constants.** Needleman-Wunsch scores +1 (match), -1 (mismatch), -1 (gap), never
+  tunable. TF-IDF's `df` and `N` are always computed over the whole corpus. Ward's
+  coefficients require the doubled distance base (`2·D`) the shared Lance-Williams merge
+  engine feeds it, not something Ward computes on its own. Determinism is bit-for-bit: the
+  DP matrix backtrace prefers diagonal, then up, then left on ties; clustering merges the
+  lexicographically smallest `(idx1, idx2)` pair on ties.
+- **Contract first.** `docs/openapi-legajo.yaml` changes before the implementation that
+  serves it; the frontend regenerates its types from it, and CI fails on drift.
+- **Generated data.** `data/corpus.json` and `data/embeddings-*.json` come only from
+  ingestion and precompute, never hand-edited; each embeddings cache is bound to the
+  corpus by `corpusSha256`, and startup fails if they no longer match.
+- **Commits and tests.** Conventional Commits, no AI attribution. Tests are written
+  before the code they cover.
+
 ## Verification runs in containers
 
 **No check in this repository runs against a host JDK, host Gradle, or host `mise`
@@ -110,7 +142,7 @@ Every check below is the exact command a developer or CI runs — no host JDK, n
 |---|---|
 | Full build (compile, unit tests, ArchUnit) | `./scripts/gradle-in-docker.sh build` |
 | Tests only | `./scripts/gradle-in-docker.sh test` |
-| Aggregated coverage (JaCoCo, >85% in the algorithm packages) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
+| Aggregated coverage (JaCoCo; line coverage must exceed 85% in similarity, clustering, evaluation) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
 | Start locally, no network | `docker compose up -d --wait backend` |
 | Full stack locally, no network | `docker compose up -d --build --wait` (needs `../frontend`, or `LEGAJO_FRONTEND_DIR`) |
 | Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | see below |
@@ -242,10 +274,9 @@ recomputed for the new corpus.
 
 ## Benchmarks
 
-`benchmarks/` measures the algorithms with JMH under a fixed protocol and reference harness,
-and proves the performance SLOs: `@BenchmarkMode(AverageTime)`, `@Fork(1)`,
-`@Warmup(iterations = 3, time = 1)`, `@Measurement(iterations = 5, time = 1)` on every
-benchmark class.
+`benchmarks/` measures the algorithms with JMH under a fixed protocol, the same on every
+benchmark class: `@BenchmarkMode(AverageTime)`, `@Fork(1)`, `@Warmup(iterations = 3, time = 1)`,
+`@Measurement(iterations = 5, time = 1)`.
 
 | Family | Classes | What varies |
 |---|---|---|
@@ -267,8 +298,13 @@ Results land in `benchmarks/results/`, versioned in git:
 - `jmh-results.csv` — `#`-prefixed harness header (CPU model, logical cores, total RAM, JDK,
   OS, UTC date) followed by `benchmark,family,parameter,size,score,error,unit` rows.
 - `slopes.csv` — `family,points,empiricalSlope,theoreticalExponent`: the least-squares
-  log-log slope of each curve next to the documented theoretical complexity
-  for that family. A fixed-n SLO family has no theoretical exponent and is excluded.
+  log-log slope of each curve next to its theoretical complexity — O(L²) for
+  `levenshtein`/`needleman-wunsch`; O(L) per pair for `jaccard`/`tfidf-cosine` (TF-IDF's
+  one-time corpus indexing is not part of the measured operation); O(n³) for the
+  Lance-Williams `hac` engine, shared by all four linkages; O(n²) per k for
+  `mean-silhouette`; O(n·d) per k for `davies-bouldin` (the dominant term at the fixed
+  small k and d used here); and O(d) for both embedding primitives. A fixed-n SLO family
+  has no theoretical exponent and is excluded.
 
 The export is strict: it writes neither CSV if any benchmark result cannot be classified into
 a family (every skipped record is listed, with its reason, in the failure), if the

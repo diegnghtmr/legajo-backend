@@ -439,7 +439,7 @@ paths:
       operationId: health
       tags: [health]
       summary: Liveness check
-      description: Verified to answer 200 from the deployed URL.
+      description: Answers 200 with status UP when the application is healthy.
       responses:
         "200":
           description: >-
@@ -469,14 +469,13 @@ components:
   responses:
     EmbeddingApiUnavailable:
       description: >-
-        A network failure, timeout, rejection, or missing API key
-        from the live `embedding-api` provider. Applies to every endpoint
-        that can use the `embedding-api` capability/representation.
-        As of this contract's authoring, the live
-        path is not yet wired to any production call site (a follow-up task
-        does that); the mapping already exists in
-        `ProblemDetailExceptionHandler` and is documented here as part of
-        this endpoint's error contract.
+        A network failure, timeout, rejection, missing API key, or dimension
+        mismatch from the live `embedding-api` provider. Applies to every
+        endpoint that can use the `embedding-api` capability/representation.
+        In live mode, the server fetches missing vectors from the configured
+        OpenAI-compatible embeddings endpoint at request time; any failure of
+        that call is mapped to this response by
+        `ProblemDetailExceptionHandler`.
       content:
         application/problem+json:
           schema:
