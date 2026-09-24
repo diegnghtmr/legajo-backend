@@ -19,24 +19,23 @@ import static org.assertj.core.api.Assertions.within;
 
 /**
  * End-to-end proof, over a real listening HTTP port (no MockMvc) and the real 20-document
- * reference corpus, of the acceptance criteria the feature document's task A4 names
- * explicitly:
+ * reference corpus, of this feature's acceptance criteria:
  *
  * <ul>
- *   <li><b>TAC-03</b>: a default {@code POST /clustering} request (no explicit
+ *   <li>A default {@code POST /clustering} request (no explicit
  *       {@code linkages}) returns single/complete/average/ward, each with exactly
  *       {@code n-1 = 19} rows and monotone non-decreasing merge distances.</li>
- *   <li><b>TAC-04</b>: the evaluation block carries {@code cophenetic} plus
+ *   <li>The evaluation block carries {@code cophenetic} plus
  *       {@code meanSilhouette}/{@code daviesBouldin} at every fixed cut
  *       {@code k ∈ {2,3,4,5}} (n=20, so the full fixed set applies, unlike the 5-document
  *       fixture {@code ClusteringServiceTest} uses to exercise the {@code ∩ [2, n-1]}
  *       intersection).</li>
- *   <li><b>TAC-14</b>: the four linkages of one run share one representation, and Ward's
+ *   <li>The four linkages of one run share one representation, and Ward's
  *       merge distances are exactly double the corresponding non-Ward run's over the same
- *       representation (D_w = 2·D, TRD §6.4) — checked here as an end-to-end, REST-facing
+ *       representation (D_w = 2·D) — checked here as an end-to-end, REST-facing
  *       property, on top of the domain-level proof {@code WardLinkageMandatoryTest} already
  *       gives.</li>
- *   <li><b>Advisory {@code R3-clustering-embedding-path-untested}</b>: {@code POST
+ *   <li>{@code POST
  *       /clustering} over {@code embedding-local} and {@code embedding-api} — until this
  *       test, clustering over either embedding representation had no test at all.</li>
  * </ul>
@@ -54,7 +53,7 @@ class ClusteringEndToEndTest {
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     @Test
-    void tac03DefaultRequestReturnsFourLinkagesEachWithNMinusOneMonotoneRows() throws IOException, InterruptedException {
+    void defaultRequestReturnsFourLinkagesEachWithNMinusOneMonotoneRows() throws IOException, InterruptedException {
         JsonNode results = postJson("/api/v1/clustering", "{}");
 
         assertThat(results).as("must return exactly the four fixed linkages").hasSize(4);
@@ -80,7 +79,7 @@ class ClusteringEndToEndTest {
     }
 
     @Test
-    void tac04EvaluationCarriesAllThreeMetricsAtEveryFixedK() throws IOException, InterruptedException {
+    void evaluationCarriesAllThreeMetricsAtEveryFixedK() throws IOException, InterruptedException {
         JsonNode results = postJson("/api/v1/clustering/evaluation", "{}");
 
         assertThat(results).hasSize(4);
@@ -101,11 +100,11 @@ class ClusteringEndToEndTest {
 
     /**
      * Davies-Bouldin is {@code OptionalDouble} in the domain/application layers precisely so
-     * an undefined value (coincident centroids, TRD §6.5) can surface as JSON {@code null}
+     * an undefined value (coincident centroids) can surface as JSON {@code null}
      * rather than {@code NaN} or a dropped key. The reference corpus's tfidf-cosine vectors
      * are extremely unlikely to produce coincident centroids at every k, so this asserts the
      * weaker, always-true half of the contract (every present value is a finite double, never
-     * NaN) plus the key-presence guarantee TAC-04 already checks above.
+     * NaN) plus the key-presence guarantee already checked above.
      */
     @Test
     void daviesBouldinIsNeverSerializedAsNaN() throws IOException, InterruptedException {
@@ -128,7 +127,7 @@ class ClusteringEndToEndTest {
     }
 
     @Test
-    void tac14WardMergeDistancesAreExactlyDoubleTheSharedRepresentation() throws IOException, InterruptedException {
+    void wardMergeDistancesAreExactlyDoubleTheSharedRepresentation() throws IOException, InterruptedException {
         JsonNode results = postJson("/api/v1/clustering",
                 "{\"representation\":\"tfidf-cosine\",\"linkages\":[\"single\",\"ward\"]}");
 
@@ -159,7 +158,7 @@ class ClusteringEndToEndTest {
     }
 
     /**
-     * TRD 1.3.9 §6.4/§6.6: every {@code LinkageResult} of {@code POST /clustering} carries
+     * Every {@code LinkageResult} of {@code POST /clustering} carries
      * {@code documentIds}, length n = 20, equal to {@code GET /api/v1/corpus}'s ids in the
      * same order — the order the server built the distance matrix from, and the order
      * {@code idx1}/{@code idx2} and {@code leafOrder} index into.
@@ -183,7 +182,7 @@ class ClusteringEndToEndTest {
     }
 
     /**
-     * TRD 1.3.9 §6.4/§6.6: {@code POST /clustering/cut}'s response also carries {@code
+     * {@code POST /clustering/cut}'s response also carries {@code
      * documentIds}, length n = 20, aligned with {@code labels}, equal to {@code GET
      * /api/v1/corpus}'s ids in order.
      */
@@ -218,18 +217,18 @@ class ClusteringEndToEndTest {
     }
 
     @Test
-    void clusteringOverTheEmbeddingLocalRepresentationProducesTac03Shape() throws IOException, InterruptedException {
+    void clusteringOverTheEmbeddingLocalRepresentationProducesTheFourLinkageShape() throws IOException, InterruptedException {
         JsonNode results = postJson("/api/v1/clustering", "{\"representation\":\"embedding-local\"}");
-        assertTac03Shape(results);
+        assertFourLinkageShape(results);
     }
 
     @Test
-    void clusteringOverTheEmbeddingApiRepresentationProducesTac03Shape() throws IOException, InterruptedException {
+    void clusteringOverTheEmbeddingApiRepresentationProducesTheFourLinkageShape() throws IOException, InterruptedException {
         JsonNode results = postJson("/api/v1/clustering", "{\"representation\":\"embedding-api\"}");
-        assertTac03Shape(results);
+        assertFourLinkageShape(results);
     }
 
-    private void assertTac03Shape(JsonNode results) {
+    private void assertFourLinkageShape(JsonNode results) {
         assertThat(results).as("must return exactly the four fixed linkages").hasSize(4);
         List<String> linkageIds = new ArrayList<>();
         for (JsonNode result : results) {

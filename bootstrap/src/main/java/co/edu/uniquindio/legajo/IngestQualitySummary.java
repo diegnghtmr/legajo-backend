@@ -4,10 +4,10 @@ import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.infrastructure.extraction.AbstractQualityCheck;
 
 /**
- * T4b: formats one line of {@link IngestCli}'s per-document abstract-quality summary
+ * Formats one line of {@link IngestCli}'s per-document abstract-quality summary
  * (id, extractedBy, character count, ok/suspicious + reason), printed at the end of an
- * ingestion run. Every document is written with {@code manuallyValidated=false} (TRD
- * §6.1, item 5); this summary is what makes that mandatory manual review informed
+ * ingestion run. Every document is written with {@code manuallyValidated=false};
+ * this summary is what makes that mandatory manual review informed
  * instead of the author having to re-read all 20 abstracts blind.
  */
 final class IngestQualitySummary {

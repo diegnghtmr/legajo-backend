@@ -18,12 +18,12 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@code validateCorpus}'s argument and exit-code contract (CLI-contracts advisory):
+ * {@code validateCorpus}'s argument and exit-code contract:
  * {@link ValidateCorpusCli#resolveCorpusPath(Map)} (pure argument parsing) and {@link
  * ValidateCorpusCli#run(ValidateCorpus, Map, String, PrintStream, PrintStream)}
  * (orchestration and exit code) against a filesystem-backed {@link JsonCorpusRepository}
  * over a temp corpus — never {@code data/corpus.json}. Covers {@code --all}, {@code
- * --ids=...}, and the "neither flag given" fail-closed contract from TRD §6.1, item 5:
+ * --ids=...}, and the "neither flag given" fail-closed contract:
  * manual validation must always be an explicit author action.
  */
 class ValidateCorpusCliTest {

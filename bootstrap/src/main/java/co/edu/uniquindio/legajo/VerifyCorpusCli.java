@@ -11,11 +11,11 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Entry point for {@code ./gradlew :bootstrap:verifyCorpus [--args="--corpus=..."]}
- * (TRD §6.1, item 6): prints every violation found (never just the first) and exits
+ * Entry point for {@code ./gradlew :bootstrap:verifyCorpus [--args="--corpus=..."]}:
+ * prints every violation found (never just the first) and exits
  * non-zero if the corpus is invalid, so it can gate a CI or release step.
  *
- * <p><b>Testable entry points (CLI-contracts advisory).</b> {@code main} composes
+ * <p><b>Testable entry points.</b> {@code main} composes
  * {@link #resolveCorpusPath(String[])} (pure argument parsing) and {@link
  * #run(VerifyCorpus, String, PrintStream, PrintStream)} (orchestration and exit code,
  * taking an already-constructed {@link VerifyCorpus}), so a test can supply a

@@ -8,9 +8,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * T4b: {@code ingest}'s per-document quality summary line (id, extractedBy, character
+ * {@code ingest}'s per-document quality summary line (id, extractedBy, character
  * count, ok/suspicious + reason), printed at the end of a run so the author's manual
- * validation (TRD §6.1, item 5) is informed about which abstracts need a closer look.
+ * validation is informed about which abstracts need a closer look.
  */
 class IngestQualitySummaryTest {
 

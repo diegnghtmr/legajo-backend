@@ -16,7 +16,7 @@ import java.util.function.UnaryOperator;
 
 /**
  * Entry point for {@code ./gradlew :bootstrap:ingest --args="--input=data/pdfs
- * --output=data/corpus.json --grobid-url=http://localhost:8070"} (TRD §6.1): scans a
+ * --output=data/corpus.json --grobid-url=http://localhost:8070"}: scans a
  * folder of PDFs, extracts each through GROBID with a PDFBox fallback, and writes
  * {@code corpus.json} with every document {@code manuallyValidated=false}.
  *
@@ -25,7 +25,7 @@ import java.util.function.UnaryOperator;
  * so a Spring context would only add startup cost and configuration surface (documented
  * as the chosen approach in {@code backend/README.md}).
  *
- * <p><b>Testable entry points (CLI-contract advisory).</b> {@code main} wires real
+ * <p><b>Testable entry points.</b> {@code main} wires real
  * GROBID/PDFBox extractors and can only be exercised end to end against a live GROBID
  * instance, so the argument contract and the exit-code contract are split into two
  * package-private, dependency-free-of-network methods {@code main} composes:
@@ -53,7 +53,7 @@ public final class IngestCli {
     record Options(String input, String output, String grobidUrl) {
     }
 
-    /** The environment variable TRD §8 documents as the GROBID endpoint for the ingest profile. */
+    /** The environment variable used as the GROBID endpoint for the ingest profile. */
     static final String GROBID_URL_VARIABLE = "LEGAJO_GROBID_URL";
 
     private static final String DEFAULT_GROBID_URL = "http://localhost:8070";
@@ -100,7 +100,7 @@ public final class IngestCli {
                 out.printf("  %s [%s] %s%n", document.id(), document.extractedBy(), document.title());
             }
             out.println("Every document has manuallyValidated=false; review each abstract, then run "
-                    + "validateCorpus (TRD §6.1, item 5).");
+                    + "validateCorpus.");
 
             out.println("Abstract quality summary:");
             for (CorpusDocument document : corpus.documents()) {

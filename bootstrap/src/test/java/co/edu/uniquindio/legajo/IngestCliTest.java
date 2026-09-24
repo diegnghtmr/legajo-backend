@@ -20,7 +20,7 @@ import java.util.function.UnaryOperator;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@code ingest}'s argument contract and exit-code contract (CLI-contracts advisory).
+ * {@code ingest}'s argument contract and exit-code contract.
  * {@link IngestCli#main} wires real GROBID/PDFBox extractors and needs a live GROBID to
  * exercise end to end, so this exercises the two testable seams it composes:
  * {@link IngestCli#resolveOptions(String[])} (pure argument parsing) and
@@ -58,7 +58,7 @@ class IngestCliTest {
     }
 
     /**
-     * TRD §8 documents {@code LEGAJO_GROBID_URL} as the GROBID endpoint for the ingest
+     * {@code LEGAJO_GROBID_URL} is the GROBID endpoint for the ingest
      * profile, and {@code .env.example} declares it. It was read by nothing until now, so
      * setting it in a real {@code .env} silently had no effect.
      */

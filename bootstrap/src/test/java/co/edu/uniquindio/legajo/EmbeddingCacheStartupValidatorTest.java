@@ -20,7 +20,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.1/§9, TAC-13 ("corpusSha256 discrepante → error de arranque"): {@link
+ * A mismatched {@code corpusSha256} must fail application startup: {@link
  * EmbeddingCacheStartupValidator} must stop the Spring context from starting when a
  * mismatched embedding cache is one the configured {@link
  * co.edu.uniquindio.legajo.application.embedding.EmbeddingProviderMode} actually serves.

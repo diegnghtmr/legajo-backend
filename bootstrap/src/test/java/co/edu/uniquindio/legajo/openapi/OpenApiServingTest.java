@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * ADR-010: the document the server publishes must be the authored
+ * The document the server publishes must be the authored
  * {@code docs/openapi-legajo.yaml}, byte for byte. The build copies it onto the classpath
  * ({@code bootstrap/build.gradle.kts}, {@code processResources}); without this test, dropping
  * or misrouting that copy would still leave every conformance test green, because they read

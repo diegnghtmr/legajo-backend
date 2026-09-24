@@ -14,11 +14,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * NFR-QA-12 ("Degradación de la API en vivo"): a network failure or missing API key on a
+ * A network failure or missing API key on a
  * path that needs a live embedding refresh must answer a 503 Problem Detail, never a 500 —
  * the cached-mode demo keeps working regardless of the live API's health.
  *
- * <p>Feature doc task A4 finding: no real request path throws
+ * <p>No real request path throws
  * {@link co.edu.uniquindio.legajo.infrastructure.embedding.EmbeddingApiException} today
  * (every endpoint reads from the versioned JSON caches; that exception is only ever thrown
  * by the offline precompute CLI). This test therefore exercises the mapping through
@@ -34,7 +34,7 @@ class ProblemDetailDegradedServiceTest {
     @Autowired
     private MockMvc mockMvc;
 
-    /** TRD §6.6, task A7: 503 always carries the fixed {@code embedding-api-unavailable}
+    /** 503 always carries the fixed {@code embedding-api-unavailable}
      * URN — the only status/type pair in the table with no path-vs-body ambiguity at all. */
     @Test
     void anEmbeddingApiExceptionIsA503NotA500() throws Exception {

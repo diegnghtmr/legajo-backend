@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 /**
  * {@code precomputeEmbeddings}'s argument contract and the fail-closed/idempotency
- * contract of its download helper (CLI-contracts advisory). Running the embedder needs
+ * contract of its download helper. Running the embedder needs
  * real ONNX/tokenizer native libraries, so this stays scoped to what does not: {@link
  * PrecomputeMiniLmEmbeddingsCli#resolveOptions(String[])} (pure parsing/defaulting) and
  * {@link PrecomputeMiniLmEmbeddingsCli#downloadIfMissing(Path, String)}, exercised only

@@ -27,13 +27,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Task A6's response-conformance half of TC-08: every documented operation's real MockMvc
- * response — success and every fixed-URN error TRD §6.6 assigns it — is validated against
+ * The response-conformance half of the OpenAPI drift check: every documented operation's real
+ * MockMvc response — success and every fixed-URN error the contract assigns it — is validated
+ * against
  * {@code docs/openapi-legajo.yaml} with {@code openapi-request-validator-mockmvc} (a
  * maintained library explicitly "compatible with Spring 7+", confirmed here by actually
  * compiling and passing against this project's Spring Boot 4.0.3 / Jakarta MockMvc stack —
  * see the version catalog comment on {@code openapiRequestValidator} for the compatibility
- * check this task required before committing to it).
+ * check this required before committing to it).
  *
  * <p>{@code /api/v1/test-only/**} (the fixture behind {@code ProblemDetailDegradedServiceTest}
  * / {@code ProblemDetailServerErrorTest}) is not a documented endpoint, so its 503/500
@@ -43,12 +44,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * exact same {@code $ref}.
  *
  * <p>{@code @DirtiesContext(AFTER_CLASS)}: this class reuses {@code d01}/{@code d02}/{@code
- * d03} across the similarity/clustering request-keyed caches (task A5) purely to exercise
+ * d03} across the similarity/clustering request-keyed caches purely to exercise
  * response shapes, not caching behavior — but the {@code SimilarityService}/{@code
  * ClusteringService} caches are Spring singletons shared by every {@code @SpringBootTest}
  * that resolves to the same context (the same contamination risk {@code
- * SimilarityControllerTest}'s and {@code SimilarityEndToEndTest}'s Javadoc already document
- * for task A5). Without this annotation, whichever of those classes' own hardcoded
+ * SimilarityControllerTest}'s and {@code SimilarityEndToEndTest}'s Javadoc already document).
+ * Without this annotation, whichever of those classes' own hardcoded
  * {@code cached=false} assertions runs *after* this class would observe a stale cache hit
  * from these calls and fail. Marking the context dirty after this class forces the next
  * class that needs it to start from a fresh, empty cache, regardless of run order.
@@ -130,10 +131,10 @@ class OpenApiContractConformanceTest {
     }
 
     /**
-     * {@code R3-error-urn-not-asserted}: response-only conformance (no {@code openApi()}
+     * Response-only conformance (no {@code openApi()}
      * request-side matcher, see class Javadoc) proved the shape was valid but never pinned
-     * {@code $.type} to the TRD-fixed URN — a handler that answered a schema-valid 400 with
-     * the wrong (or a missing) {@code type} would still have passed.
+     * {@code $.type} to the fixed URN the contract assigns — a handler that answered a
+     * schema-valid 400 with the wrong (or a missing) {@code type} would still have passed.
      */
     @Test
     void similarityCompareUnknownAlgorithmConformsToTheContract() throws Exception {
@@ -170,8 +171,8 @@ class OpenApiContractConformanceTest {
                 .andExpect(openApi().isValid(validator));
     }
 
-    /** Exercises the {@code AlgorithmTrace} discriminator's mapping for all six capabilities
-     * (TRD §6.3, NFR-QA-03): each must validate against its own {@code oneOf} branch, never
+    /** Exercises the {@code AlgorithmTrace} discriminator's mapping for all six capabilities:
+     * each must validate against its own {@code oneOf} branch, never
      * a sibling's. */
     @ParameterizedTest
     @ValueSource(strings = {
@@ -185,7 +186,7 @@ class OpenApiContractConformanceTest {
                 .andExpect(openApi().isValid(validator));
     }
 
-    /** {@code R3-error-urn-not-asserted}: see {@code similarityCompareUnknownAlgorithm...}. */
+    /** Same fixed-URN assertion gap as {@code similarityCompareUnknownAlgorithm...}: pins {@code $.type} explicitly, not just the response shape. */
     @Test
     void similarityTraceUnknownAlgorithmConformsToTheContract() throws Exception {
         MvcResult result = mockMvc.perform(get("/api/v1/similarity/{algorithmId}/trace", "does-not-exist")
@@ -215,7 +216,7 @@ class OpenApiContractConformanceTest {
                 .andExpect(openApi().isValid(validator));
     }
 
-    /** {@code R3-error-urn-not-asserted}: see {@code similarityCompareUnknownAlgorithm...}. */
+    /** Same fixed-URN assertion gap as {@code similarityCompareUnknownAlgorithm...}: pins {@code $.type} explicitly, not just the response shape. */
     @Test
     void clusteringRunUnknownLinkageConformsToTheContract() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/clustering")

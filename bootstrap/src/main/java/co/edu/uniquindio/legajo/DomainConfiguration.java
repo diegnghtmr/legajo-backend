@@ -32,7 +32,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * The project's first {@code @Configuration} (feature doc, A1): registers the
+ * This configuration class registers the
  * {@link CorpusRepository}/{@link EmbeddingRepository} adapters that today are only ever
  * {@code new}-ed by hand inside the five offline CLIs, and the six {@link SimilarityAlgorithm}
  * implementations assembled into a {@link SimilarityAlgorithmRegistry}.
@@ -43,7 +43,7 @@ import java.util.List;
  * Spring at all) — instead, each gets its own {@code @Bean} factory method here, in
  * {@code bootstrap}, so Spring's ordered list injection collects the resulting
  * {@code List<SimilarityAlgorithm>} into {@link SimilarityAlgorithmRegistry}'s constructor,
- * in this class's declaration order (TRD §6.3), without a single Spring import reaching
+ * in this class's declaration order, without a single Spring import reaching
  * {@code domain}.
  *
  * <p><b>Two {@link EmbeddingRepository} beans, not one.</b> The two embedding-based
@@ -52,7 +52,8 @@ import java.util.List;
  * {@code EmbeddingRepository} bean cannot serve both, so this class registers two, qualified
  * by name ({@code localEmbeddingRepository}/{@code apiEmbeddingRepository}) rather than by
  * type, following {@code JsonEmbeddingRepository}'s existing constructor shape (provider
- * label + the corpus's {@code corpusSha256}, TRD §6.1's fail-closed cache-binding rule) the
+ * label + the corpus's {@code corpusSha256}, which binds each cache file to the exact corpus
+ * it was computed from and fails closed on a mismatch) the
  * same way {@code PrecomputeMiniLmEmbeddingsCli}/{@code PrecomputeApiEmbeddingsCli} already
  * do by hand.
  *
@@ -62,9 +63,9 @@ import java.util.List;
  * this reason (Gradle's default working directory for a subproject task is that subproject's
  * own directory, not the backend root {@code data/} actually lives in).
  *
- * <p><b>{@code apiEmbeddingRepository}'s two implementations (feature doc task A8, TRD §6.3
- * "Modo en vivo de {@code embedding-api} (fijado)").</b> {@code legajo.embedding-provider}
- * (A1's {@link LegajoProperties}) selects which adapter backs this bean: {@code cached} (the
+ * <p><b>{@code apiEmbeddingRepository}'s two implementations (live mode for {@code
+ * embedding-api}).</b> {@code legajo.embedding-provider}
+ * ({@link LegajoProperties}) selects which adapter backs this bean: {@code cached} (the
  * default) keeps the versioned {@link JsonEmbeddingRepository}, unchanged; {@code live}
  * selects {@link LiveApiEmbeddingRepository}, which fetches vectors from the remote model at
  * request time. The four documented env vars ({@code SPRING_AI_OPENAI_API_KEY}/{@code
@@ -73,11 +74,10 @@ import java.util.List;
  * binding, all with safe defaults (blank/1536), so a {@code live}-configured context with a
  * missing key still starts — {@link LiveApiEmbeddingRepository} itself defers building its
  * network client to first use, so a missing key answers 503 on the first request that needs
- * it, never a startup failure (TRD: "no hay reserva silenciosa ... clave ausente responden
- * 503").
+ * it, never a startup failure: a missing key must never fall back silently, so a request made
+ * without one answers 503.
  *
- * <p><b>Startup fail-closed and one shared, already-validated cache (feature doc {@code
- * rest-followups.md}, F3; TRD §6.1/§9, TAC-13).</b> {@code embeddingCacheStartupValidator}
+ * <p><b>Startup fail-closed and one shared, already-validated cache.</b> {@code embeddingCacheStartupValidator}
  * below loads {@code localEmbeddingRepository} unconditionally, and {@code
  * apiEmbeddingRepository} only in {@code cached} mode, once every singleton bean is built, so a
  * mismatched {@code corpusSha256} stops the boot instead of only surfacing on the first
@@ -88,7 +88,8 @@ import java.util.List;
  * EmbeddingsService} calls {@code EmbeddingRepository#load()} per request); wrapping the bean
  * makes the startup call and every later request-time call share the exact same parsed cache
  * instead. The {@code live}-mode {@link LiveApiEmbeddingRepository} is never wrapped or
- * validated at startup — it is not a file-backed cache, and TAC-13 explicitly excludes it.
+ * validated at startup — it is not a file-backed cache, so startup validation does not apply
+ * to it.
  */
 @Configuration
 public class DomainConfiguration {
@@ -105,7 +106,7 @@ public class DomainConfiguration {
     }
 
     /**
-     * TRD §6.6, fixed by TRD 1.3.10: reads the two versioned JMH export CSVs, wrapped in
+     * Reads the two versioned JMH export CSVs, wrapped in
      * {@link MemoizingBenchmarkReportRepository} for the same reason the two embedding
      * repositories above are — {@link #benchmarksStartupValidator} calls {@code load()} once
      * at boot, and {@code BenchmarksController} calls it again on every request; without the
@@ -126,8 +127,8 @@ public class DomainConfiguration {
     }
 
     /**
-     * TRD §6.6, fixed by TRD 1.3.10 ("si los archivos faltan o están mal formados, el
-     * servidor falla al arrancar"): registered as a {@link SmartInitializingSingleton}, the
+     * If the benchmark CSVs are missing or malformed, the server must fail to start rather
+     * than only fail on the first request: registered as a {@link SmartInitializingSingleton}, the
      * same hook {@link #embeddingCacheStartupValidator} uses, so a missing or malformed
      * benchmark CSV export stops {@code refresh()} instead of only surfacing on the first
      * {@code GET /api/v1/benchmarks} request.
@@ -161,9 +162,9 @@ public class DomainConfiguration {
     }
 
     /**
-     * TRD §6.1/§9, TAC-13: fails application startup, not just the first request, when a
-     * cache the configured mode actually serves was precomputed for a different corpus
-     * (feature doc {@code rest-followups.md}, F3). Registered as a {@link
+     * Fails application startup, not just the first request, when a
+     * cache the configured mode actually serves was precomputed for a different corpus.
+     * Registered as a {@link
      * SmartInitializingSingleton} — Spring's standard hook for "run this once every singleton
      * bean, including both {@code EmbeddingRepository} beans above, is fully constructed" —
      * so {@link EmbeddingCacheStartupValidator#validate()}'s {@link IllegalStateException} (on
@@ -206,7 +207,7 @@ public class DomainConfiguration {
         return new EmbeddingLocal();
     }
 
-    /** The trace's provider status must name the mode actually serving vectors (TRD 1.3.7 §6.3). */
+    /** The trace's provider status must name the mode actually serving vectors. */
     @Bean
     public EmbeddingApi embeddingApi(LegajoProperties legajoProperties) {
         return new EmbeddingApi(legajoProperties.embeddingProvider().id());

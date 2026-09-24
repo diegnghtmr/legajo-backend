@@ -15,8 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The defect task A3b fixes (advisory {@code R3-broad-exception-mapping}, feature doc
- * {@code rest-api.md}): before this task, {@code ProblemDetailExceptionHandler} mapped
+ * A defect this codebase fixed: before the fix, {@code ProblemDetailExceptionHandler} mapped
  * {@code IllegalArgumentException -> 400} and {@code NoSuchElementException -> 404} broadly,
  * so a raw JDK exception thrown by a server-side bug (unrelated to request validation or a
  * missing resource) was reported to the client as its own mistake, complete with
@@ -62,9 +61,9 @@ class ProblemDetailServerErrorTest {
     }
 
     /**
-     * TRD §6.6, task A7: malformed JSON is one of the framework-detected cases the TRD
-     * explicitly keeps on Spring's standard {@code about:blank} handling — never one of this
-     * task's fixed URNs, whatever endpoint receives it. Spring MVC's own {@code
+     * Malformed JSON is one of the framework-detected cases this codebase
+     * explicitly keeps on Spring's standard {@code about:blank} handling — never one of the
+     * fixed URNs, whatever endpoint receives it. Spring MVC's own {@code
      * HttpMessageNotReadableException} (mapped by the {@code ResponseEntityExceptionHandler}
      * base class) never reaches this project's own {@code @ExceptionHandler} methods, so
      * {@code type} is absent exactly as it is for a missing query parameter (checked in

@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 /**
- * TRD §14.4 (1.3.8): a defined {@code LEGAJO_CORS_ORIGINS} list <b>replaces</b> the local
+ * A defined {@code LEGAJO_CORS_ORIGINS} list <b>replaces</b> the local
  * development defaults, it does not extend them — in Render this is set to the Vercel
  * origin. A separate {@code @SpringBootTest} property set from
  * {@link CorsDefaultOriginsIntegrationTest} so Spring caches the two contexts independently

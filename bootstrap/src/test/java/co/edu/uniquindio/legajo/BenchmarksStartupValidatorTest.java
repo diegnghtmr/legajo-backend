@@ -14,11 +14,11 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.6, fixed by TRD 1.3.10 ("si los archivos faltan o están mal formados, el servidor
- * falla al arrancar"): {@link BenchmarksStartupValidator} must stop the Spring context from
+ * If the benchmark report files are missing or malformed, the server must fail to start:
+ * {@link BenchmarksStartupValidator} must stop the Spring context from
  * starting when the wired {@link BenchmarkReportRepository} cannot load a report — the same
  * fail-closed contract {@link EmbeddingCacheStartupValidator} already applies to a
- * missing/malformed embedding cache (TRD §9). Uses an {@link ApplicationContextRunner} with a
+ * missing/malformed embedding cache. Uses an {@link ApplicationContextRunner} with a
  * hand-written fake repository rather than a real {@code CsvBenchmarkReportRepository} plus
  * fixture files — that CSV-level failure shape is already covered by {@code
  * CsvBenchmarkReportRepositoryTest}; this test only proves the boot-time wiring.

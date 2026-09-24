@@ -33,26 +33,27 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TAC-10 (TRD §15, "Igualdad en dos ejecuciones con embeddings en caché") over the real,
+ * Two independent runs over cached embeddings must return equal results — proved over the real,
  * versioned {@code data/corpus.json}/{@code data/embeddings-*.json} — the same cached-mode
- * data every other TAC-13-trusting path in this codebase relies on.
+ * data every other trusting path in this codebase relies on.
  *
- * <p><b>Why this lives in {@code bootstrap}, not {@code application} (feature doc {@code
- * rest-followups.md}, task F2).</b> {@code application} depends only on {@code :domain}
+ * <p><b>Why this lives in {@code bootstrap}, not {@code application}.</b> {@code application}
+ * depends only on {@code :domain}
  * (its {@code build.gradle.kts} declares no {@code infrastructure} dependency, by design —
  * the hexagonal boundary ArchUnit enforces), so it has no way to construct the real {@link
  * JsonCorpusRepository}/{@link JsonEmbeddingRepository} adapters this test needs to load the
  * real corpus/caches; every existing {@code application} test uses an in-memory fake instead
- * (TRD §6.1/§9's "cached, no network" data belongs to {@code bootstrap}/{@code
+ * (the real, cached, no-network data belongs to {@code bootstrap}/{@code
  * infrastructure}). {@code bootstrap} already depends on {@code infrastructure}, exactly as
  * the offline CLI tests ({@code IngestCliTest}, {@code VerifyCorpusCliTest}) and {@code
  * DomainConfigurationTest} do, so this test lives here instead.
  *
- * <p><b>No Spring context, no cache reuse.</b> Before this task, every "equality" test in
- * the codebase either compared a cache hit to itself (equal by construction, since it is
+ * <p><b>No Spring context, no cache reuse.</b> An earlier version of this test suite either
+ * compared a cache hit to itself (equal by construction, since it is
  * literally the same stored instance) or ran a {@code NoOpRequestCache} once and only
  * asserted "never cached", never comparing two independently computed values — neither
- * proves TAC-10's actual claim. Each test method below builds two <em>independent</em>
+ * proves that two independent runs actually agree. Each test method below builds two
+ * <em>independent</em>
  * service instances, each wired directly (no Spring) over the same real repositories with
  * its own fresh {@link NoOpRequestCache}, so neither call can possibly reuse the other's
  * result, and then compares their outputs value-by-value ({@code isEqualTo} on records whose
@@ -60,7 +61,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code double}s, or an explicit {@link Double#compare} where a raw score is extracted).
  * {@link SimilarityResult#computedNanos()} is deliberately excluded from the similarity
  * comparisons: it is real wall-clock measurement, expected to differ between two independent
- * runs, and carries no similarity/clustering value of its own (TAC-10 is about the computed
+ * runs, and carries no similarity/clustering value of its own (this test is about the computed
  * result, not about the two runs racing to the same duration).
  */
 class SimilarityClusteringDeterminismTest {
@@ -129,7 +130,7 @@ class SimilarityClusteringDeterminismTest {
     }
 
     /**
-     * TAC-10 explicitly names "embeddings en caché": one clustering run per representation,
+     * Cached embeddings are explicitly in scope: one clustering run per representation,
      * including the two embedding-backed ones, over independent instances.
      */
     @ParameterizedTest

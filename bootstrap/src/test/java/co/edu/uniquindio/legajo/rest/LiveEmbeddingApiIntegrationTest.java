@@ -27,8 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * {@code legajo.embedding-provider=live} against a stubbed OpenAI-compatible embeddings
- * endpoint (feature doc tasks A8/F5, TRD §6.3 "Modo en vivo de {@code embedding-api}
- * (fijado)"): every route that uses {@code embedding-api} fetches live vectors, and a provider
+ * endpoint: every route that uses {@code embedding-api} fetches live vectors, and a provider
  * failure degrades to 503 with the fixed URN, never a silent fallback to the cached demo. A
  * distinct {@code @SpringBootTest} property set (from every other test class's default {@code
  * cached} context) means Spring caches this as its own context, so its beans — including
@@ -38,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * representation=embedding-api} necessarily touches every corpus document, so no pair of
  * reserved document ids could otherwise keep two methods' caches apart.
  *
- * <p><b>One batched request per test method (F5).</b> {@link
+ * <p><b>One batched request per test method.</b> {@link
  * co.edu.uniquindio.legajo.infrastructure.embedding.LiveApiEmbeddingRepository#load()} now
  * sends ONE request for every not-yet-cached document instead of one request per document, so
  * every route exercised here — none of which narrow {@code load()} to fewer than the whole
@@ -99,11 +98,11 @@ class LiveEmbeddingApiIntegrationTest {
     }
 
     /**
-     * Builds a single {@code data} array with exactly {@link #CORPUS_SIZE} items (F5:
+     * Builds a single {@code data} array with exactly {@link #CORPUS_SIZE} items:
      * {@link co.edu.uniquindio.legajo.infrastructure.embedding.LiveApiEmbeddingRepository#load()}
-     * now sends one batched request for the whole not-yet-cached corpus and fails closed on a
+     * sends one batched request for the whole not-yet-cached corpus and fails closed on a
      * vector-count mismatch, so a stub with fewer items than the corpus would make every test
-     * below throw {@code EmbeddingApiException} instead of exercising the intended path).
+     * below throw {@code EmbeddingApiException} instead of exercising the intended path.
      * {@code vectorForEvenIndex}/{@code vectorForOddIndex} alternate by position.
      */
     private static ResponseDefinitionBuilder embeddingResponseForWholeCorpus(String vectorForEvenIndex,
@@ -180,7 +179,7 @@ class LiveEmbeddingApiIntegrationTest {
                 .andExpect(jsonPath("$.embeddingApi.mode").value("live"));
     }
 
-    /** NFR-QA-12: a provider failure on any embedding-api path is 503, never a 500, and
+    /** A provider failure on any embedding-api path is 503, never a 500, and
      * never a silent fallback to the versioned cache. */
     @Test
     void compareWithEmbeddingApiAnswers503WhenTheLiveProviderFails() throws Exception {

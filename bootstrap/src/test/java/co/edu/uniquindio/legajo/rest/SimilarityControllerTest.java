@@ -14,9 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The four similarity endpoints of TRD §6.6 (task A3): {@code POST /similarity/compare},
+ * The four similarity endpoints: {@code POST /similarity/compare},
  * {@code POST /similarity/matrix}, {@code GET /similarity/{algorithmId}/trace}, and
- * {@code GET /similarity/algorithms}. TAC-01/TAC-05/TAC-06's real-corpus assertions live in
+ * {@code GET /similarity/algorithms}. The real-corpus assertions live in
  * {@code SimilarityEndToEndTest}; this class covers per-endpoint shape and error mapping
  * with MockMvc.
  */
@@ -63,7 +63,7 @@ class SimilarityControllerTest {
     }
 
     /**
-     * TRD 1.3.7 §6.6, task A7: {@code algorithmIds} is a request-body field, so an unknown id
+     * {@code algorithmIds} is a request-body field, so an unknown id
      * is 400 with {@code urn:legajo:problem:unknown-algorithm} — not 404, since the URI
      * {@code /api/v1/similarity/compare} itself exists (RFC 9110's 404 is about the target
      * resource, not a value inside the request).
@@ -80,7 +80,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
     }
 
-    /** TRD 1.3.7 §6.6, task A7: a body document id is 400 with {@code unknown-document}. */
+    /** A body document id is 400 with {@code unknown-document}. */
     @Test
     void compareAnswers400ForAnUnknownDocumentId() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/compare")
@@ -93,7 +93,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-document"));
     }
 
-    /** A blank required field is this controller's own manual check, not one of TRD §6.6's
+    /** A blank required field is this controller's own manual check, not one of the contract's
      * fixed-URN cases, so it keeps {@code type} absent — Jackson omits the key entirely,
      * Spring's {@code about:blank} default (see {@code traceAnswers400WhenARequiredQuery...}
      * for why {@code doesNotExist()}, not a literal null, is the right assertion). */
@@ -110,7 +110,7 @@ class SimilarityControllerTest {
     }
 
     /**
-     * Task A5 (feature doc {@code rest-api.md}): {@code cached} must be real. This class's
+     * {@code cached} must be real. This class's
      * {@code SimilarityService} bean is a Spring singleton shared by every test method in
      * this class (and every other {@code @SpringBootTest(webEnvironment = MOCK)} +
      * {@code @AutoConfigureMockMvc} test, which resolves to the same cached Spring test
@@ -138,7 +138,7 @@ class SimilarityControllerTest {
     }
 
     /**
-     * {@code R3-matrix-cached-rest-untested}: a matrix cell must reuse the exact cache entry
+     * A matrix cell must reuse the exact cache entry
      * a prior {@code compare} call for the same (algorithm, pair) populated, over real HTTP —
      * {@code SimilarityServiceTest.matrixCellsShareTheSameCacheAsCompareByAlgorithmAndDirectionalPair}
      * already proves this at the application layer; this proves the REST boundary wires the
@@ -184,7 +184,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$[0][0].cached").value(false));
     }
 
-    /** TRD §6.6: a selection under 3 documents is {@code invalid-selection}. */
+    /** A selection under 3 documents is {@code invalid-selection}. */
     @Test
     void matrixAnswers400WhenTheSelectionIsSmallerThanThree() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/matrix")
@@ -198,7 +198,7 @@ class SimilarityControllerTest {
     }
 
     /**
-     * An empty or missing selection is also smaller than three (TRD §6.6), so it carries the
+     * An empty or missing selection is also smaller than three, so it carries the
      * same {@code invalid-selection} URN instead of a type-less 400.
      */
     @Test
@@ -212,7 +212,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-selection"));
     }
 
-    /** TRD §6.6: a duplicate id in the selection is the same {@code invalid-selection} URN. */
+    /** A duplicate id in the selection is the same {@code invalid-selection} URN. */
     @Test
     void matrixAnswers400ForADuplicateDocumentIdInTheSelection() throws Exception {
         mockMvc.perform(post("/api/v1/similarity/matrix")
@@ -224,7 +224,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-selection"));
     }
 
-    /** TRD 1.3.7 §6.6, task A7: {@code matrix}'s {@code algorithmId} is a body field, so an
+    /** {@code matrix}'s {@code algorithmId} is a body field, so an
      * unknown one is 400 with {@code unknown-algorithm} (never 404, unlike {@code trace}'s
      * path segment). */
     @Test
@@ -239,7 +239,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
     }
 
-    /** TRD §6.6's unknown-document row names {@code matrix}'s body list explicitly too, not
+    /** The unknown-document row applies to {@code matrix}'s body list explicitly too, not
      * just {@code compare} and {@code trace}. */
     @Test
     void matrixAnswers400ForAnUnknownDocumentId() throws Exception {
@@ -281,8 +281,8 @@ class SimilarityControllerTest {
      * A missing required query parameter is a framework-detected error (Spring MVC's own
      * {@code MissingServletRequestParameterException}, mapped by the {@code
      * ResponseEntityExceptionHandler} base class this project's handler extends), not a
-     * violation of one of TRD §6.6's fixed rules — so it keeps Spring's standard {@code
-     * about:blank} {@code type}, never one of the URNs this task adds. RFC 9457 defines
+     * violation of one of this contract's fixed rules — so it keeps Spring's standard {@code
+     * about:blank} {@code type}, never one of the fixed URNs. RFC 9457 defines
      * {@code about:blank} as the default when {@code type} is omitted; Spring's {@code
      * ProblemDetail} leaves the field unset in that case, and — checked empirically here,
      * not assumed — {@code ProblemDetailJacksonMixin} serializes it by omitting the {@code
@@ -299,9 +299,9 @@ class SimilarityControllerTest {
     }
 
     /**
-     * TRD 1.3.7 §6.6, task A7: {@code algorithmId} is the path segment fixed by {@code
-     * GET /similarity/{algorithmId}/trace}, so it stays 404 — the one similarity case this
-     * task does not change — with {@code urn:legajo:problem:unknown-algorithm}.
+     * {@code algorithmId} is the path segment fixed by {@code
+     * GET /similarity/{algorithmId}/trace}, so it stays 404 — the one similarity case that
+     * did not change — with {@code urn:legajo:problem:unknown-algorithm}.
      */
     @Test
     void traceAnswers404ForAnUnknownAlgorithmId() throws Exception {
@@ -313,7 +313,7 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
     }
 
-    /** TRD 1.3.7 §6.6, task A7: {@code documentIdA}/{@code documentIdB} are query parameters
+    /** {@code documentIdA}/{@code documentIdB} are query parameters
      * on {@code trace}, so an unknown one is 400 with {@code unknown-document} — the same
      * URN {@code compare}/{@code matrix} use for a body id, but a different status because
      * this value is not part of the path. */
@@ -329,7 +329,7 @@ class SimilarityControllerTest {
 
     @Test
     void traceHasNoTruncationParameter() throws Exception {
-        // NFR-QA-03: the trace endpoint accepts no truncation parameter. An extra,
+        // The trace endpoint accepts no truncation parameter. An extra,
         // unrecognized query parameter is simply ignored by Spring MVC (not bound to
         // anything), so the full untruncated matrix is what a client always receives.
         mockMvc.perform(get("/api/v1/similarity/{algorithmId}/trace", "levenshtein")

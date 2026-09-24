@@ -14,10 +14,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The three clustering endpoints of TRD §6.6 (feature doc task A4): {@code
+ * The three clustering endpoints: {@code
  * POST /clustering}, {@code POST /clustering/evaluation}, {@code POST /clustering/cut}.
- * TAC-03/TAC-04/TAC-14's real-corpus assertions, and coverage of both embedding
- * representations (advisory {@code R3-clustering-embedding-path-untested}), live in
+ * The real-corpus assertions, and coverage of both embedding
+ * representations, live in
  * {@code ClusteringEndToEndTest}; this class covers per-endpoint shape and error
  * classification with MockMvc.
  */
@@ -55,7 +55,7 @@ class ClusteringControllerTest {
                 .andExpect(jsonPath("$[0].evaluation.daviesBouldin").exists());
     }
 
-    /** TRD §6.6: {@code representation} lives in the body, so an unknown value is 400 with
+    /** {@code representation} lives in the body, so an unknown value is 400 with
      * {@code unknown-representation}. */
     @Test
     void runAnswers400ForAnUnknownRepresentation() throws Exception {
@@ -70,7 +70,7 @@ class ClusteringControllerTest {
     }
 
     /**
-     * TRD 1.3.7 §6.6, task A7: {@code linkages} is a body field on every clustering endpoint
+     * {@code linkages} is a body field on every clustering endpoint
      * (never a path segment, unlike a similarity algorithm id), so an unknown id is 400 with
      * {@code unknown-linkage} — changed from 404, since the URI itself is never wrong here.
      */
@@ -87,8 +87,8 @@ class ClusteringControllerTest {
     }
 
     /**
-     * TRD §6.6: "no existe parámetro de solicitud {@code ks}, de modo que ninguna solicitud
-     * conforme puede alterar la regla de cortes fijos de TAC-04". There is no {@code ks}
+     * There is no request parameter {@code ks}, so no conforming request can alter the fixed-cuts
+     * rule: there is no {@code ks}
      * field on {@code ClusteringRequest}, so Jackson either ignores the unknown property or
      * (the actual, stricter, Spring Boot default) rejects the whole request outright — either
      * way, no request body can ever change which {@code k}s the evaluation is computed at.
@@ -136,7 +136,7 @@ class ClusteringControllerTest {
                 .andExpect(jsonPath("$.labels").isArray());
     }
 
-    /** TRD §6.6: {@code /clustering/cut} is the only endpoint accepting a free {@code k}, and
+    /** {@code /clustering/cut} is the only endpoint accepting a free {@code k}, and
      * an out-of-range one is {@code invalid-cut}. */
     @Test
     void cutAnswers400ForAKOutsideTwoToNMinusOne() throws Exception {
@@ -150,7 +150,7 @@ class ClusteringControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:invalid-cut"));
     }
 
-    /** A missing {@code k} is this controller's own manual null check, not one of TRD §6.6's
+    /** A missing {@code k} is this controller's own manual null check, not one of the contract's
      * fixed-URN cases, so {@code type} stays absent ({@code about:blank}). */
     @Test
     void cutAnswers400WhenKIsMissing() throws Exception {
@@ -176,7 +176,7 @@ class ClusteringControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-representation"));
     }
 
-    /** TRD 1.3.7 §6.6, task A7: {@code linkage} is a body field here too, so an unknown one
+    /** {@code linkage} is a body field here too, so an unknown one
      * is 400 with {@code unknown-linkage} — changed from 404. */
     @Test
     void cutAnswers400ForAnUnknownLinkageId() throws Exception {

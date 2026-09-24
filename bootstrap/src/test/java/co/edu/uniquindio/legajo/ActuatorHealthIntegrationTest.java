@@ -13,12 +13,11 @@ import java.net.http.HttpResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Proves TAC-11 (TRD §15) end to end: {@code /actuator/health} must answer 200 from a real,
+ * Proves end to end: {@code /actuator/health} must answer 200 from a real,
  * listening HTTP port, not merely be reachable in configuration. Before this feature added
- * {@code spring-boot-starter-web} (A1), {@code :bootstrap} carried no servlet container, so
+ * {@code spring-boot-starter-web}, {@code :bootstrap} carried no servlet container, so
  * {@code webEnvironment = RANDOM_PORT} could not even bind a listening port and this test
- * failed at Spring context startup — see the feature document's evidence for that observed
- * RED.
+ * failed at Spring context startup.
  *
  * <p>Uses the JDK's own {@link HttpClient} rather than {@code TestRestTemplate}: Spring Boot
  * 4.0.3's {@code spring-boot-starter-test} no longer pulls in a {@code TestRestTemplate}

@@ -21,8 +21,7 @@ dependencies {
 
     implementation(libs.spring.boot.starter)
     implementation(libs.spring.boot.starter.actuator)
-    // Task A6 of the rest-api feature (TRD ADR-010, §6.6): publishes the contract and
-    // Swagger UI. Swagger UI's descriptor URL is pointed at the hand-written
+    // Publishes the API contract and Swagger UI. Swagger UI's descriptor URL is pointed at the hand-written
     // docs/openapi-legajo.yaml (application.yml's springdoc.swagger-ui.url, served as a
     // static resource by the copy below); springdoc's own generated /v3/api-docs document
     // stays enabled only because springdoc itself requires it internally to serve the UI
@@ -33,16 +32,16 @@ dependencies {
     precomputeRuntimeClasspath(project(":infrastructure"))
 
     testImplementation(libs.spring.boot.starter.test)
-    // A3 of the rest-api feature (MockMvc controller tests): @WebMvcTest/@AutoConfigureMockMvc
+    // MockMvc controller tests: @WebMvcTest/@AutoConfigureMockMvc
     // live here, not in spring-boot-starter-test, as of Spring Boot 4.0.3 (see the version
     // catalog comment on this alias).
     testImplementation(libs.spring.boot.webmvc.test)
     testImplementation(libs.archunit.junit5)
-    // Task A6's drift check (TC-08): validates real MockMvc responses against
+    // Drift check: validates real MockMvc responses against
     // docs/openapi-legajo.yaml (see the version catalog comment on this alias for the
     // Spring Boot 4 / Jakarta compatibility check).
     testImplementation(libs.openapi.request.validator.mockmvc)
-    // Feature doc task A8 (TRD §6.3 "Modo en vivo de embedding-api"): a real Spring context
+    // Live embedding-api mode: a real Spring context
     // with legajo.embedding-provider=live, wired against a stubbed OpenAI-compatible
     // embeddings endpoint via @DynamicPropertySource, so no test needs a real key or network.
     testImplementation(libs.wiremock)
@@ -53,7 +52,7 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
-// Task A6 (ADR-010): docs/openapi-legajo.yaml, one level up from this module, is the
+// docs/openapi-legajo.yaml, one level up from this module, is the
 // contract's single source of truth. Rather than hand-duplicating it onto the classpath,
 // this copies that exact file into the module's own resources at build time, into
 // static/, so Spring Boot's own static-resource handler serves it at
@@ -66,12 +65,12 @@ tasks.named<ProcessResources>("processResources") {
     }
 }
 
-// The Spring context this module now boots (A1 of the rest-api feature) reads
+// The Spring context this module boots reads
 // data/corpus.json and data/embeddings-*.json through relative paths, the same convention
 // the ingest/verify/validate/precompute JavaExec tasks above already use. Both `test` (so
 // @SpringBootTest can load the real, versioned demo corpus) and `bootRun` (so a developer
-// running `./gradlew :bootstrap:bootRun` from the backend root gets the same resolution as
-// the documented command in AGENTS.md) need the same fix: Gradle's default working directory
+// running `./gradlew :bootstrap:bootRun` from the backend root gets the same resolution)
+// need the same fix: Gradle's default working directory
 // for a subproject's JavaExec-derived task is that subproject's own directory
 // (`backend/bootstrap`), not the directory the `gradlew` invocation started from, and
 // `data/` lives at the backend root, one level up.
@@ -91,14 +90,14 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
     archiveFileName.set("app.jar")
 }
 
-// TRD §6.1 ingestion entry points. Plain JavaExec tasks rather than Spring profiles: each
+// Ingestion entry points. Plain JavaExec tasks rather than Spring profiles: each
 // CLI is a one-shot offline batch job (see IngestCli's Javadoc), and JavaExec gets
 // `--args="..."` support from Gradle for free. Working directory is the backend project
 // root, not :bootstrap's own directory, so the documented relative paths
 // (`data/pdfs`, `data/corpus.json`) resolve the way the command examples expect.
 tasks.register<JavaExec>("ingest") {
     group = "ingestion"
-    description = "Runs the offline PDF -> corpus.json pipeline (TRD §6.1). " +
+    description = "Runs the offline PDF -> corpus.json pipeline. " +
             "Args: --input=data/pdfs --output=data/corpus.json --grobid-url=http://localhost:8070"
     mainClass.set("co.edu.uniquindio.legajo.IngestCli")
     classpath = sourceSets["main"].runtimeClasspath
@@ -107,7 +106,7 @@ tasks.register<JavaExec>("ingest") {
 
 tasks.register<JavaExec>("verifyCorpus") {
     group = "verification"
-    description = "Runs verify-corpus against data/corpus.json (TRD §6.1, item 6). Args: --corpus=data/corpus.json"
+    description = "Runs verify-corpus against data/corpus.json. Args: --corpus=data/corpus.json"
     mainClass.set("co.edu.uniquindio.legajo.VerifyCorpusCli")
     classpath = sourceSets["main"].runtimeClasspath
     workingDir = rootProject.layout.projectDirectory.asFile
@@ -115,7 +114,7 @@ tasks.register<JavaExec>("verifyCorpus") {
 
 tasks.register<JavaExec>("validateCorpus") {
     group = "verification"
-    description = "Marks documents manuallyValidated=true (TRD §6.1, item 5). Args: --ids=d01,d02 or --all"
+    description = "Marks documents manuallyValidated=true. Args: --ids=d01,d02 or --all"
     mainClass.set("co.edu.uniquindio.legajo.ValidateCorpusCli")
     classpath = sourceSets["main"].runtimeClasspath
     workingDir = rootProject.layout.projectDirectory.asFile
@@ -123,7 +122,7 @@ tasks.register<JavaExec>("validateCorpus") {
 
 tasks.register<JavaExec>("precomputeEmbeddings") {
     group = "ingestion"
-    description = "Runs the offline MiniLM precompute (TRD §6.1, §6.3, §9). " +
+    description = "Runs the offline MiniLM precompute. " +
             "Args: --corpus=data/corpus.json --output=data/embeddings-minilm.json " +
             "(tokenizer/model download to build/models/minilm/ on first run)"
     mainClass.set("co.edu.uniquindio.legajo.PrecomputeMiniLmEmbeddingsCli")
@@ -144,7 +143,7 @@ tasks.register<JavaExec>("precomputeEmbeddings") {
 tasks.register<JavaExec>("precomputeApiEmbeddings") {
     group = "ingestion"
     description = "Runs the offline embedding-api precompute against Gemini's OpenAI-compatible " +
-            "layer (TRD §6.1, §6.3, §8, §9, ADR-015). Args: --corpus=data/corpus.json " +
+            "layer. Args: --corpus=data/corpus.json " +
             "--output=data/embeddings-openai.json. Requires SPRING_AI_OPENAI_API_KEY, " +
             "SPRING_AI_OPENAI_BASE_URL, LEGAJO_EMBEDDING_API_MODEL, LEGAJO_EMBEDDING_API_DIMENSION " +
             "(and optionally SPRING_AI_OPENAI_EMBEDDING_EMBEDDINGS_PATH) in the environment."

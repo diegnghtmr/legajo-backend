@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@code GET /api/v1/corpus} and {@code GET /api/v1/corpus/{id}} (TRD §6.6, task A3): the
+ * {@code GET /api/v1/corpus} and {@code GET /api/v1/corpus/{id}}: the
  * listing carries only {@code id}/{@code title}/{@code authors}, the detail endpoint adds
  * the full abstract, and an unknown id answers a 404 RFC 9457 Problem Detail rather than a
  * raw 500 or an unshaped error body.
@@ -45,7 +45,7 @@ class CorpusControllerTest {
                 .andExpect(jsonPath("$.abstract").isNotEmpty());
     }
 
-    /** TRD 1.3.7 §6.6, task A7: {@code id} is the path segment fixed by {@code
+    /** {@code id} is the path segment fixed by {@code
      * GET /corpus/{id}}, so this is 404 with {@code urn:legajo:problem:unknown-document}. */
     @Test
     void detailAnswers404ProblemDetailForAnUnknownId() throws Exception {
