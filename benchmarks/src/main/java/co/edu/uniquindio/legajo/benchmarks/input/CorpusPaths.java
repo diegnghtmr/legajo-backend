@@ -7,8 +7,8 @@ import java.nio.file.Path;
  * Resolves {@code data/corpus.json} regardless of which directory the current process was
  * launched from (the backend root, {@code benchmarks/}, or anywhere else under the backend
  * tree) rather than relying on a specific Gradle task's working directory being configured
- * to match another module's convention. The real-corpus SLO benchmarks (NFR-QA-01,
- * NFR-QA-02) and their setup all resolve the corpus through this one class.
+ * to match another module's convention. The real-corpus SLO benchmarks (classic-pairwise and
+ * clustering) and their setup all resolve the corpus through this one class.
  */
 public final class CorpusPaths {
 

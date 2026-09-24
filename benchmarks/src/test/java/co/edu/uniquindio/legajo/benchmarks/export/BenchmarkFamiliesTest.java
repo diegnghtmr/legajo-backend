@@ -11,9 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit tests for the benchmark-to-family/size-key/theoretical-exponent mapping (TRD
- * §6.3/§6.4/§6.5, TAC-18). Written before {@link BenchmarkFamilies} exists
- * (odd/tasks/jmh-benchmarks.md, task J2: strict TDD).
+ * Unit tests for the benchmark-to-family/size-key/theoretical-exponent mapping. Written
+ * before {@link BenchmarkFamilies} exists (strict TDD).
  */
 class BenchmarkFamiliesTest {
 

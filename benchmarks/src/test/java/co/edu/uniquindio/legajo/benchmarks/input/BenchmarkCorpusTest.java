@@ -9,9 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Unit tests for the real-corpus loader and its token-stream/pool derivations, used by the
- * NFR-QA-01/02 SLO benchmarks and by the pairwise-curve benchmarks' synthetic token pool.
- * Written before {@link BenchmarkCorpus} exists (odd/tasks/jmh-benchmarks.md, task J1:
- * strict TDD).
+ * classic-pairwise and clustering SLO benchmarks and by the pairwise-curve benchmarks'
+ * synthetic token pool. Written before {@link BenchmarkCorpus} exists (strict TDD).
  */
 class BenchmarkCorpusTest {
 

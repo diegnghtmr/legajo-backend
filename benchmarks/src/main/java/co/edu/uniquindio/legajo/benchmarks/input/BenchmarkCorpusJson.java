@@ -4,7 +4,7 @@ import co.edu.uniquindio.legajo.corpus.Corpus;
 
 import java.util.List;
 
-/** Wire shape of {@code data/corpus.json} itself (TRD §9 schema); see {@link BenchmarkCorpusDocumentJson}. */
+/** Wire shape of {@code data/corpus.json} itself; see {@link BenchmarkCorpusDocumentJson}. */
 record BenchmarkCorpusJson(String version, int sourceCount, String corpusSha256, List<BenchmarkCorpusDocumentJson> documents) {
 
     /**

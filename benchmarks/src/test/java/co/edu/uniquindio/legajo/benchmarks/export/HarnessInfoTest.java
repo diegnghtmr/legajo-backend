@@ -12,11 +12,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit tests for the reference-harness metadata the CSV header reports (TRD NFR-QA-10:
- * "el arnés de referencia definido en la cabecera del CSV de mediciones y en el README").
- * Written before {@link HarnessInfo} exists (odd/tasks/jmh-benchmarks.md, task J2: strict
- * TDD). The exact CPU/RAM/OS values are environment-dependent, so these tests assert shape
- * and plausibility rather than fixed values.
+ * Unit tests for the reference-harness metadata the CSV header and the README report.
+ * Written before {@link HarnessInfo} exists (strict TDD). The exact CPU/RAM/OS values are
+ * environment-dependent, so these tests assert shape and plausibility rather than fixed
+ * values.
  */
 class HarnessInfoTest {
 

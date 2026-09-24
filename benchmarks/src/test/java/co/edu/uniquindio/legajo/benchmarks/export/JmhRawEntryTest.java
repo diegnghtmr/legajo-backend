@@ -8,10 +8,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for the JMH raw-entry-to-result-record conversion, hardening it against a
- * malformed JMH JSON entry (odd/tasks/jmh-benchmarks.md, task J2h: {@code
- * R3-raw-entry-missing-fields}): a missing {@code primaryMetric} or a missing numeric
- * {@code score} must fail with a clear message naming the benchmark entry, never silently
- * become {@code 0.0}.
+ * malformed JMH JSON entry with missing fields: a missing {@code primaryMetric} or a missing
+ * numeric {@code score} must fail with a clear message naming the benchmark entry, never
+ * silently become {@code 0.0}.
  */
 class JmhRawEntryTest {
 

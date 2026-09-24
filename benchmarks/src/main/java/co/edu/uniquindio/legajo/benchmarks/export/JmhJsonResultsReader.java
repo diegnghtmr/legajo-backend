@@ -46,8 +46,9 @@ public final class JmhJsonResultsReader {
      * The {@code jdkVersion} JMH itself recorded for this run, if any entry reports one (the
      * first non-null value found; every entry of one run shares the same JDK). Used by
      * {@link JmhExportCli} for a cheap cross-check against the harness sidecar captured at
-     * {@code :benchmarks:jmh} run time (R3-harness-captured-at-export-time,
-     * odd/tasks/jmh-benchmarks.md); empty when no entry declares it.
+     * {@code :benchmarks:jmh} run time, since the harness must describe the machine that
+     * actually produced the measurements, never a machine or session {@code jmhExport}
+     * happens to run on later; empty when no entry declares it.
      */
     public static Optional<String> readReportedJdkVersion(Path resultsJson) {
         return Arrays.stream(parse(resultsJson)).map(JmhRawEntry::jdkVersion).filter(Objects::nonNull).findFirst();

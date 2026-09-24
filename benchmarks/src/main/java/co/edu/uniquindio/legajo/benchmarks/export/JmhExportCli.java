@@ -10,10 +10,9 @@ import java.util.Optional;
 /**
  * Entry point for the {@code :benchmarks:jmhExport} Gradle task: reads one JMH JSON results
  * file and writes {@code benchmarks/results/jmh-results.csv} and
- * {@code benchmarks/results/slopes.csv} (TRD NFR-QA-10, TAC-18; odd/tasks/jmh-benchmarks.md,
- * task J2). Arguments: {@code --input=<path>}, {@code --harness=<path>} (the sidecar
- * {@code :benchmarks:jmhHarnessSidecar} wrote at {@code :benchmarks:jmh} run time),
- * {@code --resultsCsv=<path>}, {@code --slopesCsv=<path>}.
+ * {@code benchmarks/results/slopes.csv}. Arguments: {@code --input=<path>},
+ * {@code --harness=<path>} (the sidecar {@code :benchmarks:jmhHarnessSidecar} wrote at
+ * {@code :benchmarks:jmh} run time), {@code --resultsCsv=<path>}, {@code --slopesCsv=<path>}.
  *
  * <p>The export is strict: a missing harness sidecar, a sidecar bound to a different JMH
  * results file, a JMH-reported JDK version that disagrees with the sidecar, or any benchmark

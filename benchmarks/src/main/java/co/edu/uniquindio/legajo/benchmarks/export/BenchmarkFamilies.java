@@ -10,9 +10,8 @@ import java.util.stream.Collectors;
 /**
  * Classifies one JMH result (its fully qualified {@code Class.method} benchmark name plus
  * its {@code @Param} map) into a {@link BenchmarkFamily}, and holds this harness's
- * theoretical complexity exponents (TRD §6.3 for the pairwise classic algorithms, §6.4 for
- * the HAC engine, §6.5 for the two internal metrics — every exponent below is quoted from
- * one of those sections, never invented here).
+ * theoretical complexity exponents for the pairwise classic algorithms, the HAC engine, and
+ * the two internal metrics — every exponent below is a documented, not invented, value.
  *
  * <p>A benchmark class/method pair not in {@link #BASE_LABELS} falls back to
  * {@code SimpleClassName.methodName} as its own label, so a future benchmark this table has
@@ -38,15 +37,15 @@ public final class BenchmarkFamilies {
             Map.entry("ClusteringSloBenchmark#allFourLinkages", "slo-clustering"));
 
     /**
-     * TRD-documented theoretical exponents, keyed by the base label (before any categorical
+     * Documented theoretical exponents, keyed by the base label (before any categorical
      * suffix, e.g. {@code "hac"}, not {@code "hac-ward"} — the same exponent applies to every
-     * criterion). {@code levenshtein}/{@code needleman-wunsch}: O(L²) (TRD §6.3).
-     * {@code jaccard}/{@code tfidf-cosine}: O(L) per pair (TRD §6.3; TF-IDF's one-time
+     * criterion). {@code levenshtein}/{@code needleman-wunsch}: O(L²).
+     * {@code jaccard}/{@code tfidf-cosine}: O(L) per pair (TF-IDF's one-time
      * O(N·L) corpus indexing is outside the measured operation, see
-     * {@code TfIdfCosineBenchmark}'s Javadoc). {@code hac}: O(n³) (TRD §6.4).
-     * {@code mean-silhouette}: O(n²) per k (TRD §6.5). {@code davies-bouldin}: O(n·d + k²·d)
-     * per k, dominated by the O(n·d) term for the fixed small k and d this harness uses (TRD
-     * §6.5). The two embedding primitives: O(d) (TRD §6.3). The {@code slo-*} families are
+     * {@code TfIdfCosineBenchmark}'s Javadoc). {@code hac}: O(n³).
+     * {@code mean-silhouette}: O(n²) per k. {@code davies-bouldin}: O(n·d + k²·d)
+     * per k, dominated by the O(n·d) term for the fixed small k and d this harness uses.
+     * The two embedding primitives: O(d). The {@code slo-*} families are
      * fixed-n SLO measurements, not curves, and are deliberately absent here.
      */
     private static final Map<String, Double> THEORETICAL_EXPONENTS = Map.ofEntries(
@@ -132,7 +131,7 @@ public final class BenchmarkFamilies {
 
     /**
      * Classifies every record, or fails the whole export atomically. The versioned CSVs back
-     * the technical documentation (TAC-18), so an export missing rows it silently could not
+     * the technical documentation, so an export missing rows it silently could not
      * classify is worse than no export at all: unlike {@link #classify}, this never drops a
      * record on its own. Every record is attempted (a first failure never short-circuits the
      * rest), and if any record fails, {@link IllegalStateException} lists every one of them —

@@ -29,14 +29,14 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * NFR-QA-01's SLO benchmark: one operation is all {@code C(n,2)} classic pairwise
- * comparisons of the real reference corpus (190 comparisons at n = 20) for one algorithm,
- * with the similarity cache off — met here by never involving a cache at all: this class
- * calls each {@link SimilarityAlgorithm#compute} directly, the same way the pairwise-curve
- * benchmarks do, just over the real corpus instead of a synthetic sequence and over every
- * pair instead of one.
+ * The classic-pairwise SLO (service-level objective) benchmark: one operation is all
+ * {@code C(n,2)} classic pairwise comparisons of the real reference corpus (190 comparisons
+ * at n = 20) for one algorithm, with the similarity cache off — met here by never involving a
+ * cache at all: this class calls each {@link SimilarityAlgorithm#compute} directly, the same
+ * way the pairwise-curve benchmarks do, just over the real corpus instead of a synthetic
+ * sequence and over every pair instead of one.
  *
- * <p>{@code n} is declared as a JMH {@code @Param} purely so the CSV export (J2) carries an
+ * <p>{@code n} is declared as a JMH {@code @Param} purely so the CSV export carries an
  * explicit, self-documenting size column; {@code @Setup} asserts the loaded corpus actually
  * has {@code n} documents and fails loudly otherwise, so this never silently reports a wrong
  * size if the reference corpus is ever resized.

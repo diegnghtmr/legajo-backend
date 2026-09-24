@@ -6,9 +6,8 @@ import java.util.Objects;
 
 /**
  * Builds the two synthetic token sequences one pairwise classic-algorithm benchmark data
- * point needs (TRD §6.3's "Protocolo de pruebas de rendimiento (fijado)": "secuencias
- * sintéticas de tokens de longitud L ∈ {50, 100, 200, 400, 800} construidas concatenando
- * tokens del corpus").
+ * point needs, following the fixed performance-test protocol: synthetic token sequences of
+ * length L ∈ {50, 100, 200, 400, 800}, built by concatenating the corpus's own tokens.
  *
  * <p><b>How the two sequences are built.</b> {@code tokenPool} is the whole corpus's
  * preprocessed tokens concatenated in document order (the caller's responsibility, see

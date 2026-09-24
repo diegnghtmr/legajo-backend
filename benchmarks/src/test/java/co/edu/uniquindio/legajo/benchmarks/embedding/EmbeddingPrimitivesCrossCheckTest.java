@@ -17,9 +17,8 @@ import static org.assertj.core.api.Assertions.within;
  * Proves {@link EmbeddingPrimitives} — the loops {@code EmbeddingPrimitiveBenchmark} measures
  * — compute the exact same values the domain's {@link EmbeddingLocal} and {@link EmbeddingApi}
  * algorithms rely on, on fixed unit vectors, via each algorithm's own public {@code
- * compute(...)} (odd/tasks/debt-cleanup.md, task B4). A benchmark that quietly drifted from
- * the domain math it claims to measure would report numbers about the wrong computation; this
- * is the regression guard against that.
+ * compute(...)}. A benchmark that quietly drifted from the domain math it claims to measure
+ * would report numbers about the wrong computation; this is the regression guard against that.
  */
 class EmbeddingPrimitivesCrossCheckTest {
 

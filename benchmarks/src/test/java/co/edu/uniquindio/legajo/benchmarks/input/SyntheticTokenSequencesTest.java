@@ -10,10 +10,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit tests for the pairwise-curve token-sequence builder (TRD §6.3's "Protocolo de
- * pruebas de rendimiento (fijado)": synthetic sequences of length L built by concatenating
- * corpus tokens). Written before {@link SyntheticTokenSequences} exists (odd/tasks/
- * jmh-benchmarks.md, task J1: strict TDD for the deterministic input builders).
+ * Unit tests for the pairwise-curve token-sequence builder (the fixed performance-test
+ * protocol's synthetic sequences of length L built by concatenating corpus tokens). Written
+ * before {@link SyntheticTokenSequences} exists (strict TDD for the deterministic input
+ * builders).
  */
 class SyntheticTokenSequencesTest {
 

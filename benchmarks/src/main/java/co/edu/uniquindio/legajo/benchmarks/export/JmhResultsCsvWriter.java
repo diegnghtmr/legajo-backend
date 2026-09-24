@@ -9,8 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Writes {@code benchmarks/results/jmh-results.csv} (TRD NFR-QA-10, TAC-18): the reference
- * harness as {@code #}-prefixed header lines, then a {@code
+ * Writes {@code benchmarks/results/jmh-results.csv}: the reference harness as
+ * {@code #}-prefixed header lines, then a {@code
  * benchmark,family,parameter,size,score,error,unit} row per {@link ClassifiedBenchmarkResult}.
  * Every result this writer receives is already classified ({@link
  * BenchmarkFamilies#classifyAll}, called once by {@link JmhExportCli} before either CSV writer
@@ -53,9 +53,8 @@ public final class JmhResultsCsvWriter {
     }
 
     private static String formatNumber(double value) {
-        // Double.toString is locale-independent and round-trips exactly (TRD "Precisión
-        // numérica": shortest round-trip double formatting), and already renders NaN as
-        // "NaN" without a separate branch.
+        // Double.toString is locale-independent and round-trips exactly (shortest round-trip
+        // double formatting), and already renders NaN as "NaN" without a separate branch.
         return Double.toString(value);
     }
 }

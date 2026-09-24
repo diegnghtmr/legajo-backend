@@ -18,10 +18,9 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
- * The reference-harness metadata TRD NFR-QA-10 requires in the CSV header and the README
- * (CPU model, logical cores, total RAM, JDK, OS, UTC date): "el arnés de referencia es la
- * máquina registrada en la cabecera del CSV de mediciones y en el README (modelo de CPU,
- * núcleos, RAM, JDK)".
+ * The reference-harness metadata required in the CSV header and the README: the CPU model,
+ * logical cores, total RAM, JDK, OS, and UTC date of the machine that actually produced the
+ * measurements.
  */
 public record HarnessInfo(
         String cpuModel, int logicalCores, long totalRamBytes, String jdkVendorAndVersion, String operatingSystem,

@@ -25,9 +25,9 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Needleman-Wunsch complexity curve (TRD §6.3: O(|A|·|B|) time/space), same synthetic-input
- * shape as {@link LevenshteinBenchmark}. Scoring constants are the fixed v1 values
- * (match +1, mismatch -1, gap -1); no cache is involved.
+ * Needleman-Wunsch complexity curve: O(|A|·|B|) time/space, same synthetic-input shape as
+ * {@link LevenshteinBenchmark}. Scoring constants are the fixed v1 values (match +1,
+ * mismatch -1, gap -1); no cache is involved.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)

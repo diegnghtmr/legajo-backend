@@ -28,14 +28,15 @@ import java.util.OptionalDouble;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Internal-metrics complexity curves at a fixed {@code k} (TRD §6.5): mean silhouette
- * (O(n^2) per k) and Davies-Bouldin (O(n·d + k^2·d) per k, dominated by the O(n·d) term for a
- * fixed small k), each measured at n ∈ {5, 10, 20, 40, 80} synthetic unit vectors.
+ * Internal-metrics complexity curves at a fixed {@code k}: mean silhouette (O(n^2) per k) and
+ * Davies-Bouldin (O(n·d + k^2·d) per k, dominated by the O(n·d) term for a fixed small k),
+ * each measured at n ∈ {5, 10, 20, 40, 80} synthetic unit vectors.
  *
- * <p>{@code k = min(4, n-1)} is TRD §6.5's own {@code k_ref} definition, reused here so the
- * fixed cut is never arbitrary; the cluster assignment comes from single linkage
- * agglomeration over the same synthetic vectors (the choice of criterion does not change
- * either metric's asymptotic cost, only the specific partition it happens to measure).
+ * <p>{@code k = min(4, n-1)} is the fixed reference {@code k} used across the evaluation
+ * metrics, reused here so the fixed cut is never arbitrary; the cluster assignment comes
+ * from single linkage agglomeration over the same synthetic vectors (the choice of criterion
+ * does not change either metric's asymptotic cost, only the specific partition it happens
+ * to measure).
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)

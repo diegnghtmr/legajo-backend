@@ -5,8 +5,8 @@ import java.util.Objects;
 
 /**
  * Two deterministic synthetic token sequences of the same length, built by
- * {@link SyntheticTokenSequences} for one pairwise-curve benchmark data point (TRD §6.3's
- * fixed performance-test protocol).
+ * {@link SyntheticTokenSequences} for one pairwise-curve benchmark data point, following the
+ * fixed performance-test protocol.
  */
 public record TokenSequencePair(List<String> sequenceA, List<String> sequenceB) {
 

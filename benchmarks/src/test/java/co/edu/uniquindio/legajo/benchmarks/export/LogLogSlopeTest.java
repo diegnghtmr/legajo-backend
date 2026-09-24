@@ -9,9 +9,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Unit tests for the least-squares log-log slope (TRD §6.3/§6.4/§6.5's empirical-vs-theoretical
- * complexity comparison, TAC-18). Written before {@link LogLogSlope} exists
- * (odd/tasks/jmh-benchmarks.md, task J2: strict TDD).
+ * Unit tests for the least-squares log-log slope (the empirical-vs-theoretical complexity
+ * comparison). Written before {@link LogLogSlope} exists (strict TDD).
  */
 class LogLogSlopeTest {
 
