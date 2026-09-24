@@ -17,20 +17,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
 
 /**
- * End-to-end proof, over a real listening HTTP port (no MockMvc), of the acceptance
- * criteria the feature document's task A3 names explicitly:
+ * End-to-end proof, over a real listening HTTP port (no MockMvc), of this feature's
+ * acceptance criteria:
  *
  * <ul>
- *   <li><b>TAC-01</b>: a default {@code POST /similarity/compare} request (no
+ *   <li>A default {@code POST /similarity/compare} request (no
  *       {@code algorithmIds}) returns six rows, each carrying {@code degenerate}, and
  *       {@code GET /similarity/algorithms} returns exactly six ids including
  *       {@code needleman-wunsch}.</li>
- *   <li><b>TAC-05</b>: every exposed {@code normalizedScore} is within {@code [0,1]} (the
+ *   <li>Every exposed {@code normalizedScore} is within {@code [0,1]} (the
  *       ±1e-9 overshoot {@link co.edu.uniquindio.legajo.similarity.SimilarityResult}
  *       documents included), and {@code POST /similarity/matrix}'s diagonal is
  *       {@code 1.0 ± 1e-9} — asserted against the real reference corpus (n = 20), not a
  *       toy fixture.</li>
- *   <li><b>TAC-06</b>: for each of the six capabilities, the value the trace endpoint
+ *   <li>For each of the six capabilities, the value the trace endpoint
  *       exposes as "the computed value" (the DP matrix's bottom-right cell for the two DP
  *       algorithms, the coefficient/cosine/normalizedScore field for the other four)
  *       equals the {@code normalizedScore} (or, for the two DP algorithms, the
@@ -50,7 +50,7 @@ class SimilarityEndToEndTest {
     private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
     @Test
-    void tac01DefaultCompareReturnsSixRowsEachWithDegenerate() throws IOException, InterruptedException {
+    void defaultCompareReturnsSixRowsEachWithDegenerate() throws IOException, InterruptedException {
         JsonNode catalogue = getJson("/api/v1/similarity/algorithms");
         assertThat(catalogue).hasSize(6);
         List<String> catalogueIds = catalogue.valueStream().map(n -> n.get("id").asString()).toList();
@@ -68,9 +68,9 @@ class SimilarityEndToEndTest {
     }
 
     /**
-     * Task A5 (feature doc {@code rest-api.md}): {@code cached} must be real, not always
+     * {@code cached} must be real, not always
      * {@code false}. This is deliberately its own test rather than folded into {@code
-     * tac01...} above: {@code SimilarityService}'s cache is a Spring singleton shared by
+     * defaultCompareReturnsSixRowsEachWithDegenerate} above: {@code SimilarityService}'s cache is a Spring singleton shared by
      * every test in this class (and every other {@code @SpringBootTest} that boots the same
      * {@code RANDOM_PORT} context), so asserting "the very first call for this exact
      * (algorithm, pair) key is a miss" only holds for a key genuinely untouched by any other
@@ -92,7 +92,7 @@ class SimilarityEndToEndTest {
     }
 
     @Test
-    void tac05EveryExposedScoreIsInZeroOneAndTheMatrixDiagonalIsOne() throws IOException, InterruptedException {
+    void everyExposedScoreIsInZeroOneAndTheMatrixDiagonalIsOne() throws IOException, InterruptedException {
         JsonNode compareResults = postJson(
                 "/api/v1/similarity/compare", "{\"documentIdA\":\"d03\",\"documentIdB\":\"d09\"}");
         for (JsonNode row : compareResults) {
@@ -116,7 +116,7 @@ class SimilarityEndToEndTest {
     }
 
     @Test
-    void tac06TheTraceValueAlwaysEqualsThePublishedScore() throws IOException, InterruptedException {
+    void theTraceValueAlwaysEqualsThePublishedScore() throws IOException, InterruptedException {
         String documentIdA = "d05";
         String documentIdB = "d14";
 
@@ -151,7 +151,7 @@ class SimilarityEndToEndTest {
             };
 
             assertThat(traceValue)
-                    .as("trace value for %s must equal the published score (NFR-QA-03)", algorithmId)
+                    .as("trace value for %s must equal the published score", algorithmId)
                     .isCloseTo(publishedValue, offset(1e-9));
         }
     }

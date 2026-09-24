@@ -23,10 +23,11 @@ import java.util.function.Predicate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Task A6's route-drift half of TC-08: {@code docs/openapi-legajo.yaml} must name exactly
+ * The route-drift half of the OpenAPI contract check: {@code docs/openapi-legajo.yaml} must
+ * name exactly
  * the (method, path) pairs the running application actually maps, in both directions — a
  * removed endpoint left in the YAML, or a new endpoint never added to it, must fail the
- * build (TAC-12, TRD ADR-010).
+ * build.
  *
  * <p>Two live sources feed the "actually maps" side, since Spring Boot registers
  * {@code /api/v1/**} controllers and the actuator health endpoint through two different
@@ -35,8 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@code /api/v1/test-only/**} ({@code BuggyTestOnlyController}) is deliberately excluded —
  * it is a test-only fixture that only exists on the test classpath to exercise error
  * mappings (see its own Javadoc), never a documented endpoint — and so is actuator's own
- * {@code /actuator} link-discovery root, which TRD §6.6's endpoint table never lists (only
- * {@code /actuator/health} is fixed there).
+ * {@code /actuator} link-discovery root, which this contract's endpoint table never lists
+ * (only {@code /actuator/health} is fixed there).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 class OpenApiRouteConformanceTest {

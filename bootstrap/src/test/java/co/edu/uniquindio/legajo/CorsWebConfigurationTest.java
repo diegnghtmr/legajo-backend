@@ -11,8 +11,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §14.1/§6.6/§14.4 (1.3.8): {@code legajo.cors-origins} must drive real CORS
- * configuration for the REST API (prefix {@code /api/v1}, TRD §6.6). An empty or absent
+ * {@code legajo.cors-origins} must drive real CORS
+ * configuration for the REST API (prefix {@code /api/v1}). An empty or absent
  * value falls back to the local development defaults ({@link LegajoProperties} resolves
  * this before {@link CorsWebConfiguration} ever sees the list); a defined list replaces
  * those defaults instead of adding to them; and an empty {@code allowedOrigins} list is
@@ -22,7 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * hands {@code addCorsMappings} — not an end-to-end MockMvc call against
  * {@code /actuator/health} — because actuator endpoints are served by a separate mapping
  * ({@code WebMvcEndpointHandlerMapping}) that never consults {@code WebMvcConfigurer}'s CORS
- * registry at all; the REST controllers this configuration is actually for land in A3/A4.
+ * registry at all; the REST controllers this configuration is actually for are the similarity,
+ * clustering, corpus and embeddings controllers.
  */
 class CorsWebConfigurationTest {
 

@@ -15,11 +15,11 @@ import java.util.stream.Collectors;
 
 /**
  * Entry point for {@code ./gradlew :bootstrap:validateCorpus --args="--ids=d01,d02"}
- * or {@code --args="--all"} (TRD §6.1, item 5). Requires one of the two flags: manual
- * validation is "the only mandatory control" and must be an explicit author action,
+ * or {@code --args="--all"}. Requires one of the two flags: manual
+ * validation is the only mandatory control and must be an explicit author action,
  * never a default this CLI could silently take.
  *
- * <p><b>Testable entry points (CLI-contracts advisory).</b> {@code main} composes
+ * <p><b>Testable entry points.</b> {@code main} composes
  * {@link #resolveCorpusPath(String[])} (pure argument parsing) and {@link
  * #run(ValidateCorpus, Map, String, PrintStream, PrintStream)} (orchestration and exit
  * code, taking an already-constructed {@link ValidateCorpus}), so a test can exercise

@@ -17,7 +17,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * {@code verifyCorpus}'s argument and exit-code contract (CLI-contracts advisory):
+ * {@code verifyCorpus}'s argument and exit-code contract:
  * {@link VerifyCorpusCli#resolveCorpusPath(String[])} (pure argument parsing) and
  * {@link VerifyCorpusCli#run(VerifyCorpus, String, PrintStream, PrintStream)}
  * (orchestration and exit code) against a filesystem-backed {@link JsonCorpusRepository}

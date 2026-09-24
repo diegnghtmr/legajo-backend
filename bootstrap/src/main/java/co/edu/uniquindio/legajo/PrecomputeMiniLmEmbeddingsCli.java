@@ -22,10 +22,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Entry point for {@code ./gradlew :bootstrap:precomputeEmbeddings [--args="..."]}
- * (TRD §6.1, §6.3, §9): runs {@code all-MiniLM-L6-v2} locally over every document's
+ * Entry point for {@code ./gradlew :bootstrap:precomputeEmbeddings [--args="..."]}:
+ * runs {@code all-MiniLM-L6-v2} locally over every document's
  * abstract in {@code corpus.json} and writes {@code embeddings-minilm.json}, binding it to
- * the loaded corpus's {@code corpusSha256} (TRD §6.1's "frozen" definition) so a stale cache
+ * the loaded corpus's frozen {@code corpusSha256} so a stale cache
  * fails closed at load time ({@link JsonEmbeddingRepository}).
  *
  * <p>A plain {@code main}, like {@link IngestCli} and {@link VerifyCorpusCli}: a one-shot
@@ -42,7 +42,7 @@ import java.util.Map;
  * micrometer artifact reproduces it alone, only the full set together). The
  * {@code precomputeEmbeddings} task's classpath is scoped to avoid this.
  *
- * <p><b>Testable entry point (CLI-contracts advisory).</b> Running the embedder needs
+ * <p><b>Testable entry point.</b> Running the embedder needs
  * the real ONNX/tokenizer native libraries and either a network download or a
  * pre-populated {@code build/models/minilm/} cache, so {@code main}'s argument
  * resolution is isolated in {@link #resolveOptions(String[])} (pure parsing/defaulting,

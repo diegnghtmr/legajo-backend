@@ -6,7 +6,8 @@ import co.edu.uniquindio.legajo.port.EmbeddingRepository;
 import java.util.Objects;
 
 /**
- * TRD §6.1/§9, TAC-13 ("corpusSha256 discrepante → error de arranque"): validates, once, every
+ * A mismatched {@code corpusSha256} must fail application startup, not surface as a runtime
+ * error later: validates, once, every
  * embedding cache the configured {@link EmbeddingProviderMode} actually serves against the
  * corpus it was bound to at construction time — so a stale or mismatched cache stops the
  * application from starting instead of surfacing as a 500 Problem Detail on the first request
@@ -18,9 +19,9 @@ import java.util.Objects;
  * EmbeddingProviderMode#LIVE}, {@code DomainConfiguration} swaps that bean for {@code
  * LiveApiEmbeddingRepository}, which fetches vectors from the remote model at request time and
  * never reads {@code data/embeddings-openai.json}; that file's staleness cannot affect a
- * running live-mode server, and TRD keeps a missing/misconfigured live client out of startup
- * entirely ("clave ausente responden 503", never a boot failure) — validating it here would
- * fail the boot for a file nothing is serving.
+ * running live-mode server, and a missing or misconfigured live client is deliberately kept
+ * out of startup entirely (it answers 503 on first use, never a boot failure) — validating it
+ * here would fail the boot for a file nothing is serving.
  *
  * <p>{@link #validate()} calls {@link EmbeddingRepository#load()} exactly the same way {@code
  * SimilarityService}/{@code ClusteringService}/{@code EmbeddingsService} do per request; a
@@ -34,7 +35,7 @@ import java.util.Objects;
  *
  * <p>Any {@code load()} failure stops the boot, not only a {@code corpusSha256} mismatch: a
  * served cache file that is missing, unreadable or malformed is as unusable as a stale one, and
- * failing at startup is the same fail-closed rule the TRD applies to the mismatch.
+ * the same fail-closed rule that applies to the mismatch applies here too.
  */
 final class EmbeddingCacheStartupValidator {
 

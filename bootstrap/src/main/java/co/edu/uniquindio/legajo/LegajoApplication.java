@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * Composition root. Wires {@code :domain}, {@code :application}, and {@code :infrastructure}
- * together; no business logic lives here (TRD §4.3).
+ * together; no business logic lives here.
  */
 @SpringBootApplication
 public class LegajoApplication {

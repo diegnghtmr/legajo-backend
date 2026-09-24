@@ -6,10 +6,10 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Makes {@code legajo.cors-origins} genuinely drive CORS (TRD §14.1/§14.3), the second of
+ * Makes {@code legajo.cors-origins} genuinely drive CORS, the second of
  * the two dead configuration keys this feature makes live.
  *
- * <p><b>Defaults and replacement live in {@link LegajoProperties} (TRD §14.4, 1.3.8).</b>
+ * <p><b>Defaults and replacement live in {@link LegajoProperties}.</b>
  * {@link LegajoProperties#corsOrigins()} already resolves an empty or absent
  * {@code LEGAJO_CORS_ORIGINS} to the local development origins, and a defined list already
  * replaces those defaults rather than adding to them — this class only registers whatever

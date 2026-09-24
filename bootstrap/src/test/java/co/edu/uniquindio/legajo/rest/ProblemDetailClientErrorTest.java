@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * Client mistakes that Spring MVC itself already classifies must keep their own status
- * instead of collapsing into the catch-all 500 (TRD §6.6, RFC 9457). An unscoped
+ * instead of collapsing into the catch-all 500 (RFC 9457). An unscoped
  * {@code @ExceptionHandler(Exception.class)} runs before Spring's own resolver, so without a
  * dedicated base these requests would each answer 500 and be logged at ERROR as if the
  * server had failed. Every case still returns a Problem Detail body.

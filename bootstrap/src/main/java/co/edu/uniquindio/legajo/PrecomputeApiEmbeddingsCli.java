@@ -16,16 +16,16 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Entry point for {@code ./gradlew :bootstrap:precomputeApiEmbeddings [--args="..."]}
- * (TRD §6.1, §6.3, §8, §9, ADR-015): calls {@code gemini-embedding-2-preview} through its
+ * Entry point for {@code ./gradlew :bootstrap:precomputeApiEmbeddings [--args="..."]}:
+ * calls {@code gemini-embedding-2-preview} through its
  * OpenAI-compatible layer over every document's abstract in {@code corpus.json} and writes
  * {@code embeddings-openai.json}, binding it to the loaded corpus's {@code corpusSha256} so a
  * stale cache fails closed at load time ({@link JsonEmbeddingRepository}) — mirroring
  * {@link PrecomputeMiniLmEmbeddingsCli}'s shape for the local provider.
  *
  * <p><b>Live network call, unlike the MiniLM CLI.</b> This CLI needs five environment
- * variables set with real values (TRD §14.1's "Variables de entorno del modo en vivo de
- * embedding-api (fijadas)"): {@code SPRING_AI_OPENAI_API_KEY}, {@code
+ * variables set with real values, all of them fixed inputs for the live embedding-api mode:
+ * {@code SPRING_AI_OPENAI_API_KEY}, {@code
  * SPRING_AI_OPENAI_BASE_URL}, {@code SPRING_AI_OPENAI_EMBEDDING_EMBEDDINGS_PATH}, {@code
  * LEGAJO_EMBEDDING_API_MODEL}, {@code LEGAJO_EMBEDDING_API_DIMENSION}. It fails fast, before
  * calling the network, if any is missing — never fabricating a cache from a partial or failed
@@ -39,14 +39,14 @@ import java.util.function.Function;
  * for {@code spring.ai.openai.embedding.*} in 2.0.x has no {@code embeddings-path} property,
  * and {@link org.springframework.ai.openai.OpenAiEmbeddingOptions.Builder} exposes no such
  * setter (verified against the Spring AI 2.0.0 reference docs). The SDK always POSTs to
- * {@code {base-url}/embeddings}, which is exactly Gemini's OpenAI-compatible layout (TRD §8:
- * {@code https://generativelanguage.googleapis.com/v1beta/openai} + {@code /embeddings}), so
+ * {@code {base-url}/embeddings}, which is exactly Gemini's OpenAI-compatible layout
+ * ({@code https://generativelanguage.googleapis.com/v1beta/openai} + {@code /embeddings}), so
  * this integration needs no override in practice; this class still reads the variable and
  * only warns if it is set to something other than {@code /embeddings}, since Spring AI 2.0.x
- * has nowhere to route it. Worth confirming with the author whether the TRD should drop this
- * variable or note the version-specific gap, the same way S5 flagged its own TRD ambiguity.
+ * has nowhere to route it. This variable and its version-specific gap may be worth documenting
+ * explicitly for future maintainers.
  *
- * <p><b>Testable entry point (CLI-contracts advisory).</b> The live network call in
+ * <p><b>Testable entry point.</b> The live network call in
  * {@code main} cannot be exercised in a fast unit test, but every fail-closed check
  * that must happen before that call — missing/blank required environment variables, a
  * malformed or non-positive dimension, the embeddings-path mismatch warning — is
@@ -132,8 +132,8 @@ public final class PrecomputeApiEmbeddingsCli {
         String value = environment.apply(name);
         if (value == null || value.isBlank()) {
             throw new IllegalStateException(
-                    "Environment variable " + name + " is required to run the embedding-api precompute "
-                            + "(TRD §14.1); it is missing or blank. Never fabricate embeddings-openai.json without it.");
+                    "Environment variable " + name + " is required to run the embedding-api precompute; "
+                            + "it is missing or blank. Never fabricate embeddings-openai.json without it.");
         }
         return value;
     }

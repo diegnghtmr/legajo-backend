@@ -9,7 +9,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
 /**
- * Enforces the hexagonal dependency rules from TRD §4.3 and backend/AGENTS.md:
+ * Enforces this codebase's hexagonal dependency rules:
  * domain depends on nothing, application depends on domain, infrastructure depends on
  * application and domain, and bootstrap depends on everything. Runs against the whole
  * module classpath because {@code :bootstrap} is the only module that pulls in every

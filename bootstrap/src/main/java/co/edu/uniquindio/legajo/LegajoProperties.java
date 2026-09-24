@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * The project's first {@code @ConfigurationProperties}: binds {@code
  * legajo.embedding-provider} and {@code legajo.cors-origins}, both already declared in
- * {@code application.yml} (TRD §14.1) but read by nothing before this feature.
+ * {@code application.yml} but read by nothing before this feature.
  *
  * <p>{@code embeddingProvider} defaults to {@link EmbeddingProviderMode#CACHED} — matching
  * {@code application.yml}'s own placeholder default ({@code
@@ -16,7 +16,7 @@ import java.util.List;
  * unrecognized string, since {@link EmbeddingProviderMode#fromId} throws; a typo in this
  * property used to be silently ignored, now it fails closed instead.
  *
- * <p>{@code corsOrigins} (TRD §14.4, 1.3.8): {@code application.yml}'s own placeholder
+ * <p>{@code corsOrigins}: {@code application.yml}'s own placeholder
  * default ({@code ${LEGAJO_CORS_ORIGINS:}}) resolves to an empty string, and Spring Boot's
  * relaxed binding converts that to zero elements, not one blank element. When the bound list
  * is null, empty, or holds only blank entries, this record substitutes {@link
@@ -32,7 +32,7 @@ import java.util.List;
 @ConfigurationProperties(prefix = "legajo")
 public record LegajoProperties(EmbeddingProviderMode embeddingProvider, List<String> corsOrigins) {
 
-    /** TRD §14.4 (1.3.8): origins allowed when {@code LEGAJO_CORS_ORIGINS} is empty or absent. */
+    /** Origins allowed when {@code LEGAJO_CORS_ORIGINS} is empty or absent. */
     public static final List<String> DEFAULT_CORS_ORIGINS = List.of("http://localhost:5173", "http://localhost");
 
     public LegajoProperties {

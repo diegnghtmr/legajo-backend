@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 /**
- * TRD §14.4 (1.3.8): with {@code LEGAJO_CORS_ORIGINS} empty or absent, the server allows
+ * With {@code LEGAJO_CORS_ORIGINS} empty or absent, the server allows
  * exactly the two local development origins — {@code http://localhost:5173} (Vite dev
  * server) and {@code http://localhost} (the Compose frontend on :80) — and no other origin.
  * A real CORS preflight against a live controller under {@code /api/v1/**}

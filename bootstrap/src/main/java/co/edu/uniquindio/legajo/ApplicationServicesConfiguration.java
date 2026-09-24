@@ -18,11 +18,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Registers the four A2 application services ({@code CorpusService}, {@code
- * SimilarityService}, {@code ClusteringService}, {@code EmbeddingsService} — the names
- * {@code backend/AGENTS.md}'s application map already lists, plus {@code EmbeddingsService}
- * for {@code GET /embeddings/status}, not previously in that map) as Spring beans, so the
- * REST controllers of A3/A4 can simply {@code @Autowired} them. Every service stays
+ * Registers the application services ({@code CorpusService}, {@code
+ * SimilarityService}, {@code ClusteringService}, {@code EmbeddingsService} for
+ * {@code GET /embeddings/status}) as Spring beans, so the
+ * REST controllers can simply {@code @Autowired} them. Every service stays
  * framework-free; only this configuration class (in {@code bootstrap}) knows about Spring.
  *
  * <p>{@code @Qualifier} disambiguates the two same-typed {@link EmbeddingRepository} beans
@@ -30,7 +29,7 @@ import org.springframework.context.annotation.Configuration;
  * apiEmbeddingRepository}) — {@code SimilarityService} and {@code ClusteringService} both
  * need both caches, one per embedding-based capability/representation.
  *
- * <p>{@code similarityCache}/{@code clusteringCache} (task A5) are disambiguated by their
+ * <p>{@code similarityCache}/{@code clusteringCache} are disambiguated by their
  * full generic type instead — {@link CacheConfiguration} declares each {@code @Bean}
  * factory method with its own {@code RequestCache<K, V>} return type, and Spring resolves
  * these constructor parameters against that declared generic type, not just the erased
@@ -69,11 +68,12 @@ public class ApplicationServicesConfiguration {
     }
 
     /**
-     * Exposes {@code legajo.embedding-provider}'s already-bound, typed value (A1's
-     * {@link LegajoProperties}) as its own bean, so {@code EmbeddingsController} (A4) can
+     * Exposes {@code legajo.embedding-provider}'s already-bound, typed value
+     * ({@link LegajoProperties}) as its own bean, so {@code EmbeddingsController} can
      * receive it by constructor injection without depending on {@link LegajoProperties}
-     * itself — {@code infrastructure} may not depend on {@code bootstrap} (ArchUnit,
-     * TRD §4.3), and this is the one value {@code EmbeddingsController} needs from it.
+     * itself — {@code infrastructure} may not depend on {@code bootstrap} (enforced by
+     * ArchUnit as one of this codebase's hexagonal dependency rules), and this is the one
+     * value {@code EmbeddingsController} needs from it.
      */
     @Bean
     public EmbeddingProviderMode embeddingProviderMode(LegajoProperties legajoProperties) {

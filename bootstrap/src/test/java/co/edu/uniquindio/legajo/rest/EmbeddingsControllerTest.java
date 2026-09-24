@@ -11,11 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * {@code GET /api/v1/embeddings/status} (TRD §6.6, fixed by TRD 1.3.6, feature doc task A4):
+ * {@code GET /api/v1/embeddings/status}:
  * one response carrying both embedding families, one object per capability. {@code
  * embedding-local} carries {@code device}; {@code embedding-api} carries {@code mode}; both
  * carry {@code provider}, {@code model}, {@code dimension}, {@code corpusSha256} and {@code
- * matchesCorpus} (TAC-13).
+ * matchesCorpus}.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
@@ -45,7 +45,7 @@ class EmbeddingsControllerTest {
     @Test
     void statusReportsMatchesCorpusTrueForTheVersionedReferenceCaches() throws Exception {
         // The versioned data/embeddings-*.json caches are bound to the reference corpus's
-        // own corpusSha256 (TAC-13); on a correctly started server both must match.
+        // own corpusSha256; on a correctly started server both must match.
         mockMvc.perform(get("/api/v1/embeddings/status"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.embeddingLocal.matchesCorpus").value(true))

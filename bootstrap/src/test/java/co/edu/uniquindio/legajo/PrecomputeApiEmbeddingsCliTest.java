@@ -12,8 +12,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
- * {@code precomputeApiEmbeddings}'s argument and fail-closed contract (CLI-contracts
- * advisory). The live network call in {@code main} needs a real OpenAI-compatible
+ * {@code precomputeApiEmbeddings}'s argument and fail-closed contract.
+ * The live network call in {@code main} needs a real OpenAI-compatible
  * endpoint, so this exercises {@link
  * PrecomputeApiEmbeddingsCli#resolveConfig(String[], PrintStream, Function)} —
  * everything that must happen before that call — against an injected fake environment,

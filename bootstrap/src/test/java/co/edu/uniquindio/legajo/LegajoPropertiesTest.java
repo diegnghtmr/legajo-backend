@@ -8,14 +8,14 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §14.1 / feature doc: {@code legajo.embedding-provider} and {@code legajo.cors-origins}
+ * {@code legajo.embedding-provider} and {@code legajo.cors-origins}
  * are declared in {@code application.yml} but read by nothing today (dead configuration,
  * same shape as {@code LEGAJO_GROBID_URL}). This is the first {@code @ConfigurationProperties}
  * in the project; these tests prove the two keys are genuinely bound, with the exact
  * defaults {@code application.yml}'s placeholders already promise
  * ({@code ${LEGAJO_EMBEDDING_PROVIDER:cached}}, {@code ${LEGAJO_CORS_ORIGINS:}}) — the latter
  * resolved by {@link LegajoProperties} itself into the two local development origins
- * (TRD §14.4, 1.3.8) whenever the bound list is empty.
+ * whenever the bound list is empty.
  */
 class LegajoPropertiesTest {
 

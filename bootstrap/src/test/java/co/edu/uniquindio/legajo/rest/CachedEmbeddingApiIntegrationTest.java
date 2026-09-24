@@ -20,8 +20,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * {@code legajo.embedding-provider=cached} (the default, demo profile) must never contact the
- * network, even when {@code spring.ai.openai.base-url} happens to be set (feature doc task
- * A8, TRD §6.3: "El modo {@code cached} ... nunca contacta la red"). {@code
+ * network, even when {@code spring.ai.openai.base-url} happens to be set: cached mode must
+ * never reach the network under any configuration. {@code
  * spring.ai.openai.base-url} points at a real {@link WireMockServer} with <b>no stub
  * registered</b>: if any code path wrongly built a live client and called it, the request
  * would either fail to connect or hit WireMock's default unmatched-request 404, either way

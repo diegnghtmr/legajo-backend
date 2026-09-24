@@ -5,8 +5,8 @@ import co.edu.uniquindio.legajo.application.benchmarks.BenchmarkReportRepository
 import java.util.Objects;
 
 /**
- * TRD §6.6, fixed by TRD 1.3.10 ("si los archivos faltan o están mal formados, el servidor
- * falla al arrancar, en lugar de publicar una pantalla vacía"): loads the benchmark report
+ * If the benchmark report files are missing or malformed, the server must fail to start
+ * rather than publish an empty screen: loads the benchmark report
  * once, at startup, exactly the same way {@code BenchmarksController} does per request, so a
  * missing or malformed {@code benchmarks/results/jmh-results.csv}/{@code slopes.csv} export
  * stops the boot instead of only surfacing as a 500 on the first {@code GET

@@ -16,7 +16,7 @@ import org.springframework.test.context.TestPropertySource;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Proves the project's first {@code @Configuration} (feature doc, A1) actually registers
+ * Proves the project's first {@code @Configuration} actually registers
  * the beans it promises: {@link CorpusRepository}/{@link EmbeddingRepository} adapters that
  * today are only ever {@code new}-ed by hand in the CLIs, and the six {@code
  * SimilarityAlgorithm} implementations assembled into a {@link SimilarityAlgorithmRegistry}
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Boots the real Spring context (no web layer needed for this assertion) against the
  * real, versioned {@code data/corpus.json}/{@code data/embeddings-*.json} — the same
  * "cached demo, no network" data every other cached-mode path in this codebase already
- * trusts (TAC-13).
+ * trusts.
  */
 @SpringBootTest
 class DomainConfigurationTest {
@@ -48,7 +48,7 @@ class DomainConfigurationTest {
     private org.springframework.context.ApplicationContext applicationContext;
 
     /**
-     * TAC-13 (F3): the real application context must register the startup validator. The
+     * The real application context must register the startup validator. The
      * validator's own tests build a minimal context, so without this check removing the
      * {@code @Bean} would leave them green while the server went back to failing lazily.
      */
@@ -64,8 +64,8 @@ class DomainConfigurationTest {
     }
 
     /**
-     * Both cache-backed beans are wrapped in {@link MemoizingEmbeddingRepository} (feature doc
-     * {@code rest-followups.md}, F3): the startup validator's {@code load()} call and every
+     * Both cache-backed beans are wrapped in {@link MemoizingEmbeddingRepository}: the startup
+     * validator's {@code load()} call and every
      * later request-time call must share the same already-validated, already-parsed cache
      * instead of each re-reading {@code JsonEmbeddingRepository}'s underlying file.
      */
@@ -83,7 +83,7 @@ class DomainConfigurationTest {
     }
 
     /**
-     * {@code R3-registry-order-unproved}: TRD §6.3 lists the six capabilities in a fixed
+     * The six capabilities have a fixed
      * order (levenshtein, needleman-wunsch, jaccard, tfidf-cosine, embedding-local,
      * embedding-api), and {@code SimilarityService.catalogue()}/{@code compare()}'s default
      * both rely on {@code registry.all()} preserving it. The test above only proves the set
@@ -92,13 +92,13 @@ class DomainConfigurationTest {
      * not a test-built one — preserves the declaration order those methods are written in.
      */
     @Test
-    void registryReturnsTheSixAlgorithmsInTheTrdFixedOrder() {
+    void registryPreservesTheDeclaredAlgorithmOrder() {
         assertThat(registry.all()).extracting(a -> a.id()).containsExactly(
                 "levenshtein", "needleman-wunsch", "jaccard", "tfidf-cosine", "embedding-local", "embedding-api");
     }
 
     /**
-     * Feature doc task A8, TRD §6.3: {@code legajo.embedding-provider=live} must switch the
+     * {@code legajo.embedding-provider=live} must switch the
      * {@code apiEmbeddingRepository} bean to {@link LiveApiEmbeddingRepository} — and the
      * context must still start with no {@code SPRING_AI_OPENAI_*}/{@code
      * LEGAJO_EMBEDDING_API_*} variables configured at all, proving the live client is never
@@ -124,9 +124,9 @@ class DomainConfigurationTest {
 
         @Test
         void localEmbeddingRepositoryStaysTheMemoizedJsonAdapterRegardlessOfApiMode() {
-            // embedding-local has no live mode (TRD §6.3): its inference only ever happens in
+            // embedding-local has no live mode: its inference only ever happens in
             // the offline precompute job, so it is still the memoized JsonEmbeddingRepository
-            // adapter (feature doc rest-followups.md, F3), never LiveApiEmbeddingRepository.
+            // adapter, never LiveApiEmbeddingRepository.
             assertThat(localEmbeddingRepository).isInstanceOf(MemoizingEmbeddingRepository.class);
         }
     }
