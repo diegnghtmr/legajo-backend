@@ -5,7 +5,8 @@ import java.util.Objects;
 
 /**
  * Immutable output of {@link TextPreprocessor}: the final token stream and whether
- * Porter stemming (TRD §6.2, step 5) was applied, so downstream traces can report the
+ * Porter stemming (step 5 of the preprocessing pipeline) was applied, so downstream
+ * traces can report the
  * {@code preprocess.stemming} flag alongside the tokens it produced.
  */
 public record PreprocessedText(List<String> tokens, boolean stemmingApplied) {

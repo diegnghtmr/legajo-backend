@@ -6,12 +6,12 @@ import java.util.Objects;
 import java.util.TreeSet;
 
 /**
- * Set-based trace for the {@code jaccard} capability (TRD §6.3; PRD HU-1.6): the two token
+ * Set-based trace for the {@code jaccard} capability: the two token
  * sets {@code S_A}/{@code S_B}, their intersection and union with explicit sizes, and the
  * resulting coefficient.
  *
- * <p><b>Deterministic ordering (chosen for this trace).</b> The TRD fixes a backtrace tie
- * order for the two DP traces but does not fix an order for set listings — sets carry no
+ * <p><b>Deterministic ordering (chosen for this trace).</b> There is a fixed backtrace tie
+ * order for the two DP traces but no fixed order for set listings — sets carry no
  * inherent order, and the token streams' original order is lost once each side is reduced to
  * a set. This trace publishes {@code setA}, {@code setB}, {@code intersection}, and
  * {@code union} sorted ascending by Java's natural {@link String} order
@@ -24,7 +24,7 @@ import java.util.TreeSet;
  * unionSize} must match their listing's size, {@code intersection} must equal
  * {@code setA ∩ setB}, {@code union} must equal {@code setA ∪ setB}, and {@code coefficient}
  * must equal {@code intersectionSize / unionSize} (or {@code 1.0} when {@code unionSize} is
- * 0, the both-empty convention TRD §6.3 fixes for the otherwise-undefined 0/0 case).
+ * 0, the fixed both-empty convention for the otherwise-undefined 0/0 case).
  */
 public record JaccardTrace(
         String algorithmId,

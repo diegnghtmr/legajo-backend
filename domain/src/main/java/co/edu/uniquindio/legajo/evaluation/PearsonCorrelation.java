@@ -5,9 +5,9 @@ import co.edu.uniquindio.legajo.similarity.NumericGuards;
 import java.util.Objects;
 
 /**
- * Hand-written Pearson correlation (R-02: no statistics or linear-algebra library), the
- * general-purpose primitive {@link CopheneticCorrelation} builds on to compare a tree's
- * cophenetic distances against D (TRD §6.5).
+ * Hand-written Pearson correlation (no library implements it: no statistics or
+ * linear-algebra library), the general-purpose primitive {@link CopheneticCorrelation}
+ * builds on to compare a tree's cophenetic distances against D.
  *
  * <p>Uses the two-pass centered form: take each array's mean, then accumulate the centered
  * products and squares. The one-pass {@code r = (n*Sxy - Sx*Sy) / sqrt(...)} form is
@@ -49,7 +49,7 @@ public final class PearsonCorrelation {
         // x = y = (1e-5, 2e-5, 3e-5) has true r = 1 but yields a variance term of 6e-10,
         // which an absolute 1e-9 floor would read as "no variance". Cophenetic correlation is
         // fed cosine distances that get this small when the corpus holds near-duplicate
-        // abstracts, so the primary ranking signal (TRD §6.5) would fail closed on legitimate
+        // abstracts, so the primary ranking signal would fail closed on legitimate
         // input. Second, the raw form subtracts two large nearly-equal quantities and loses
         // precision to cancellation; centering first avoids that.
         double meanX = 0.0;

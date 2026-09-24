@@ -10,10 +10,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * The cophenetic distance matrix derived from a merge tree (TRD §6.5): the cophenetic
+ * The cophenetic distance matrix derived from a merge tree: the cophenetic
  * distance between observations {@code i} and {@code j} is the merge height of the first
  * cluster that contains both. {@link CopheneticCorrelation} is this class's only intended
- * consumer, correlating this matrix against D (TRD §6.5's primary ranking signal).
+ * consumer, correlating this matrix against D as the primary ranking signal.
  *
  * <p><b>How it is built.</b> Walking {@code linkage}'s rows in merge order, row {@code i}
  * joins the leaf sets already accumulated under {@code idx1} and {@code idx2} (leaves are
@@ -21,8 +21,7 @@ import java.util.Objects;
  * meeting for the first time, at exactly this row's {@code mergeDistance} — no pair is ever
  * revisited by a later, larger merge, so "first cluster that contains both" is simply
  * "the merge at which their two sets are joined". O(n²) time overall: the sum of
- * {@code |leftSet| * |rightSet|} across every merge is bounded by n² (TRD §6.5's stated
- * complexity for this step).
+ * {@code |leftSet| * |rightSet|} across every merge is bounded by n².
  */
 public final class CopheneticDistances {
 

@@ -5,15 +5,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Hand-written Levenshtein edit-distance DP core (R-02), generic over {@code List<T>}
- * (TRD §13): the {@link Levenshtein} capability instantiates it over token lists, and
+ * Hand-written Levenshtein edit-distance DP core — no library implements it — generic
+ * over {@code List<T>}: the {@link Levenshtein} capability instantiates it over token lists, and
  * {@code LevenshteinCoreTest} exercises it directly over character lists for the
  * mandatory {@code kitten}/{@code sitting} = 3 check.
  *
  * <p>Standard Wagner–Fischer recurrence: {@code dp[0][j] = j}, {@code dp[i][0] = i},
  * {@code dp[i][j] = dp[i-1][j-1]} on a match, otherwise
  * {@code 1 + min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1])} (substitution, deletion,
- * insertion). The backtrace resolves ties with the fixed order the TRD requires:
+ * insertion). The backtrace resolves ties with the fixed required order:
  * diagonal (match/substitution), then up (deletion), then left (insertion).
  */
 final class LevenshteinCore {

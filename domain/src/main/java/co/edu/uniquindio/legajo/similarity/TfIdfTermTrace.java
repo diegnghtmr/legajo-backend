@@ -3,11 +3,10 @@ package co.edu.uniquindio.legajo.similarity;
 import java.util.Objects;
 
 /**
- * One term's row in a {@link TfIdfCosineTrace} (TRD §6.3: "por término f(t,d), tf, df, idf,
- * peso bruto y peso normalizado"): the raw frequency of {@code term} in each compared
- * document, the corpus-wide document frequency and idf, the raw weight {@code w(t,d) =
- * tf(t,d) · idf(t)}, and the L2-normalized weight (computed against the pair's raw norm,
- * TRD §6.3's explicit "segundo paso").
+ * One term's row in a {@link TfIdfCosineTrace}: the raw frequency of {@code term} in each
+ * compared document, the corpus-wide document frequency and idf, the raw weight {@code
+ * w(t,d) = tf(t,d) · idf(t)}, and the L2-normalized weight (computed against the pair's raw
+ * norm, the fixed, explicit second-pass step).
  *
  * <p>Validated invariants: no negative frequency/df; a row requires {@code frequencyA > 0}
  * or {@code frequencyB > 0} (a term absent from both sides carries {@code tf = w = 0} on
@@ -52,7 +51,7 @@ public record TfIdfTermTrace(
             throw new IllegalArgumentException(
                     "a term row requires a positive frequency in A or B, term was '" + term + "'");
         }
-        // R3-tfidfterm-partial-migration: tfA/tfB/idf used to be validated only implicitly,
+        // tfA/tfB/idf used to be validated only implicitly,
         // through the rawWeight == tf*idf checks below (a non-finite one of these propagates
         // into rawWeightA/rawWeightB and gets rejected there) — finishing the migration onto
         // NumericGuards validates each field directly, with its own attributable message.

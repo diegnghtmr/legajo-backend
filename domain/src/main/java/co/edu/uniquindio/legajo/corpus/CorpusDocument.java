@@ -4,16 +4,16 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * One document of the reference corpus (TRD §9 schema). Field {@code abstractText}
+ * One document of the reference corpus. Field {@code abstractText}
  * maps to the JSON field {@code abstract} — a reserved Java keyword — which the
- * infrastructure JSON adapter (task T4) is responsible for naming on the wire.
+ * infrastructure JSON adapter is responsible for naming on the wire.
  *
  * <p>This record intentionally validates only structural invariants (no null field,
  * an immutable {@code authors} list) and does not enforce business rules such as
  * "non-blank title" or "abstractSha256 matches the recomputed hash": a corpus loaded
  * from disk may violate those rules, and {@link CorpusVerifier} needs to be able to
- * hold such a document in memory in order to report every violation (TRD §6.1, item
- * 6) rather than fail fast at construction time.
+ * hold such a document in memory in order to report every violation rather than
+ * fail fast at construction time.
  */
 public record CorpusDocument(
         String id,

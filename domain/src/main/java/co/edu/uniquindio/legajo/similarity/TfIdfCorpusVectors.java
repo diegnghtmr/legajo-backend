@@ -8,14 +8,14 @@ import java.util.Objects;
 import java.util.TreeSet;
 
 /**
- * Full-vocabulary, L2-normalized TF-IDF vectors for every document in the corpus (TRD
- * §6.3's TF-IDF formulas, materialized over the whole corpus vocabulary rather than a
+ * Full-vocabulary, L2-normalized TF-IDF vectors for every document in the corpus (the
+ * fixed TF-IDF formulas, materialized over the whole corpus vocabulary rather than a
  * single pair). {@link TfIdfCosine}'s own {@code computeVectors} rebuilds weights per pair
  * over only the union of the two compared documents' terms — sound for a pair's cosine,
  * because a term absent from both contributes 0 to the dot product and to both raw norms,
  * so the pairwise cosine is identical either way (proved by
  * {@code TfIdfCorpusVectorsTest#fullVocabularyPairwiseCosineMatchesTfIdfCosinesOwnPairwiseResultTo1e9}).
- * It is not sufficient for RF2's Davies–Bouldin metric (TRD §6.5), which needs every
+ * It is not sufficient for the Davies–Bouldin metric, which needs every
  * document's vector in one shared space to take a centroid (a component-wise mean) and
  * Euclidean distances between centroids — operations that are only meaningful when every
  * vector has the same, corpus-wide set of components in the same order.
@@ -27,12 +27,12 @@ import java.util.TreeSet;
  * {@code List<List<Double>>} of L2-normalized vectors, the same shape it would consume for
  * an embedding-based representation's {@link EmbeddingVector#values()}.
  *
- * <p>Uses the exact formulas already fixed for {@code tfidf-cosine} (TRD §6.3), not a
+ * <p>Uses the exact formulas already fixed for {@code tfidf-cosine}, not a
  * re-derivation: {@code tf(t,d) = 1 + ln f(t,d)} when {@code f(t,d) > 0} else {@code 0};
  * {@code idf(t) = ln((1 + N) / (1 + df(t))) + 1}; {@code w(t,d) = tf(t,d) · idf(t)}; then
  * each document's raw weight vector is L2-normalized. The vocabulary is the sorted
  * ({@link TreeSet}) union of every corpus document's distinct terms, so component order is
- * deterministic and identical for every document (NFR-QA-04).
+ * deterministic and identical for every document.
  */
 public final class TfIdfCorpusVectors {
 
@@ -49,9 +49,10 @@ public final class TfIdfCorpusVectors {
      *
      * <p>A document whose raw weight vector is entirely zero (an empty token stream) cannot
      * be L2-normalized and is rejected, mirroring the fail-closed convention {@link
-     * EmbeddingVector#normalize} already uses for an all-zero raw vector. TRD §6.3 documents
-     * a zero-vector convention only for {@code tfidf-cosine}'s own pairwise degenerate case
-     * (both/one compared abstract empty), not for this whole-corpus materialization; in
+     * EmbeddingVector#normalize} already uses for an all-zero raw vector. There is a
+     * documented zero-vector convention only for {@code tfidf-cosine}'s own pairwise
+     * degenerate case (both/one compared abstract empty), not for this whole-corpus
+     * materialization; in
      * practice a corpus abstract that preprocesses to an empty token stream is not expected
      * (the reference corpus's shortest abstracts are far from empty), so this path exists as
      * an explicit guard rather than a documented convention.
@@ -102,7 +103,7 @@ public final class TfIdfCorpusVectors {
         return List.copyOf(vectors);
     }
 
-    /** {@code tf(t,d) = 1 + ln f(t,d)} when {@code f(t,d) > 0}, else {@code 0} (TRD §6.3). */
+    /** {@code tf(t,d) = 1 + ln f(t,d)} when {@code f(t,d) > 0}, else {@code 0} (the fixed term-frequency formula). */
     private static double termFrequency(int frequency) {
         return frequency > 0 ? 1.0 + Math.log(frequency) : 0.0;
     }

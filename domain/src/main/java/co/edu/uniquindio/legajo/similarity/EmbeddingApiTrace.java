@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Step-by-step evidence for {@code embedding-api} (TRD §6.3's embedding-api trace row): each
+ * Step-by-step evidence for {@code embedding-api} (the embedding-api trace row): each
  * vector's first 8 dimensions and full dimension count, the renormalization to unit length
- * applied on load ({@code preNormL2} provenance for each vector, TRD §6.3, "Invariante de
- * norma unitaria (fijado)"), the sum of squared component differences, the Euclidean
+ * applied on load ({@code preNormL2} provenance for each vector — the fixed unit-norm
+ * invariant), the sum of squared component differences, the Euclidean
  * distance, the {@code clamp(1 − d/√2, 0, 1)} mapping applied, and the provider status.
  *
  * <p>Validated invariants: {@code vectorA}/{@code vectorB} have size {@code dimension};
@@ -15,7 +15,7 @@ import java.util.Objects;
  * {@code min(8, dimension)} components of the corresponding full vector; {@code sumSquaredDiff}
  * equals the hand-computed {@code Σ(u_i − v_i)²} of {@code vectorA} and {@code vectorB};
  * {@code distance} equals {@code √(sumSquaredDiff)}; {@code normalizedScore} equals
- * {@code clamp(1 − distance/√2, 0, 1)} (TRD §6.3, "Capacidades de embedding (fijadas)").
+ * {@code clamp(1 − distance/√2, 0, 1)}, the fixed embedding-score mapping.
  */
 public record EmbeddingApiTrace(
         String algorithmId,

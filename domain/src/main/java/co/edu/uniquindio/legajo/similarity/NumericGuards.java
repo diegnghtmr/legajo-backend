@@ -1,8 +1,8 @@
 package co.edu.uniquindio.legajo.similarity;
 
 /**
- * Shared finiteness guards for a compact constructor's tolerance and range invariants (TRD
- * §6.3, "Doble precisión"). A tolerance or range comparison of the shape {@code Math.abs(actual
+ * Shared finiteness guards for a compact constructor's tolerance and range invariants (every
+ * metric here is computed in double precision). A tolerance or range comparison of the shape {@code Math.abs(actual
  * - expected) > tolerance} is silently {@code false} when either operand is {@code NaN} — a
  * NaN comparison is never {@code >}, {@code <}, or {@code ==} anything, including itself —
  * so every compact constructor that checks a derived {@code double} against an expected
@@ -13,8 +13,8 @@ package co.edu.uniquindio.legajo.similarity;
  * silently); centralizing the rule here means the next capability's compact constructor
  * cannot forget it.
  *
- * <p><b>Deliberately public and shared across the domain's algorithm packages (RF2, TRD
- * §6.4/§6.5).</b> {@code clustering} and {@code evaluation} need this exact rule for their
+ * <p><b>Deliberately public and shared across the domain's algorithm packages.</b>
+ * {@code clustering} and {@code evaluation} need this exact rule for their
  * own compact constructors — {@link co.edu.uniquindio.legajo.clustering.DistanceMatrix}'s
  * symmetry/zero-diagonal/non-negativity checks, the Lance–Williams linkage heights, and the
  * cophenetic/silhouette/Davies–Bouldin metrics all compare a derived {@code double} against

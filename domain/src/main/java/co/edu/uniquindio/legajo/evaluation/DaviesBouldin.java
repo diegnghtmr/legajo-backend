@@ -9,26 +9,26 @@ import java.util.Objects;
 import java.util.OptionalDouble;
 
 /**
- * Davies-Bouldin in V space at a fixed k (TRD §6.5, "Definición de Davies-Bouldin"): an
+ * Davies-Bouldin in V space at a fixed k: an
  * <b>additional</b> partition-quality signal that never replaces the cophenetic criterion.
  *
- * <p><b>Definition (fixed by the TRD).</b> centroid {@code c_i} = mean of cluster {@code i}'s
+ * <p><b>Definition.</b> centroid {@code c_i} = mean of cluster {@code i}'s
  * L2-normalized vectors; {@code sigma_i} = mean Euclidean distance of cluster {@code i}'s
  * members to {@code c_i}; {@code M_ij} = Euclidean distance between centroids {@code c_i} and
  * {@code c_j}; {@code DB = (1/k) * Sum_i max_{j != i} (sigma_i + sigma_j) / M_ij}. Lower is
  * better.
  *
- * <p><b>The {@code M_ij = 0} case (fixed by the TRD).</b> "Si M_ij = 0 (centroides
- * coincidentes) el cociente se toma como +infinito y DB se reporta como null (no definido)
- * para ese k." This class models that {@code null} as {@link OptionalDouble#empty()} rather
+ * <p><b>The {@code M_ij = 0} case.</b> When {@code M_ij = 0} (coincident centroids), the
+ * quotient is taken as {@code +infinity} and DB is reported as undefined for that k.
+ * This class models that undefined value as {@link OptionalDouble#empty()} rather
  * than {@code NaN} or a sentinel double, so a caller cannot accidentally treat "undefined" as
  * a real, comparable DB value. The {@code M_ij == 0} check is an exact equality, not a
  * tolerance: {@code M_ij} is a Euclidean distance and is exactly zero if and only if the two
  * centroids are bit-identical, which needs no magnitude-relative epsilon (the same scale-free
- * guard rule this feature's review already enforced once on {@link PearsonCorrelation}). A
+ * guard rule already enforced once on {@link PearsonCorrelation}). A
  * centroid merely very close to (but not bit-identical to) another still yields a very large
- * but finite, meaningful DB contribution — a different, legitimate case the TRD never asks
- * this class to special-case.
+ * but finite, meaningful DB contribution — a different, legitimate case that never needs
+ * this class to special-case it.
  *
  * <p>A singleton cluster's {@code sigma_i} is 0 (its one member's distance to its own
  * centroid — that member's own vector — is 0), which is legitimate on its own and only feeds
@@ -44,9 +44,9 @@ public final class DaviesBouldin {
 
     /**
      * Davies-Bouldin of {@code assignment} (a fixed-k cut) over {@code l2NormalizedVectors} —
-     * the same L2-normalized vectors the run's representation derives D from (TRD §6.4/§6.5),
+     * the same L2-normalized vectors the run's representation derives D from,
      * never D itself, since this metric lives in V space. Requires
-     * {@code assignment.k() >= 2}, mirroring {@link MeanSilhouette#of}: TRD §6.5's fixed cuts
+     * {@code assignment.k() >= 2}, mirroring {@link MeanSilhouette#of}: the fixed cuts
      * never go below k=2, and {@code max_{j != i}} has no meaning for a single cluster.
      */
     public static OptionalDouble of(ClusterAssignment assignment, List<List<Double>> l2NormalizedVectors) {
@@ -61,7 +61,7 @@ public final class DaviesBouldin {
         int k = assignment.k();
         if (k < 2) {
             throw new IllegalArgumentException(
-                    "Davies-Bouldin requires at least 2 clusters (TRD §6.5's fixed cuts start at k=2), was k="
+                    "Davies-Bouldin requires at least 2 clusters (the fixed cuts start at k=2), was k="
                             + k);
         }
 
@@ -137,7 +137,7 @@ public final class DaviesBouldin {
                     continue;
                 }
                 double mIj = euclideanDistance(centroids[i], centroids[j]);
-                // TRD §6.5: "Si M_ij = 0 ... el cociente se toma como +infinito", regardless
+                // When M_ij = 0 the quotient is taken as +infinity, regardless
                 // of the numerator — an exact equality against 0.0, never a tolerance (see
                 // class Javadoc).
                 double term = mIj == 0.0 ? Double.POSITIVE_INFINITY : (sigma[i] + sigma[j]) / mIj;

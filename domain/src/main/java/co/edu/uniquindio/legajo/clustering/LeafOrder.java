@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The crossing-free leaf ordering a dendrogram SVG needs (TRD §6.4: "leafOrder para un SVG
- * sin cruces"). A depth-first traversal of the merge tree that visits, at each internal
+ * The crossing-free leaf ordering a dendrogram SVG needs. A depth-first traversal of the
+ * merge tree that visits, at each internal
  * node, {@code idx1}'s subtree fully before {@code idx2}'s, emits the original observations
  * in an order where every merge's two children occupy two contiguous, adjacent runs — the
  * property {@link LeafOrderPropertyTest} proves generatively. That contiguity is exactly

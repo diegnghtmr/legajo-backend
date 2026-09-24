@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The header metadata a {@link PdfMetadataExtractor} pulls out of one PDF (TRD §6.1,
- * item 1): title, authors, abstract, and which extractor produced it ({@code
+ * The header metadata a {@link PdfMetadataExtractor} pulls out of one PDF: title,
+ * authors, abstract, and which extractor produced it ({@code
  * "GROBID"} or {@code "PDFBox"}), which the ingestion use case persists verbatim as
  * {@code CorpusDocument.extractedBy}.
  *

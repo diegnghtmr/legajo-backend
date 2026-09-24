@@ -7,30 +7,30 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The validated n×n distance matrix RF2's four linkage criteria consume (TRD §6.4): every
+ * The validated n×n distance matrix the four linkage criteria consume: every
  * entry finite and non-negative, symmetric within {@code TOLERANCE}, and a zero diagonal
  * within the same tolerance (a document's distance to itself is exactly 0 by definition).
  *
- * <p><b>D = 1 − cos(V) (TRD §6.4).</b> {@link #cosineDistance(List)} is the only public way
+ * <p><b>D = 1 − cos(V).</b> {@link #cosineDistance(List)} is the only public way
  * to build one: it takes the L2-normalized vectors of the run's selected representation and
- * derives D by hand (R-02), one cosine per pair, clamped to {@code [-1, 1]} before the
+ * derives D by hand — hand-written; no library implements it — one cosine per pair, clamped to {@code [-1, 1]} before the
  * subtraction so floating-point drift at the boundary (e.g. a self-cosine of
  * {@code 1.0000000001}) can never produce a negative distance that would fail this very
  * class's own non-negativity check. Every input vector's L2 norm is checked to be within
  * tolerance of 1: the precondition ("the representation's L2-normalized vectors") is
  * enforced here, not merely trusted from the caller.
  *
- * <p><b>Ward's base, D_w = 2·D (TRD §6.4).</b> {@link #wardBase()} doubles an existing,
+ * <p><b>Ward's base, D_w = 2·D.</b> {@link #wardBase()} doubles an existing,
  * already-validated {@code DistanceMatrix} — it never accepts a second raw array. This is
- * deliberate: TRD §13's mandatory Ward test requires "el constructor acepta únicamente D
- * derivada de la representación seleccionada (sin entrada de matriz arbitraria)". The
+ * deliberate: the mandatory Ward test requires that the constructor accepts only D
+ * derived from the selected representation, never an arbitrary matrix input. The
  * canonical constructor below is package-private, not public, so no code outside {@code
  * clustering} can hand this type an arbitrary {@code double[][]} and label it a distance
  * matrix: {@link #cosineDistance(List)} (which always derives D from representation
  * vectors) and {@link #wardBase()} (which only ever doubles an existing D) are the sole
  * public entry points. The package-private constructor stays reachable from this class's
  * own validation tests and from the future {@code LanceWilliamsEngine}/linkage classes in
- * this same package (R2/R3) — TRD §13's constraint is really aimed at whichever class ends
+ * this same package — the constraint is really aimed at whichever class ends
  * up modeling the Ward criterion itself, and that class is expected to keep taking a
  * {@code DistanceMatrix} (produced only via {@link #wardBase()}), never a raw array, for
  * exactly this reason.
@@ -89,7 +89,7 @@ public final class DistanceMatrix {
     }
 
     /**
-     * Builds D = 1 − cos(V) (TRD §6.4) by hand from {@code l2NormalizedVectors}, one entry
+     * Builds D = 1 − cos(V) by hand from {@code l2NormalizedVectors}, one entry
      * per document in a fixed order; row/column {@code i} is document {@code i}. Every
      * vector must already be L2-normalized to unit length (within {@code TOLERANCE}) and
      * share the same dimension — the precondition {@code EmbeddingVector} and the
@@ -156,8 +156,8 @@ public final class DistanceMatrix {
     }
 
     /**
-     * D_w = 2·D (TRD §6.4): Ward's base, derived only by doubling this already-validated D
-     * — never accepted as a second raw matrix (see class Javadoc / TRD §13).
+     * D_w = 2·D: Ward's base, derived only by doubling this already-validated D
+     * — never accepted as a second raw matrix (see class Javadoc).
      */
     public DistanceMatrix wardBase() {
         int n = values.length;

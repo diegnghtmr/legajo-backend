@@ -1,12 +1,12 @@
 package co.edu.uniquindio.legajo.clustering;
 
 /**
- * Ward linkage (TRD §6.4 table, "Ward"): alphaI = (n_i+n_k)/n_T, alphaJ = (n_j+n_k)/n_T,
+ * Ward linkage: alphaI = (n_i+n_k)/n_T, alphaJ = (n_j+n_k)/n_T,
  * beta = -n_k/n_T, gamma = 0, where n_T = n_i+n_j+n_k. Unlike the other three criteria this
- * one genuinely needs all three sizes (ADR-011). This class only ever produces coefficients
+ * one genuinely needs all three sizes. This class only ever produces coefficients
  * — it never accepts, builds, or holds a {@link DistanceMatrix}. Feeding Ward the correct
  * base, D_w = 2·D, is {@link LanceWilliamsEngine} and {@link DistanceMatrix#wardBase()}'s
- * job (R3/R4), never this class's (TRD §6.4, "el motor solo comparte el bucle de fusión").
+ * job, never this class's — the merge engine owns only the merge loop.
  */
 public final class WardLinkage implements LinkageCriterion {
 

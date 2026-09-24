@@ -7,20 +7,20 @@ import java.util.Objects;
 
 /**
  * One side of a pairwise comparison, carrying both text representations a
- * {@link SimilarityAlgorithm} might need (TRD §6.3, "Texto de entrada por familia"), plus the
+ * {@link SimilarityAlgorithm} might need (each family has its own input text), plus the
  * precomputed embedding vector the two embedding-based capabilities read instead of
  * re-running model inference at compare time:
  *
  * <ul>
- *   <li>{@code tokens} — the five-step preprocessed stream (TRD §6.2) read by the four
+ *   <li>{@code tokens} — the five-step preprocessed stream read by the four
  *       classical capabilities and by {@code tfidf-cosine};</li>
  *   <li>{@code rawAbstract} — the cleaned-but-unprocessed abstract text that fed the
  *       <em>offline</em> embedding precompute for {@code embedding-local} and
  *       {@code embedding-api}, because each pretrained model owns its own tokenizer
- *       (delegable under R-02) and must not be fed the stopword-stripped, tokenized stream
+ *       (delegable) and must not be fed the stopword-stripped, tokenized stream
  *       meant for the hand-written algorithms;</li>
  *   <li>{@code embeddingVector} — the already-loaded, unit-length {@link EmbeddingVector}
- *       for this document (TRD §6.3, "Invariante de norma unitaria (fijado)"), {@code null}
+ *       for this document (the fixed unit-norm invariant), {@code null}
  *       for every capability that does not need one (Levenshtein, Needleman-Wunsch, Jaccard,
  *       {@code tfidf-cosine}). Whichever caller resolves the corpus's cached vectors (an
  *       application-layer concern, mirroring how {@code tokens} is already resolved before

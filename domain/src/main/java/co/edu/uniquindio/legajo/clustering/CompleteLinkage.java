@@ -1,11 +1,11 @@
 package co.edu.uniquindio.legajo.clustering;
 
 /**
- * Complete linkage (TRD §6.4 table, "Completo"): alphaI = alphaJ = 1/2, beta = 0,
+ * Complete linkage: alphaI = alphaJ = 1/2, beta = 0,
  * gamma = +1/2, independent of the three cluster sizes. The sign flip on gamma versus
  * {@link SingleLinkage} is the entire algebraic difference between nearest-neighbor and
- * farthest-neighbor Lance-Williams updates; {@link LanceWilliamsEngine} (R3) owns the merge
- * loop that actually applies these coefficients (TRD §6.4).
+ * farthest-neighbor Lance-Williams updates; {@link LanceWilliamsEngine} owns the merge
+ * loop that actually applies these coefficients.
  */
 public final class CompleteLinkage implements LinkageCriterion {
 

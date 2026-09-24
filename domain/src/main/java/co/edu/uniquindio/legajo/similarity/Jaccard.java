@@ -6,24 +6,24 @@ import java.util.Optional;
 import java.util.TreeSet;
 
 /**
- * Jaccard coefficient over token sets (TRD §6.3, §13; PRD HU-1.1/HU-1.6), hand-written under
- * R-02: {@code |S_A ∩ S_B| / |S_A ∪ S_B|}, where {@code S_A}/{@code S_B} are the sets built
- * from each side's preprocessed token stream (TRD §6.2) — repeated tokens within one stream
+ * Jaccard coefficient over token sets, hand-written; no library implements it:
+ * {@code |S_A ∩ S_B| / |S_A ∪ S_B|}, where {@code S_A}/{@code S_B} are the sets built
+ * from each side's preprocessed token stream — repeated tokens within one stream
  * collapse to a single set member and do not inflate either side.
  *
- * <p>The coefficient is already in [0,1] (TRD §6.3, "Ya está en [0,1]"), so unlike
+ * <p>The coefficient is already in [0,1], so unlike
  * Levenshtein and Needleman–Wunsch there is no separate raw-score-vs-normalized-score split:
  * {@code rawValue} equals {@code normalizedScore} for every input. When {@code |S_A ∪ S_B| =
- * 0} (both token streams empty), the fundamento itself is the undefined {@code 0/0}, and TRD
- * §6.3 fixes both numbers to {@code 1.0} by convention; a non-empty disjoint pair scores
+ * 0} (both token streams empty), the underlying formula itself is the undefined {@code 0/0},
+ * and both numbers are fixed to {@code 1.0} by convention; a non-empty disjoint pair scores
  * {@code 0.0} from the ordinary formula, needing no special case. {@code degenerate} stays
- * {@code false} always — the TRD reserves that flag exclusively for the TF-IDF null-vector
- * case (§6.3, "Vector nulo de TF-IDF"), not for Jaccard's own empty-input convention (the
+ * {@code false} always — that flag is reserved exclusively for the TF-IDF null-vector
+ * case, not for Jaccard's own empty-input convention (the
  * same pattern already established for Levenshtein/NW's both-empty results).
  *
  * <p>The trace exposes both sets, their intersection and union (sorted ascending by natural
  * {@link String} order — see {@link JaccardTrace} for the ordering rationale), their sizes,
- * and the resulting coefficient (PRD HU-1.6).
+ * and the resulting coefficient.
  */
 public final class Jaccard implements SimilarityAlgorithm {
 

@@ -11,7 +11,7 @@ import java.util.Optional;
  * Framework-free collector for every {@link SimilarityAlgorithm} the application wires
  * up. Nothing in this class ever gathers a {@code @Component} bean itself: {@code
  * bootstrap}'s {@code DomainConfiguration} declares each of the six algorithms as its own
- * {@code @Bean} factory method, in TRD §6.3's fixed order, and Spring's ordered list
+ * {@code @Bean} factory method, in the fixed order, and Spring's ordered list
  * injection collects the resulting {@code List<SimilarityAlgorithm>} into this
  * constructor's parameter — the domain module itself never depends on Spring, and never
  * sees an annotation.

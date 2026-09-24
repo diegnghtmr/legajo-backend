@@ -7,15 +7,14 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Flat-cluster extraction by cutting a {@link LinkageMatrix} at a fixed {@code k} (TRD §6.4:
- * "corte solo por k, con k ∈ [2, n-1]"; "sin corte por altura"). This is not one of RF2's
- * numbered tasks, but R7 (mean silhouette), R8 (Davies-Bouldin) and R9 (the ranking rule)
- * all evaluate a fixed-{@code k} partition, and none of them can exist without first turning
- * a merge tree into cluster membership — the feature document tracks this as an implied
- * piece of R5/R6's batch.
+ * Flat-cluster extraction by cutting a {@link LinkageMatrix} at a fixed {@code k}: the cut is
+ * by k alone, with k in [2, n-1], and there is deliberately no height-based cut. This is a
+ * building block for later consumers — mean silhouette, Davies-Bouldin and the ranking rule —
+ * which all evaluate a fixed-{@code k} partition, and none of them can exist without first
+ * turning a merge tree into cluster membership.
  *
  * <p><b>How the cut works.</b> Undoing the last {@code k-1} merges is the same thing as
- * keeping only the first {@code n-k} merges (the TRD's {@code k} range guarantees
+ * keeping only the first {@code n-k} merges (the fixed {@code k} range guarantees
  * {@code 1 <= n-k <= n-2}, so there is always at least one merge kept and at least one
  * undone). This class replays exactly those first {@code n-k} {@link LinkageStep} rows
  * through a union-find over the merge tree's ids — {@code 0..n-1} for the original
@@ -23,8 +22,9 @@ import java.util.Objects;
  * convention {@link LinkageMatrix} already documents — then reads off which of the
  * {@code k} surviving roots each original observation belongs to.
  *
- * <p><b>Deterministic labels (NFR-QA-04 / TAC-10).</b> A union-find's root ids are an
- * accident of merge order, not a stable label a caller (R7-R9, and eventually the REST layer
+ * <p><b>Deterministic labels.</b> A union-find's root ids are an
+ * accident of merge order, not a stable label a caller (mean silhouette, Davies-Bouldin,
+ * the ranking rule, and eventually the REST layer
  * and the frontend) can rely on. This class instead orders the {@code k} surviving clusters
  * by their smallest member's original index and labels them {@code 0..k-1} in that order, so
  * the same linkage matrix always yields the same labels regardless of how the union-find's
@@ -43,7 +43,7 @@ public final class LinkageCut {
 
     /**
      * Cuts {@code linkage} at {@code k}, returning one label per original observation.
-     * {@code k} must be in {@code [2, n-1]} where {@code n = linkage.size() + 1} (TRD §6.4);
+     * {@code k} must be in {@code [2, n-1]} where {@code n = linkage.size() + 1};
      * there is deliberately no height-based cut.
      */
     public static ClusterAssignment cut(LinkageMatrix linkage, int k) {

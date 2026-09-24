@@ -1,8 +1,8 @@
 package co.edu.uniquindio.legajo.corpus;
 
 /**
- * The closed set of rules {@link CorpusVerifier} checks (TRD §6.1, item 6, plus the
- * corpus-wide hash cross-check this verifier also performs).
+ * The closed set of rules {@link CorpusVerifier} checks, plus the
+ * corpus-wide hash cross-check this verifier also performs.
  */
 public enum CorpusRule {
     /** {@code |documents| = sourceCount}. */
@@ -16,8 +16,8 @@ public enum CorpusRule {
     /**
      * No two documents share the same {@code id}. A duplicate id makes {@code
      * corpusSha256} order-ambiguous, because {@link CorpusHasher#corpusSha256} sorts
-     * documents by id before concatenating them (advisory raised in T3's review,
-     * checked here rather than left as a silent hash collision risk).
+     * documents by id before concatenating them,
+     * checked here rather than left as a silent hash collision risk.
      */
     UNIQUE_DOCUMENT_ID,
     /** {@code title} is not empty. */
@@ -26,7 +26,7 @@ public enum CorpusRule {
     NON_EMPTY_AUTHORS,
     /** {@code abstract} is not empty. */
     NON_BLANK_ABSTRACT,
-    /** The preprocessed token stream of {@code abstract} (TRD §6.2) is not empty. */
+    /** The preprocessed token stream of {@code abstract} is not empty. */
     NON_EMPTY_PREPROCESSED_TOKENS,
     /** {@code manuallyValidated = true}. */
     MANUALLY_VALIDATED,

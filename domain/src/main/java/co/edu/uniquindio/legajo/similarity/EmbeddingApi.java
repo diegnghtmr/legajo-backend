@@ -5,27 +5,27 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Euclidean distance over cached {@code gemini-embedding-2-preview} unit vectors (TRD §6.3,
- * "Capacidades de embedding (fijadas)"; ADR-015; PRD HU-1.x), hand-written under R-02:
+ * Euclidean distance over cached {@code gemini-embedding-2-preview} unit vectors, hand-written;
+ * no library implements it:
  * {@code d = ‖u−v‖}, {@code normalizedScore = clamp(1 − d/√2, 0, 1)}, {@code rawValue = d}.
  * Identical vectors ({@code d = 0}) map to 1; orthogonal unit vectors ({@code d = √2}) map to
  * 0; a negative cosine ({@code d > √2}) is clamped to 0, using the same [0,1] anchors as the
- * other five capabilities (TRD §6.3). Over L2-normalized vectors, {@code ‖u−v‖² = 2(1 − cos)},
+ * other five capabilities. Over L2-normalized vectors, {@code ‖u−v‖² = 2(1 − cos)},
  * so this metric and {@link EmbeddingLocal}'s cosine are monotonically related — this is the
- * second metric the enunciado authorizes ("distancia euclidiana o coseno"), deliberately
+ * second metric authorized (Euclidean distance or cosine), deliberately
  * different from {@code embedding-local}'s.
  *
- * <p>Model inference (the provider's own tokenizer and forward pass) is delegable under R-02
+ * <p>Model inference (the provider's own tokenizer and forward pass) is delegable
  * and runs entirely offline, before this class ever runs; this class only ever sees the two
  * documents' already-loaded, already-unit-length {@link EmbeddingVector}s through
  * {@link SimilarityInput#embeddingVector()} — the same shape {@link EmbeddingLocal} consumes.
  *
  * <p><b>Degenerate cases.</b> None: like {@code embedding-local}, embedding inputs are never
- * empty (TRD §6.3, "Vector nulo de TF-IDF (fijado)"), so {@code degenerate} is always
- * {@code false} here.
+ * empty (the fixed null-vector convention for the TF-IDF case does not apply here), so
+ * {@code degenerate} is always {@code false} here.
  *
- * <p><b>Provider status.</b> TRD §6.3's trace row names "estado del proveedor". Where the
- * vectors come from (the versioned cache or the live model, TRD 1.3.7) is decided outside the
+ * <p><b>Provider status.</b> The trace row names the provider status. Where the
+ * vectors come from (the versioned cache or the live model) is decided outside the
  * domain, at startup, so the status is given to this capability when it is built and
  * reported unchanged in every {@link EmbeddingApiTrace#providerStatus()}. The no-argument
  * constructor keeps {@link #PROVIDER_STATUS_CACHED}, the default demo posture.
@@ -111,14 +111,14 @@ public final class EmbeddingApi implements SimilarityAlgorithm {
 
     private static EmbeddingVector requireVector(SimilarityInput input) {
         return Objects.requireNonNull(input.embeddingVector(),
-                "embeddingVector is required for embedding-api (TRD §6.3): "
+                "embeddingVector is required for embedding-api: "
                         + "the caller must attach the cached vector to SimilarityInput before calling compute()/trace()");
     }
 
     /**
-     * Hand-written sum of squared component differences (TRD §3.3: the metric is not
-     * delegable) — {@code Σ(u_i − v_i)²}, the value under the square root of the Euclidean
-     * distance.
+     * Hand-written sum of squared component differences — no library implements it, the
+     * metric is not delegable — {@code Σ(u_i − v_i)²}, the value under the square root of
+     * the Euclidean distance.
      */
     static double sumSquaredDifferences(List<Double> u, List<Double> v) {
         if (u.size() != v.size()) {
@@ -144,7 +144,7 @@ public final class EmbeddingApi implements SimilarityAlgorithm {
     }
 
     /**
-     * {@code clamp(1 − d/√2, 0, 1)} (TRD §6.3, "Capacidades de embedding (fijadas)"). Fails
+     * {@code clamp(1 − d/√2, 0, 1)}, the fixed embedding-score mapping. Fails
      * closed on a non-finite {@code distance} instead of silently propagating it: a bare
      * {@code Math.max}/{@code Math.min} clamp does not reject NaN, it returns NaN, which
      * would otherwise reach callers as a NaN similarity score.

@@ -1,12 +1,12 @@
 package co.edu.uniquindio.legajo.clustering;
 
 /**
- * Average linkage (TRD §6.4 table, "Promedio"): alphaI = n_i/(n_i+n_j),
+ * Average linkage: alphaI = n_i/(n_i+n_j),
  * alphaJ = n_j/(n_i+n_j), beta = 0, gamma = 0 — sizes weight the update so it equals the
  * true mean distance between every member of the merged cluster and k (UPGMA), not the
  * unweighted average of the two parents' distances to k. {@code sizeK} carries no
- * coefficient in the TRD table for this criterion; it is still accepted (the
- * {@link LinkageCriterion} signature is uniform across all four criteria, R2) and simply
+ * coefficient for this criterion; it is still accepted (the
+ * {@link LinkageCriterion} signature is uniform across all four criteria) and simply
  * unused here.
  */
 public final class AverageLinkage implements LinkageCriterion {

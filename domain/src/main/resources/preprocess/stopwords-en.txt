@@ -1,4 +1,4 @@
-# English stopwords for TextPreprocessor (TRD §6.2, step 4).
+# English stopwords for TextPreprocessor (step 4 of the preprocessing pipeline).
 #
 # Source: NLTK's "english" stopword corpus (nltk_data/corpora/stopwords/english),
 # itself derived from the standard Porter/Snowball stopword tradition
