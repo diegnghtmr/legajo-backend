@@ -14,11 +14,11 @@ djlTokenizers = "0.36.0"
 onnxruntime = "1.29.0"
 springAi = "2.0.0"
 wiremock = "3.10.0"
-# Task A6 of the rest-api feature (TRD §5.1: "springdoc-openapi 3.1.x - Linea de Boot 4").
+# springdoc-openapi 3.1.x is the version required for the Spring Boot 4 line.
 # 3.1.1 is the current release built against the Spring Boot 4 line (confirmed against
 # Maven Central's metadata, 2026-09-21).
 springdocOpenapi = "3.1.1"
-# Task A6's drift check (TC-08): validates real MockMvc responses against
+# The drift check that validates real MockMvc responses against
 # docs/openapi-legajo.yaml. Renamed from "swagger-request-validator-*" to
 # "openapi-request-validator-*" at 3.0.0 (still com.atlassian.oai); the mockmvc module's own
 # README states "Compatible with Spring 7+" and targets Jakarta, confirmed by successfully
@@ -44,8 +44,7 @@ jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind" }
 # No version.ref: managed by the Spring Boot BOM infrastructure/build.gradle.kts already
-# imports (TRD §5.1, "Gestionado por BOM"; task A5 of the rest-api feature, TRD §9's
-# "Caffeine regions" runtime cache).
+# imports; used as the runtime cache.
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
 djl-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djlTokenizers" }
 onnxruntime = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }

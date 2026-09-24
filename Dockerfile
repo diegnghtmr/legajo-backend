@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# TRD §14.2: multi-stage build on a pinned Temurin 25 JDK, running on the matching Temurin
+# Multi-stage build on a pinned Temurin 25 JDK, running on the matching Temurin
 # 25 JRE. Both stages pin the exact patch build (25.0.4_7) the team already develops and
 # tests against (.mise.toml: temurin-25.0.4+7.0.LTS), so the image's JVM is never whatever
 # "25" happens to resolve to on the day of the build. Pinned by tag, not by digest: the tag
@@ -32,7 +32,7 @@ RUN --mount=type=cache,target=/root/.gradle \
 FROM eclipse-temurin:25.0.4_7-jre AS runtime
 
 # Container-aware JVM heap bounds, sized for Render's free tier (512 MB total container
-# memory, TRD §14.4). The JVM already auto-detects the cgroup memory limit
+# memory). The JVM already auto-detects the cgroup memory limit
 # (UseContainerSupport has been on by default since JDK 10) and would otherwise default
 # MaxRAMPercentage to 25%; this sets it explicitly instead of relying on that default,
 # because the actual number needs to be justified against this specific container, not
@@ -41,12 +41,12 @@ FROM eclipse-temurin:25.0.4_7-jre AS runtime
 # limit: metaspace (unbounded by default — five Gradle modules' worth of loaded classes),
 # thread stacks (Tomcat's NIO worker pool), Tomcat's direct/off-heap NIO buffers, the JIT
 # code cache, and general OS/JVM overhead. InitialRAMPercentage is kept well below Max
-# (25.0, ~128 MB) so the process starts small during Render's cold start (TRD §14.4 point 4)
+# (25.0, ~128 MB) so the process starts small during Render's cold start
 # and only grows into that headroom under real load, instead of front-loading a large heap
 # it may never need.
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=50.0 -XX:InitialRAMPercentage=25.0"
 
-# TRD §14.2/§9: DomainConfiguration resolves data/corpus.json, data/embeddings-*.json and
+# DomainConfiguration resolves data/corpus.json, data/embeddings-*.json and
 # benchmarks/results/*.csv relative to the process's working directory (bootstrap's
 # build.gradle.kts pins the same convention for `test`/`bootRun`), so the jar and both data
 # directories live as siblings under one WORKDIR here too.
@@ -61,7 +61,7 @@ RUN groupadd --system legajo \
 # configuration, independent of the project version, so this COPY never breaks on a version
 # bump.
 COPY --from=build --chown=legajo:legajo /workspace/bootstrap/build/libs/app.jar /app/app.jar
-# Only the three generated, versioned data files the server actually reads (TRD §6.1):
+# Only the three generated, versioned data files the server actually reads:
 # never data/pdfs/ (git-ignored teacher PDFs, ingestion input only, not read at runtime) and
 # never data/corpus-review.md (a manual-review aid, regenerated as needed, not read either).
 COPY --from=build --chown=legajo:legajo \

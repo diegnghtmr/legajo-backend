@@ -1,6 +1,6 @@
 name: JMH Benchmarks
 
-# TRD §14.3: "Trabajo de JMH manual o disparado por etiqueta" -- never on every push or pull
+# Manual or tag-triggered JMH work -- never on every push or pull
 # request, unlike backend.yml. Anyone can trigger it by hand from the Actions tab, or by
 # pushing a tag matching bench-* (e.g. bench-2026-09-22); the numbers this job produces run on
 # a shared GitHub-hosted runner, not the documented reference harness (see the README's
@@ -17,7 +17,7 @@ permissions:
 jobs:
   jmh:
     runs-on: ubuntu-latest
-    # Generous but bounded: a full NFR-QA-10 run (four pairwise curves, four HAC linkages plus
+    # Generous but bounded: a full JMH run (four pairwise curves, four HAC linkages plus
     # two internal metrics, two embedding dimensions, two SLO suites) on a shared runner should
     # never legitimately need this long; it exists to fail a hung run instead of burning
     # Actions minutes indefinitely.
@@ -35,10 +35,10 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Run the JMH suite (NFR-QA-10's protocol, declared per @Benchmark class)
+      - name: Run the JMH suite (the fixed protocol declared per @Benchmark class)
         run: ./gradlew :benchmarks:jmh
 
-      - name: Export results to CSV and log-log slopes (TAC-18)
+      - name: Export results to CSV and log-log slopes
         run: ./gradlew :benchmarks:jmhExport
 
       - name: Upload benchmark results

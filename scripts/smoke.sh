@@ -1,14 +1,14 @@
 #!/bin/sh
-# TRD §14.2/§14.3: exercises the backend's documented smoke surface against a running
+# Exercises the backend's documented smoke surface against a running
 # instance — health, the published OpenAPI contract, the corpus listing, a real similarity
-# comparison (needleman-wunsch), clustering (Ward), and a CORS preflight (TRD §14.4). Used
+# comparison (needleman-wunsch), clustering (Ward), and a CORS preflight. Used
 # the same way by a developer (README "Checks run in containers") and by CI
 # (.github/workflows/backend.yml's image-smoke job), so "smoke" means the same six checks in
 # both places.
 #
 # Usage: scripts/smoke.sh <base-url>
 #
-# One-command containerized run (TRD §14.2 "verificación solo en contenedores" — curl and
+# One-command containerized run (verification runs only in containers — curl and
 # jq come from the container, never the host):
 #   docker run --rm --network host -v "$(pwd)/scripts:/scripts:ro" -w /scripts \
 #     alpine:3.20 sh -c 'apk add --no-cache curl jq >/dev/null && ./smoke.sh "$1"' _ <base-url>
@@ -40,7 +40,7 @@ MAX_TIME=15
 # coming up instead of failing on the very first, possibly-premature, request. Default 120s:
 # comfortably above the Dockerfile HEALTHCHECK's own worst case before Docker itself would
 # give up (start_period=40s + retries=5 x interval=10s = 90s) plus margin for a genuinely
-# slow JVM cold start (e.g. Render's free tier suspending when idle, TRD §14.4 point 4) —
+# slow JVM cold start (e.g. Render's free tier suspending when idle) —
 # override with SMOKE_READY_TIMEOUT_SECONDS for an even slower environment.
 # Validates that $2 is a positive, base-10 integer suitable for both a `[ -gt ]` comparison
 # and, later, $(( )) arithmetic (the health-readiness deadline below uses this value that
@@ -71,7 +71,7 @@ SMOKE_READY_TIMEOUT_SECONDS="${SMOKE_READY_TIMEOUT_SECONDS:-120}"
 validate_positive_integer "SMOKE_READY_TIMEOUT_SECONDS" "$SMOKE_READY_TIMEOUT_SECONDS"
 HEALTH_WAIT_INTERVAL=2
 
-# The CORS preflight check's expected allowed origin (TRD §14.4): defaults to one of the two
+# The CORS preflight check's expected allowed origin: defaults to one of the two
 # fallback origins a backend started with an unset/empty LEGAJO_CORS_ORIGINS falls back to.
 # A backend started with a non-default LEGAJO_CORS_ORIGINS (e.g. a Render deployment
 # configured with the Vercel origin) must pass its own origin here, or this check fails
@@ -183,14 +183,14 @@ printf '%s' "$health_body" | grep -q '"status":"UP"' \
     || fail "health: expected status UP within ${SMOKE_READY_TIMEOUT_SECONDS}s" "$health_body"
 echo "OK: health is UP"
 
-# 2. OpenAPI contract (TRD §6.6: docs/openapi-legajo.yaml served as-is at this path)
+# 2. OpenAPI contract (docs/openapi-legajo.yaml served as-is at this path)
 echo "-- GET /openapi-legajo.yaml"
 http_request "openapi" "$BASE_URL/openapi-legajo.yaml"
 printf '%s' "$REPLY_BODY" | grep -q '^openapi:' \
     || fail "openapi: response does not look like an OpenAPI document (no 'openapi:' key)" "$REPLY_BODY"
 echo "OK: openapi-legajo.yaml served"
 
-# 3. Corpus listing (reference corpus, n = 20, TRD §6.1)
+# 3. Corpus listing (reference corpus, n = 20)
 echo "-- GET /api/v1/corpus"
 http_request "corpus" "$BASE_URL/api/v1/corpus"
 corpus_body="$REPLY_BODY"
@@ -199,13 +199,13 @@ corpus_count="$(printf '%s' "$corpus_body" | jq 'length')" \
 [ "$corpus_count" = "20" ] || fail "corpus: expected 20 documents, got $corpus_count" "$corpus_body"
 echo "OK: corpus has 20 documents"
 
-# 4. Similarity compare (needleman-wunsch, d01 vs d02 — TAC-02/TAC-05)
+# 4. Similarity compare (needleman-wunsch, d01 vs d02)
 echo "-- POST /api/v1/similarity/compare"
 http_request "similarity/compare" -X POST "$BASE_URL/api/v1/similarity/compare" \
     -H 'Content-Type: application/json' \
     -d '{"documentIdA":"d01","documentIdB":"d02","algorithmIds":["needleman-wunsch"]}'
 compare_body="$REPLY_BODY"
-# TAC-05: normalizedScore must be a finite number in [0, 1], and exactly one
+# normalizedScore must be a finite number in [0, 1], and exactly one
 # needleman-wunsch result must be present. jq -r prints the literal text "null" for a JSON
 # null, which is non-empty — a plain `[ -n "$score" ]` presence check would wrongly pass a
 # null score through undetected. Collecting every match into an array first (instead of a
@@ -239,7 +239,7 @@ case "$nw_result" in
         fail "similarity/compare: needleman-wunsch normalizedScore is not a number (${nw_result#NOT_A_NUMBER:})" "$compare_body"
         ;;
     OUT_OF_RANGE:*)
-        fail "similarity/compare: needleman-wunsch normalizedScore ${nw_result#OUT_OF_RANGE:} is outside [0, 1] (TAC-05)" "$compare_body"
+        fail "similarity/compare: needleman-wunsch normalizedScore ${nw_result#OUT_OF_RANGE:} is outside [0, 1]" "$compare_body"
         ;;
     *)
         fail "similarity/compare: unexpected validation result: $nw_result" "$compare_body"
@@ -247,7 +247,7 @@ case "$nw_result" in
 esac
 echo "OK: needleman-wunsch(d01, d02) = $nw_score"
 
-# 5. Clustering (Ward, 19 linkage rows over 20 documents — TAC-03)
+# 5. Clustering (Ward, 19 linkage rows over 20 documents)
 echo "-- POST /api/v1/clustering"
 http_request "clustering" -X POST "$BASE_URL/api/v1/clustering" \
     -H 'Content-Type: application/json' \
@@ -261,7 +261,7 @@ doc_count="$(printf '%s' "$clustering_body" | jq '.[0].documentIds | length')" \
 [ "$doc_count" = "20" ] || fail "clustering: expected 20 documentIds, got $doc_count" "$clustering_body"
 echo "OK: ward linkage has 19 rows over 20 documents"
 
-# 6. CORS preflight (TRD §14.4 point 3: an empty/absent LEGAJO_CORS_ORIGINS falls back to
+# 6. CORS preflight (an empty/absent LEGAJO_CORS_ORIGINS falls back to
 # http://localhost:5173 and http://localhost — never to "allow every origin" — and a defined
 # list replaces those defaults rather than adding to them; CorsWebConfiguration only ever
 # registers the resolved, never-empty list, so an unlisted origin gets no CORS headers at
@@ -279,7 +279,7 @@ cors_preflight "$SMOKE_CORS_ALLOWED_ORIGIN"
 # lower/Title-cased form most servers use.
 allowed_origin_header="$(printf '%s' "$REPLY_HEADERS" | grep -i '^Access-Control-Allow-Origin:' | sed 's/^[^:]*: *//')"
 [ "$allowed_origin_header" = "$SMOKE_CORS_ALLOWED_ORIGIN" ] \
-    || fail "cors: expected Access-Control-Allow-Origin: $SMOKE_CORS_ALLOWED_ORIGIN, got '${allowed_origin_header:-<absent>}' (TRD §14.4; override with SMOKE_CORS_ALLOWED_ORIGIN if this backend's LEGAJO_CORS_ORIGINS differs from the default)" "$REPLY_HEADERS"
+    || fail "cors: expected Access-Control-Allow-Origin: $SMOKE_CORS_ALLOWED_ORIGIN, got '${allowed_origin_header:-<absent>}' (override with SMOKE_CORS_ALLOWED_ORIGIN if this backend's LEGAJO_CORS_ORIGINS differs from the default)" "$REPLY_HEADERS"
 cors_preflight "http://smoke-test-unlisted-origin.invalid"
 if printf '%s' "$REPLY_HEADERS" | grep -qi '^Access-Control-Allow-Origin:'; then
     fail "cors: an unlisted origin must not receive Access-Control-Allow-Origin" "$REPLY_HEADERS"
