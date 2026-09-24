@@ -8,8 +8,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * T4b: the abstract-quality gate that lets the ingestion chain notice a contaminated or
- * truncated abstract instead of only a blank one (TRD §8 fail-closed rule still applies
+ * The abstract-quality gate that lets the ingestion chain notice a contaminated or
+ * truncated abstract instead of only a blank one (the fail-closed rule still applies
  * only when every extractor comes back unusable). Verified against the two real
  * regressions found in the reference corpus:
  *

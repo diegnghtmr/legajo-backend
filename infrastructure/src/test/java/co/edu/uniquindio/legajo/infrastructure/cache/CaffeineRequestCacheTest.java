@@ -7,7 +7,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The infrastructure implementation of {@code RequestCache} (TRD §9, task A5): a Caffeine
+ * The infrastructure implementation of {@code RequestCache}: a Caffeine
  * region with no TTL — the corpus is static, so nothing here ever expires by time.
  */
 class CaffeineRequestCacheTest {

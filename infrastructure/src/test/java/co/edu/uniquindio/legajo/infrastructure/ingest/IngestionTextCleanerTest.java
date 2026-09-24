@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * Unit tests for the ingestion cleaning delegable step of TRD §6.1, item 3 — applied to
- * raw PDF text before it is persisted, and distinct from the TRD §6.2 preprocessing
+ * Unit tests for the fixed ingestion cleaning step — applied to
+ * raw PDF text before it is persisted, and distinct from the later text preprocessing
  * pipeline: hyphen join across a line break, NFKC normalization of ligatures, collapse
  * of in-paragraph line breaks, and collapse of whitespace runs.
  */

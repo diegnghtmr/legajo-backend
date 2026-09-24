@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Hand-written mean pooling (TRD §3.3: pooling is not delegable under R-02), exercised with
+ * Hand-written mean pooling (pooling must not be delegated to a library), exercised with
  * fabricated token embeddings and window vectors standing in for whatever a real MiniLM ONNX
  * session would produce — no tokenizer or model needed to test this pure arithmetic.
  *

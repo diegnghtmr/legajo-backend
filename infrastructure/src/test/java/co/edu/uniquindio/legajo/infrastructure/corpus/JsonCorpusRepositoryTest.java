@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Round-trip and on-disk shape tests for {@link JsonCorpusRepository} against TRD §9's
+ * Round-trip and on-disk shape tests for {@link JsonCorpusRepository} against the fixed
  * corpus schema: field order, pretty printing, UTF-8, and a trailing newline.
  */
 class JsonCorpusRepositoryTest {
@@ -67,7 +67,7 @@ class JsonCorpusRepositoryTest {
     }
 
     /**
-     * The unproved-UTF-8-claim advisory: {@code savesAndLoadsAnEquivalentCorpus} only
+     * Proves the previously-unproved UTF-8 claim: {@code savesAndLoadsAnEquivalentCorpus} only
      * proves that {@code save} then {@code load} round-trips to an equal {@link
      * Corpus}, which cannot distinguish "written as UTF-8" from "written and read back
      * with the same, possibly wrong, charset" — a repository that consistently used
@@ -119,7 +119,7 @@ class JsonCorpusRepositoryTest {
     }
 
     /**
-     * The destructive-write advisory: {@code save} used to open the target file with
+     * The destructive-write fix: {@code save} used to open the target file with
      * {@code TRUNCATE_EXISTING} directly, so a write that cannot complete still starts
      * by discarding the previous content. This test proves the opposite for the fixed
      * write-then-atomically-move implementation: making the corpus directory read-only

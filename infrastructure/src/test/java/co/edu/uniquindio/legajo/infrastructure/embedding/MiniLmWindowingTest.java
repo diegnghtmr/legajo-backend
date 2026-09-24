@@ -9,9 +9,9 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
  * Hand-written windowing of raw (no special tokens) wordpiece ids into groups of at most
- * {@link MiniLmWindowing#MAX_CONTENT_TOKENS_PER_WINDOW} each (TRD §6.3, "Límite de tokens de
- * MiniLM": the model accepts 256 wordpiece tokens total, so each window reserves 2 slots for
- * the hand-added {@code [CLS]}/{@code [SEP]} tokens). No tokenizer or model is involved here —
+ * {@link MiniLmWindowing#MAX_CONTENT_TOKENS_PER_WINDOW} each, per the fixed MiniLM
+ * token-limit rule: the model accepts 256 wordpiece tokens total, so each window reserves 2
+ * slots for the hand-added {@code [CLS]}/{@code [SEP]} tokens. No tokenizer or model is involved here —
  * these are plain {@code long[]} arrays standing in for whatever a real tokenizer would
  * produce.
  */

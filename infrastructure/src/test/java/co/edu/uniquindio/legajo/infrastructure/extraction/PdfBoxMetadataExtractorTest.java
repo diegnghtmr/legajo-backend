@@ -52,7 +52,7 @@ class PdfBoxMetadataExtractorTest {
     }
 
     /**
-     * T4c: reproduces the reference corpus's own layout that used to truncate the
+     * Reproduces the reference corpus's own layout that used to truncate the
      * abstract — a narrow left-hand affiliations sidebar sitting beside a much wider
      * right-hand block that holds the "Abstract" heading and its full text, both
      * starting at the same page height. With the plain {@code PDFTextStripper} used
@@ -104,7 +104,7 @@ class PdfBoxMetadataExtractorTest {
     }
 
     /**
-     * T4c: some journals (the reference corpus's own two-column PDF among them) render
+     * Some journals (the reference corpus's own two-column PDF among them) render
      * a section heading in a letter-spaced display style ("K E Y W O R D S" instead of
      * "Keywords") purely as typography — a single space between every letter, not a
      * real word break. Before this fix, {@code NEXT_SECTION_HEADING} never matched that
@@ -135,7 +135,7 @@ class PdfBoxMetadataExtractorTest {
     }
 
     /**
-     * The unbounded-capture advisory: when the "Abstract" heading is found but no
+     * The unbounded-capture guard: when the "Abstract" heading is found but no
      * recognized next-section heading ever follows (a document with no "Keywords" or
      * "Introduction" line the regex recognizes, or one whose OCR/layout never renders
      * one cleanly), the heuristic used to capture every remaining line all the way to

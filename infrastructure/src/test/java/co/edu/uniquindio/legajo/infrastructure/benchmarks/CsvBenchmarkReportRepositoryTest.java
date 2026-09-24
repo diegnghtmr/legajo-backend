@@ -17,11 +17,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * TRD §6.6 {@code GET /benchmarks} (1.3.10): {@link CsvBenchmarkReportRepository} reads the
+ * {@code GET /benchmarks}: {@link CsvBenchmarkReportRepository} reads the
  * versioned {@code jmh-results.csv}/{@code slopes.csv} exports as-is, never recomputing
  * anything, and fails closed — naming the offending file and the export command,
- * {@code ./gradlew :benchmarks:jmh :benchmarks:jmhExport} — on every malformed shape the
- * feature task anticipates: a missing file, a missing harness header key, a data row with
+ * {@code ./gradlew :benchmarks:jmh :benchmarks:jmhExport} — on every malformed shape
+ * anticipated: a missing file, a missing harness header key, a data row with
  * the wrong column count, and a non-numeric value where a number is expected.
  */
 class CsvBenchmarkReportRepositoryTest {
