@@ -11,7 +11,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.6: {@code GET /corpus} lists {@code id}/{@code title}/{@code authors} only;
+ * {@code GET /corpus} lists {@code id}/{@code title}/{@code authors} only;
  * {@code GET /corpus/{id}} returns the article plus the full abstract. This service is pure
  * orchestration over {@link CorpusRepository} — no Spring, no HTTP, no DTOs.
  */

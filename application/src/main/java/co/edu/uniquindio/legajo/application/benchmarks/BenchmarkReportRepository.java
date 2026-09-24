@@ -1,8 +1,8 @@
 package co.edu.uniquindio.legajo.application.benchmarks;
 
 /**
- * Output port for the JMH benchmark report {@code GET /api/v1/benchmarks} serves (TRD §6.6,
- * fixed by TRD 1.3.10): loads the versioned {@code benchmarks/results/jmh-results.csv} and
+ * Output port for the JMH benchmark report {@code GET /api/v1/benchmarks} serves: loads the
+ * versioned {@code benchmarks/results/jmh-results.csv} and
  * {@code slopes.csv} exports as one {@link BenchmarkReport}. The single infrastructure
  * adapter, {@code CsvBenchmarkReportRepository}, never runs JMH and never recalculates
  * anything — it only parses the two files a prior {@code :benchmarks:jmh :benchmarks:jmhExport}
@@ -26,7 +26,7 @@ public interface BenchmarkReportRepository {
      * offending file and the export command to re-run when a results/slopes file is missing
      * or malformed (missing harness header key, wrong column count, non-numeric value) — the
      * same fail-closed contract {@code EmbeddingCacheStartupValidator} applies to a
-     * missing/malformed embedding cache (TRD §9).
+     * missing/malformed embedding cache.
      */
     BenchmarkReport load();
 }

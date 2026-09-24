@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * TRD §14.1: the default profile runs {@code cached}, live mode is {@code live}. Mirrors the
+ * The default profile runs {@code cached}, live mode is {@code live}. Mirrors the
  * {@code id()}/{@code fromId(String)} convention {@code Representation} already uses, so
  * {@code legajo.embedding-provider}'s raw string value round-trips the same way.
  */

@@ -12,16 +12,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * The manual-validation use case of TRD §6.1, item 5 — "the author reviews each
+ * The manual-validation use case — "the author reviews each
  * abstract" is the only mandatory control, and this is the only place {@code
  * manuallyValidated} is ever set to {@code true}: always through an explicit call
  * naming ids ({@link #validateIds(Set)}) or every document ({@link #validateAll()}),
- * never automatically as a side effect of ingestion or verification (constraint
- * repeated in the feature doc: "never set by the agent on its own").
+ * never automatically as a side effect of ingestion or verification (this field is
+ * never set by the agent on its own).
  *
  * <p>Validating a document also (re)freezes its {@code abstractSha256} to the sha256 of
  * its current {@code abstractText} and recomputes {@code corpusSha256} for the whole
- * corpus, per TRD §6.1's frozen-hash definition.
+ * corpus, per the frozen-hash definition.
  */
 public final class ValidateCorpus {
 

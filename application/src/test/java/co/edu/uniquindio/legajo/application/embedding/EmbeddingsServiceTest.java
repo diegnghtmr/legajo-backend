@@ -13,13 +13,13 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.6: {@code GET /embeddings/status} reports provider, model, dimension, device,
+ * {@code GET /embeddings/status} reports provider, model, dimension, device,
  * cached/live mode, the cache's {@code corpusSha256}, and {@code matchesCorpus}.
  *
- * <p>The TRD names this endpoint in the singular but never says whether it reports one
+ * <p>This endpoint is named in the singular but it is never specified whether it reports one
  * embedding family or both (local and API caches independently satisfy the two embedding
  * capabilities) — this service computes the status of one {@link EmbeddingRepository} at a
- * time so either shape is possible at the REST boundary (A3/A4) without redoing this logic;
+ * time so either shape is possible at the REST boundary without redoing this logic;
  * see this class's Javadoc for the flagged ambiguity.
  */
 class EmbeddingsServiceTest {
@@ -60,7 +60,7 @@ class EmbeddingsServiceTest {
     }
 
     /**
-     * {@code R3-empty-cache-provider-untested}: {@link EmbeddingsService#status} has no
+     * {@link EmbeddingsService#status} has no
      * vector to read a {@code provider} id from when the cache is empty, so it reports the
      * documented {@code "unknown"} fail-soft placeholder (see this class's Javadoc for why)
      * instead of throwing or guessing a real provider id.

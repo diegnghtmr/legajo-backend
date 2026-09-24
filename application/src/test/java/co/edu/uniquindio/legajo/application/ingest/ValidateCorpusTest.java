@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 /**
  * {@link ValidateCorpus} is the only place {@code manuallyValidated} is ever set to
- * {@code true} (TRD §6.1, item 5) — always by an explicit call naming ids or "all",
+ * {@code true} — always by an explicit call naming ids or "all",
  * never automatically. Validating also (re)freezes {@code abstractSha256} and
  * recomputes {@code corpusSha256} for the updated document list.
  */

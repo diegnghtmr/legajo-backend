@@ -4,7 +4,7 @@ import co.edu.uniquindio.legajo.similarity.AlgorithmKind;
 
 import java.util.Objects;
 
-/** {@code GET /similarity/algorithms} (TRD §6.6): the catalogue of the six fixed capabilities. */
+/** {@code GET /similarity/algorithms}: the catalogue of the six fixed capabilities. */
 public record AlgorithmSummary(String id, String displayName, AlgorithmKind kind) {
 
     public AlgorithmSummary {

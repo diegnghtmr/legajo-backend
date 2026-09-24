@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * {@code POST /clustering/cut}'s full result (TRD 1.3.9 §6.4/§6.6): the domain
+ * {@code POST /clustering/cut}'s full result: the domain
  * {@link ClusterAssignment} plus {@code documentIds}, the document behind each labeled
  * observation, in {@code corpus.json} order — {@code documentIds.get(i)} is the document
  * whose cluster is {@code assignment.labels().get(i)}.

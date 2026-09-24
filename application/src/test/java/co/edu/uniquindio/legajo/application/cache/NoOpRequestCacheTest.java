@@ -7,8 +7,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * NFR-QA-01 (feature doc {@code rest-api.md}, task A5): the similarity/clustering benchmarks
- * run "with the similarity cache disabled". {@link NoOpRequestCache} is the
+ * The similarity/clustering benchmarks
+ * run with the similarity cache disabled. {@link NoOpRequestCache} is the
  * constructor-injectable substitute for {@code CaffeineRequestCache} that makes that
  * possible — it must never report a hit, even for a key it was just given a value for.
  */

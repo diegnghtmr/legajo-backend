@@ -7,7 +7,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.6 {@code GET /benchmarks} (1.3.10): {@link BenchmarksService} is pure orchestration
+ * {@code GET /benchmarks}: {@link BenchmarksService} is pure orchestration
  * — it never reads a file or recomputes anything itself, it only forwards to whichever
  * {@link BenchmarkReportRepository} the composition root wires in.
  */

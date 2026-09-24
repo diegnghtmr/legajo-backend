@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * TRD §6.6 (clustering endpoints) / §6.4-§6.5 / TAC-03, TAC-04: pure orchestration wiring
+ * Covers the clustering endpoints: pure orchestration wiring
  * {@code DistanceMatrix}, the four {@code LinkageCriterion}s, {@code LanceWilliamsEngine},
  * {@code LeafOrder}, {@code CopheneticCorrelation}, {@code MeanSilhouette}, and
  * {@code DaviesBouldin} together. Uses a 5-document corpus so the fixed evaluation cuts
@@ -67,9 +67,8 @@ class ClusteringServiceTest {
     }
 
     /**
-     * {@code R3-evaluate-only-partial-assert}: the original body only compared
-     * {@code copheneticCorrelation}, leaving {@code meanSilhouetteByK}/{@code
-     * daviesBouldinByK} unchecked. Comparing against {@code service} (this class's shared
+     * Asserting only {@code copheneticCorrelation} would leave {@code meanSilhouetteByK}/
+     * {@code daviesBouldinByK} unchecked. Comparing against {@code service} (this class's shared
      * cache) would make the two evaluation blocks trivially identical — {@code evaluateOnly}
      * delegates to {@code run}, so a second call for the same key is a cache hit returning
      * the very same {@link LinkageRunResult} instance, proving nothing about the k-maps'
@@ -96,7 +95,7 @@ class ClusteringServiceTest {
     }
 
     /**
-     * TRD 1.3.9 §6.4/§6.6: each {@code LinkageRunResult} carries {@code documentIds}, the
+     * Each {@code LinkageRunResult} carries {@code documentIds}, the
      * document behind each observation index, in {@code corpus.json} order. The fixture
      * corpus here is deliberately *not* alphabetical by id (d03, d01, d05, d02, d04), so a
      * bug that sorted ids before returning them (instead of reusing the exact order the
@@ -130,7 +129,7 @@ class ClusteringServiceTest {
     }
 
     /**
-     * TRD 1.3.9 §6.4/§6.6: {@code /clustering/cut}'s result also carries {@code
+     * {@code /clustering/cut}'s result also carries {@code
      * documentIds}, aligned with {@code labels} position by position, in {@code corpus.json}
      * order. Same non-alphabetical fixture as {@code runsDocumentIdsMatchCorpusOrder...} so a
      * sorted-id bug would still fail here.
@@ -164,10 +163,10 @@ class ClusteringServiceTest {
     }
 
     /**
-     * A4 requirement (feature doc {@code rest-api.md}, task A4): before this fix,
+     * Before this fix,
      * {@code cut()} passed a bad {@code k} straight to {@code LinkageCut.cut}, which throws
-     * a <em>raw</em> {@link IllegalArgumentException} — since A3b's error-classification fix,
-     * a raw IAE is treated as a server fault and answers 500. A client-supplied {@code k}
+     * a <em>raw</em> {@link IllegalArgumentException} — a raw IAE is treated as a server fault
+     * and answers 500. A client-supplied {@code k}
      * outside {@code [2, n-1]} is a request-validation failure, not a server bug, so this
      * boundary must throw the dedicated {@link InvalidRequestException} subtype instead,
      * *before* the domain ever sees the bad value.
@@ -189,10 +188,10 @@ class ClusteringServiceTest {
     }
 
     /**
-     * Task A7 (TRD §6.6's fixed status-code rule): {@code linkage}/{@code linkages} is never
+     * Under the fixed status-code rule, {@code linkage}/{@code linkages} is never
      * a path segment on any clustering endpoint, so — unlike a similarity algorithm id — an
-     * unknown one has no ambiguous caller to defer to and is 400, not 404. Before this task
-     * this was {@link ResourceNotFoundException} (404); TRD 1.3.7 fixes 404 to path-identified
+     * unknown one has no ambiguous caller to defer to and is 400, not 404. Before this fix
+     * this was {@link ResourceNotFoundException} (404); 404 is fixed to path-identified
      * resources only.
      */
     @Test
@@ -204,7 +203,7 @@ class ClusteringServiceTest {
     }
 
     /**
-     * TRD §6.6 statelessness rule / task A5: "no endpoint may depend on a previous run" —
+     * Under the statelessness rule, no endpoint may depend on a previous run —
      * request X's result must be identical whether or not another request ran before or
      * after it. Caching does not violate this: it changes how fast X is computed, never
      * what X computes. Running X, then a different request Y, then X again must yield a
@@ -222,7 +221,7 @@ class ClusteringServiceTest {
     }
 
     /**
-     * Task A5 decision (feature doc {@code rest-api.md}): {@code cut} reuses the same
+     * By design, {@code cut} reuses the same
      * per-linkage cache {@code run} populates, so cutting a tree {@code run} already computed
      * must not recompute it, yet {@code cut}'s own {@code k} validation must still fire for
      * an out-of-range {@code k} on that cached tree.
@@ -243,8 +242,8 @@ class ClusteringServiceTest {
     }
 
     /**
-     * Task A5 (feature doc {@code rest-api.md}): "cache immutable results only ... so a
-     * caller can never mutate a cached value." {@link LinkageRunResult}'s compact
+     * The cache holds immutable results only, so a
+     * caller can never mutate a cached value. {@link LinkageRunResult}'s compact
      * constructor already defensively copies its lists, so the cached value is immutable by
      * construction with no extra wrapper needed — this proves that guarantee actually holds
      * for what {@code run} hands back.
@@ -259,7 +258,7 @@ class ClusteringServiceTest {
     }
 
     /**
-     * Residual of {@code R3-cut-miss-path-untested}: a bare {@code cut} with no prior
+     * A bare {@code cut} with no prior
      * {@code run} for that key must still populate the shared {@link ClusteringCacheKey}
      * cache (the {@code orElseGet} miss branch in {@code cut}), not just compute and discard.
      */

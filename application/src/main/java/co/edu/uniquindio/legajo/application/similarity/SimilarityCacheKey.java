@@ -3,8 +3,8 @@ package co.edu.uniquindio.legajo.application.similarity;
 import java.util.Objects;
 
 /**
- * Cache key for one similarity computation (TRD §9, task A5): {@code (algorithmId,
- * documentIdA, documentIdB)}, directional. The TRD's cache wording is ambiguous about
+ * Cache key for one similarity computation: {@code (algorithmId,
+ * documentIdA, documentIdB)}, directional. It is ambiguous about
  * whether {@code (A,B)} and {@code (B,A)} share one entry; no {@link
  * co.edu.uniquindio.legajo.similarity.SimilarityAlgorithm#compute} in this codebase is
  * proven symmetric by test, so this key never assumes it — it caches exactly the pair order

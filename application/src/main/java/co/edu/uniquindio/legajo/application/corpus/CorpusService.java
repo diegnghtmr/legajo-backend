@@ -8,16 +8,15 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Orchestration behind {@code GET /corpus} and {@code GET /corpus/{id}} (TRD §6.6): reads
+ * Orchestration behind {@code GET /corpus} and {@code GET /corpus/{id}}: reads
  * the corpus through {@link CorpusRepository} and shapes it for each of the two endpoints.
  * Pure orchestration — no Spring, no HTTP, no DTO/JSON annotations, no caching (request-keyed
- * caching is a separate feature task, A5).
+ * caching is a separate, unrelated concern here).
  *
  * <p>Reloads the corpus from {@link CorpusRepository} on every call rather than caching it
- * in memory: the TRD does not ask for an in-memory corpus cache here, and {@code
- * corpus.json} is "generated, not edited" (backend/AGENTS.md) so a fresh load is always
- * correct, if not the fastest possible implementation — performance is out of this
- * feature's A1/A2 scope.
+ * in memory: no in-memory corpus cache is required here, and {@code
+ * corpus.json} is generated, not edited, so a fresh load is always
+ * correct, if not the fastest possible implementation — performance is out of scope here.
  */
 public final class CorpusService {
 

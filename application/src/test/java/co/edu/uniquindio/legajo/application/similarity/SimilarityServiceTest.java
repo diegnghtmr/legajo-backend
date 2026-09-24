@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * TRD §6.6 (similarity endpoints) / TAC-01, TAC-05, TAC-06: pure orchestration over the
+ * Covers the similarity endpoints: pure orchestration over the
  * domain's six {@code SimilarityAlgorithm} capabilities, the corpus, and the two embedding
  * caches. No Spring, no HTTP, no DTOs.
  */
@@ -106,7 +106,7 @@ class SimilarityServiceTest {
     }
 
     /**
-     * Task A7 (TRD §6.6's fixed status-code rule): {@code algorithmIds} is a request-body
+     * Under the fixed status-code rule, {@code algorithmIds} is a request-body
      * field on {@code compare}, and {@link SimilarityService} cannot know that from inside
      * {@code requireAlgorithm} (the same lookup is reused by {@code trace}'s path segment),
      * so the service raises the location-agnostic {@link UnknownIdentifierException} and lets
@@ -138,7 +138,7 @@ class SimilarityServiceTest {
     }
 
     /**
-     * Task A7: a document id is never a path segment anywhere in this service, so, unlike an
+     * A document id is never a path segment anywhere in this service, so, unlike an
      * algorithm id, {@code requireDocument} can throw the final {@link InvalidRequestException}
      * (400, {@link ProblemType#UNKNOWN_DOCUMENT}) directly.
      */
@@ -169,7 +169,7 @@ class SimilarityServiceTest {
                 .isEqualTo(ProblemType.INVALID_SELECTION);
     }
 
-    /** TRD §6.6 (task A7): a matrix selection with a duplicate id is the same {@code
+    /** A matrix selection with a duplicate id is the same {@code
      * invalid-selection} URN as an undersized one, just a different concrete reason. */
     @Test
     void matrixRejectsASelectionWithADuplicateDocumentId() {
@@ -179,7 +179,7 @@ class SimilarityServiceTest {
                 .isEqualTo(ProblemType.INVALID_SELECTION);
     }
 
-    /** Task A7: {@code matrix}'s {@code algorithmId} is a request-body field, so an unknown
+    /** {@code matrix}'s {@code algorithmId} is a request-body field, so an unknown
      * one is the same location-agnostic {@link UnknownIdentifierException} {@code compare}
      * raises, reclassified to 400 by {@code SimilarityController} (never 404 here). */
     @Test
@@ -200,7 +200,7 @@ class SimilarityServiceTest {
     }
 
     /**
-     * TRD §9 / task A5: a second identical compare must be a cache hit reporting the exact
+     * A second identical compare must be a cache hit reporting the exact
      * same result the first (fresh) call computed — including {@code computedNanos}, which
      * is measured inside {@code compute()} and stored with the cached entry, never
      * re-measured on a hit (a hit's lookup itself takes far less time than a real
@@ -236,7 +236,7 @@ class SimilarityServiceTest {
         assertThat(differentAlgorithm.get(0).cached()).isFalse();
     }
 
-    /** NFR-QA-01: the benchmark harness disables caching by wiring {@code NoOpRequestCache}. */
+    /** The benchmark harness disables caching by wiring {@code NoOpRequestCache}. */
     @Test
     void withTheNoOpCacheEveryCallIsAFreshComputationNeverCached() {
         SimilarityService withNoCache = new SimilarityService(
@@ -265,10 +265,10 @@ class SimilarityServiceTest {
     }
 
     /**
-     * {@code R3-trace-test-overclaims}: this test's name promised the trace's value "matches
-     * the computed score", but the original body only asserted presence. Mirrors {@code
-     * SimilarityEndToEndTest.tac06TheTraceValueAlwaysEqualsThePublishedScore}'s per-capability
-     * extraction: the DP matrix's bottom-right cell for the two DP algorithms (compared
+     * This test's name promises the trace's value matches
+     * the computed score, so it must actually assert that equality, not just presence. Mirrors
+     * the per-capability
+     * extraction used by the equivalent end-to-end trace test: the DP matrix's bottom-right cell for the two DP algorithms (compared
      * against {@code rawValue}, never {@code normalizedScore}, since the DP algorithms report
      * a possibly-unnormalized raw distance/score) and the coefficient/cosine/normalizedScore
      * field for the other four (compared against {@code normalizedScore}).
@@ -304,7 +304,7 @@ class SimilarityServiceTest {
     }
 
     /**
-     * Task A7: {@code trace}'s {@code algorithmId} is a path segment on {@code GET
+     * {@code trace}'s {@code algorithmId} is a path segment on {@code GET
      * /similarity/{algorithmId}/trace}, but this service method has no way to know that
      * itself — {@code requireAlgorithm} is the exact same lookup {@code compare}/{@code
      * matrix} use for a body id — so it raises the same location-agnostic {@link
@@ -319,7 +319,7 @@ class SimilarityServiceTest {
                 .isEqualTo(ProblemType.UNKNOWN_ALGORITHM);
     }
 
-    /** Task A7: {@code documentIdA}/{@code documentIdB} are query parameters on {@code trace},
+    /** {@code documentIdA}/{@code documentIdB} are query parameters on {@code trace},
      * never a path segment, so {@code requireDocument} throws the final 400 directly. */
     @Test
     void traceRejectsAnUnknownDocumentIdDirectlyAsInvalidRequest() {
@@ -330,7 +330,7 @@ class SimilarityServiceTest {
     }
 
     /**
-     * R3-matrix-repeated-preprocess: an m×m matrix must preprocess each selected document once,
+     * An m×m matrix must preprocess each selected document once,
      * not once per cell (m² times). Jaccard needs no TF-IDF corpus index, so every counted call
      * comes from the matrix itself.
      */

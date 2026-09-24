@@ -29,30 +29,30 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Orchestration behind the four similarity endpoints of TRD §6.6: {@code
+ * Orchestration behind the four similarity endpoints: {@code
  * POST /similarity/compare} (multi-algorithm, one pair), {@code POST /similarity/matrix}
  * (m×m, one algorithm), {@code GET /similarity/{algorithmId}/trace} (one algorithm, one
  * pair), and {@code GET /similarity/algorithms} (the catalogue). Pure orchestration — no
  * Spring, no HTTP, no DTO/JSON annotations.
  *
- * <p><b>Request-keyed caching (task A5).</b> {@code compare} and {@code matrix} look up a
+ * <p><b>Request-keyed caching.</b> {@code compare} and {@code matrix} look up a
  * {@link RequestCache} keyed by {@link SimilarityCacheKey} {@code (algorithmId,
  * documentIdA, documentIdB)}, directional, before calling {@link
  * co.edu.uniquindio.legajo.similarity.SimilarityAlgorithm#compute}; a miss computes and
  * stores the result, a hit returns the exact same {@link SimilarityResult} — including its
  * {@code computedNanos}, measured once inside {@code compute()} and never re-measured on a
- * hit. {@code trace} is never cached (the TRD's compare sequence diagram only covers
+ * hit. {@code trace} is never cached (the compare sequence diagram only covers
  * compare/matrix). This service depends only on the {@link RequestCache} port, never on a
  * concrete Caffeine implementation, so it stays framework-free.
  *
  * <p><b>Two embedding caches, resolved lazily.</b> {@code embedding-local} and {@code
  * embedding-api} each read a different {@link EmbeddingRepository} (the two beans
- * {@code DomainConfiguration} registers, A1); each cache is only loaded when the requested
+ * {@code DomainConfiguration} registers); each cache is only loaded when the requested
  * algorithm set actually needs it, and only once per call, not once per document pair.
  *
  * <p><b>{@code tfidf-cosine}'s corpus-wide index.</b> Built from every corpus document's
- * preprocessed tokens, never just the compared/selected documents (TRD §6.3: "N = tamaño
- * del corpus = n = |corpus|"), and only when {@code tfidf-cosine} is among the requested
+ * preprocessed tokens, never just the compared/selected documents (N is the corpus size,
+ * {@code n = |corpus|}), and only when {@code tfidf-cosine} is among the requested
  * algorithms.
  */
 public final class SimilarityService {
@@ -71,7 +71,7 @@ public final class SimilarityService {
                 preprocessor());
     }
 
-    /** Test seam: {@code tokenizer} replaces the TRD §6.2 preprocessing so calls can be counted. */
+    /** Test seam: {@code tokenizer} replaces the fixed text preprocessing so calls can be counted. */
     SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
             EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
             RequestCache<SimilarityCacheKey, SimilarityResult> cache, Function<String, List<String>> tokenizer) {
@@ -92,7 +92,7 @@ public final class SimilarityService {
 
     /**
      * {@code POST /similarity/compare}: {@code algorithmIds} empty or {@code null} defaults
-     * to all six (TRD §6.6, TAC-01), preserving the registry's declaration order.
+     * to all six, preserving the registry's declaration order.
      */
     public List<AlgorithmSimilarity> compare(String documentIdA, String documentIdB, List<String> algorithmIds) {
         Objects.requireNonNull(documentIdA, "documentIdA");
@@ -120,9 +120,9 @@ public final class SimilarityService {
 
     /**
      * {@code POST /similarity/matrix}: m×m over {@code documentIds} for one algorithm, with
-     * {@code m = documentIds.size()} required in {@code [3, n]} (TRD §6.6) and no duplicate
-     * ids (a "selection" of m distinct documents, an author reading of "tamaño de la
-     * selección" the TRD does not spell out explicitly).
+     * {@code m = documentIds.size()} required in {@code [3, n]} and no duplicate
+     * ids (a "selection" of m distinct documents, an author reading of "selection size"
+     * that is not spelled out explicitly).
      */
     public List<List<CachedSimilarityResult>> matrix(List<String> documentIds, String algorithmId) {
         Objects.requireNonNull(documentIds, "documentIds");
@@ -172,7 +172,7 @@ public final class SimilarityService {
 
     /**
      * Looks up {@link SimilarityCacheKey}{@code (algorithm.id(), documentIdA, documentIdB)}
-     * before computing (task A5, TRD §9): a hit returns the exact same {@link
+     * before computing: a hit returns the exact same {@link
      * SimilarityResult} a fresh computation produced, {@code computedNanos} included; a miss
      * computes via {@link SimilarityAlgorithm#compute} and stores the result before
      * returning it.
@@ -223,12 +223,12 @@ public final class SimilarityService {
     /**
      * Looks the algorithm up via {@link SimilarityAlgorithmRegistry#find(String)} rather than
      * {@link SimilarityAlgorithmRegistry#require(String)} so this boundary never has to catch
-     * the domain's own {@link java.util.NoSuchElementException} (task A3b): catching a broad
+     * the domain's own {@link java.util.NoSuchElementException}: catching a broad
      * JDK exception type around a call risks swallowing one thrown by an unrelated bug in the
-     * same try block, which is the exact mis-classification this task removes from the REST
+     * same try block, which is the exact mis-classification this removes from the REST
      * handler.
      *
-     * <p><b>Task A7: an unknown algorithm id is 404 for {@link #trace} but 400 for {@link
+     * <p><b>An unknown algorithm id is 404 for {@link #trace} but 400 for {@link
      * #compare}/{@link #matrix}</b> — the same set of ids, looked up the same way, classified
      * differently only by where the id sits in the request (path vs. body). This method has
      * no way to tell which of its three callers is asking, so it throws the
@@ -245,8 +245,8 @@ public final class SimilarityService {
     /**
      * Unlike {@link #requireAlgorithm}, a document id is never a path segment anywhere in this
      * service — {@link #compare} and {@link #matrix} read it from the request body, {@link
-     * #trace} from a query parameter — so every call site needs the same 400 (task A7,
-     * {@code urn:legajo:problem:unknown-document}) and this can throw the final, already
+     * #trace} from a query parameter — so every call site needs the same 400
+     * ({@code urn:legajo:problem:unknown-document}) and this can throw the final, already
      * classified exception directly with no controller-side reclassification needed.
      */
     private CorpusDocument requireDocument(Corpus corpus, String id) {

@@ -6,10 +6,10 @@ import java.util.OptionalDouble;
 
 /**
  * The evaluation block one linkage carries in {@code POST /clustering} and
- * {@code POST /clustering/evaluation} (TRD §6.6): the cophenetic correlation over the whole
+ * {@code POST /clustering/evaluation}: the cophenetic correlation over the whole
  * tree, plus mean silhouette and Davies-Bouldin at every fixed cut
- * {@code k ∈ {2,3,4,5} ∩ [2, n-1]} (TAC-04). Davies-Bouldin is an {@link OptionalDouble} per
- * {@code k} because TRD §6.5 fixes an explicit undefined case (coincident centroids) that
+ * {@code k ∈ {2,3,4,5} ∩ [2, n-1]}. Davies-Bouldin is an {@link OptionalDouble} per
+ * {@code k} because an explicit undefined case (coincident centroids) is fixed that
  * must surface as {@code null} on the wire, never {@code NaN} or a sentinel.
  *
  * <p>{@code meanSilhouetteByK}/{@code daviesBouldinByK} share exactly the fixed k set this
