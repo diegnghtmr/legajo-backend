@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /**
  * An identifier lookup failed inside {@code application} for a value whose eventual HTTP
- * status this layer must not decide (task A7, TRD §6.6's "Códigos de estado de error"). Today
+ * status this layer must not decide. Today
  * this covers a similarity algorithm id: {@code SimilarityService}'s registry lookup is
  * reused by {@code trace} (where the id is a path segment, {@code
  * urn:legajo:problem:unknown-algorithm} → 404) and by {@code compare}/{@code matrix} (where

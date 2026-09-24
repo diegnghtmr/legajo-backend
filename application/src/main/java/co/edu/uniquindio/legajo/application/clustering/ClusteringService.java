@@ -37,34 +37,34 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 
 /**
- * Orchestration behind the three clustering endpoints of TRD §6.6: {@code POST /clustering}
+ * Orchestration behind the three clustering endpoints: {@code POST /clustering}
  * (all four linkages' matrices + evaluation, one shared representation), {@code
  * POST /clustering/evaluation} (the same computation, evaluation block only), and {@code
  * POST /clustering/cut} (the one endpoint with a free {@code k}). Pure orchestration — no
  * Spring, no HTTP, no DTO/JSON annotations.
  *
- * <p><b>The fixed-cut rule is structural (TAC-04).</b> {@link #fixedKsFor(int)} always
+ * <p><b>The fixed-cut rule is structural.</b> {@link #fixedKsFor(int)} always
  * derives {@code k ∈ {2,3,4,5} ∩ [2, n-1]} from {@code n} alone; no method on this class
  * accepts a caller-supplied set of {@code k}s for the evaluation block, so no future
  * controller can wire a {@code ks} parameter into it. {@link #cut} is the only method that
  * takes a caller-supplied {@code k}, matching "the only endpoint accepting a free cut".
  *
  * <p><b>Cophenetic correlation always against base D, never Ward's D_w.</b> Ward's engine
- * input is {@code distances.wardBase()} (TRD §6.4: {@code D_w = 2·D}), but
+ * input is {@code distances.wardBase()} ({@code D_w = 2·D}), but
  * {@link CopheneticCorrelation#of} and {@link MeanSilhouette#of} are always evaluated
  * against the one shared reference {@code distances} (base D) so all four linkages stay
- * comparable on the same axis (TRD §6.4/§6.5) — Pearson correlation is invariant to Ward's
+ * comparable on the same axis — Pearson correlation is invariant to Ward's
  * positive 2x rescaling, so this is equivalent to correlating against D_w, never a
  * different number.
  *
- * <p><b>Request-keyed caching (task A5, TRD §9).</b> {@link #run}, {@link #evaluateOnly}
+ * <p><b>Request-keyed caching.</b> {@link #run}, {@link #evaluateOnly}
  * (which delegates to {@code run}) and {@link #cut} all share one {@link RequestCache} keyed
  * by {@link ClusteringCacheKey} {@code (representation, linkageId)}: the first of the three
  * to ask for a given linkage computes it and stores the full {@link LinkageRunResult}; every
  * later call for that same key, from any of the three endpoints, reuses it instead of
  * recomputing — {@code cut} reconstructs a {@link LinkageMatrix} from the cached rows and
  * cuts that tree, still validating its own {@code k} range on every call. This never lets a
- * request depend on a *different* previous request's value (TRD §6.6's statelessness rule):
+ * request depend on a *different* previous request's value under the statelessness rule:
  * the cached value for a key is always exactly what a fresh computation of that same key
  * would produce.
  */
@@ -90,7 +90,7 @@ public final class ClusteringService {
     /**
      * {@code POST /clustering}: {@code representation} defaults to
      * {@link Representation#DEFAULT} (tfidf-cosine) and {@code linkageIds} defaults to all
-     * four, in the fixed declaration order (single, complete, average, ward) — TRD §6.6.
+     * four, in the fixed declaration order (single, complete, average, ward).
      */
     public List<LinkageRunResult> run(Representation representation, List<String> linkageIds) {
         Representation effectiveRepresentation = representation == null ? Representation.DEFAULT : representation;
@@ -134,18 +134,16 @@ public final class ClusteringService {
 
     /**
      * {@code POST /clustering/cut}: the only endpoint accepting a free {@code k}, required
-     * in {@code [2, n-1]} (TRD §6.6). {@code representation} defaults to
-     * {@link Representation#DEFAULT}, mirroring {@link #run} — the TRD does not restate this
-     * default specifically for {@code cut}, but {@code representation} is the same shared
-     * enum with the same documented default for every clustering endpoint, so this is a
-     * direct, not an invented, extension.
+     * in {@code [2, n-1]}. {@code representation} defaults to
+     * {@link Representation#DEFAULT}, mirroring {@link #run} — {@code representation} is the
+     * same shared enum with the same documented default for every clustering endpoint, so
+     * this is a direct, not an invented, extension.
      *
-     * <p><b>A4 fix (feature doc {@code rest-api.md}, advisory
-     * {@code R3-narrowed-handler-unmigrated-throw-sites}).</b> This method used to pass
-     * {@code k} straight to {@link LinkageCut#cut}, which itself enforces {@code [2, n-1]}
-     * but does so with a <em>raw</em> {@link IllegalArgumentException} — since A3b's
-     * error-classification fix, a raw IAE reaching the REST boundary is (correctly) treated
-     * as a server bug and answers 500. A client-supplied {@code k} outside range is a
+     * <p><b>Client-supplied {@code k} out of range answers 400, not 500.</b> This method used
+     * to pass {@code k} straight to {@link LinkageCut#cut}, which itself enforces
+     * {@code [2, n-1]} but does so with a <em>raw</em> {@link IllegalArgumentException} — a
+     * raw IAE reaching the REST boundary is (correctly) treated as a server bug and answers
+     * 500. A client-supplied {@code k} outside range is a
      * request-validation failure, not a server fault, so this application boundary now
      * checks the range itself and throws the dedicated {@link InvalidRequestException}
      * subtype (400) *before* the domain ever sees the bad value.
@@ -200,19 +198,19 @@ public final class ClusteringService {
                 criterion.id(), criterion.displayName(), linkage.rows(), leafOrder, documentIds, evaluation);
     }
 
-    /** TRD 1.3.9: the document behind each observation index, in {@code corpus.json} order —
+    /** The document behind each observation index, in {@code corpus.json} order —
      * the same order {@link #vectorsFor} builds the distance matrix from, so index i means
      * the same thing on both sides without recomputing it separately. */
     private List<String> documentIdsOf(Corpus corpus) {
         return corpus.documents().stream().map(CorpusDocument::id).toList();
     }
 
-    /** Ward always agglomerates over {@code D_w = 2·D} (TRD §6.4); the other three over base D. */
+    /** Ward always agglomerates over {@code D_w = 2·D}; the other three over base D. */
     private DistanceMatrix engineInputFor(LinkageCriterion criterion, DistanceMatrix distances) {
         return criterion instanceof WardLinkage ? distances.wardBase() : distances;
     }
 
-    /** TAC-04's fixed cut set: {@code {2,3,4,5} ∩ [2, n-1]}, derived from {@code n} alone. */
+    /** The fixed cut set: {@code {2,3,4,5} ∩ [2, n-1]}, derived from {@code n} alone. */
     private List<Integer> fixedKsFor(int n) {
         List<Integer> ks = new ArrayList<>();
         for (int candidate : CANDIDATE_KS) {
@@ -267,13 +265,14 @@ public final class ClusteringService {
      * {@code SimilarityAlgorithmRegistry}); an exhaustive id switch mirrors
      * {@code ClusteringRanking#declarationOrder}'s existing convention for this same closed set.
      *
-     * <p><b>Task A7: 400, not 404.</b> {@code linkage}/{@code linkages} is never a path
+     * <p><b>An unknown linkage id answers 400, not 404.</b> {@code linkage}/{@code linkages}
+     * is never a path
      * segment on any {@code /clustering*} endpoint — it always arrives in the request body —
      * so, unlike {@code SimilarityService.requireAlgorithm}, there is no ambiguous caller to
-     * defer to and this can throw the final classification directly (TRD §6.6,
-     * {@code urn:legajo:problem:unknown-linkage}). Before this task an unknown linkage id was
-     * {@link co.edu.uniquindio.legajo.application.error.ResourceNotFoundException} (404); TRD
-     * 1.3.7 fixes 404 to path-identified resources only, and a linkage id sent in a body is a
+     * defer to and this can throw the final classification directly
+     * ({@code urn:legajo:problem:unknown-linkage}). Before this an unknown linkage id was
+     * {@link co.edu.uniquindio.legajo.application.error.ResourceNotFoundException} (404); 404
+     * is fixed to path-identified resources only, and a linkage id sent in a body is a
      * request-validation failure, not a missing resource.
      */
     private LinkageCriterion resolveLinkage(String id) {

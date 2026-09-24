@@ -7,7 +7,7 @@ import co.edu.uniquindio.legajo.port.CorpusRepository;
 import java.util.Objects;
 
 /**
- * The {@code verify-corpus} use case (TRD §6.1, item 6): load the corpus through the
+ * The {@code verify-corpus} use case: load the corpus through the
  * port and run every {@link CorpusVerifier} rule against it, reporting every violation
  * rather than stopping at the first one.
  */

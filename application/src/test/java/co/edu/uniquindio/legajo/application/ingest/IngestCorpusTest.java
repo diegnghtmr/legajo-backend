@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link IngestCorpus} against a fake {@link PdfMetadataExtractor} and an in-memory
- * repository, covering TRD §6.1 item 4's ingestion contract: scan {@code *.pdf} sorted
+ * repository, covering the ingestion contract: scan {@code *.pdf} sorted
  * by name, assign {@code d01..dNN} ids in that order, record a {@code data/...}-style
  * relative source path, never set {@code manuallyValidated}, and compute both hashes.
  */
@@ -134,7 +134,7 @@ class IngestCorpusTest {
     }
 
     /**
-     * The most serious ingestion advisory: an input folder that yields zero PDFs (an
+     * The most serious ingestion failure mode: an input folder that yields zero PDFs (an
      * empty folder, a wrong path, or one holding only non-PDF files) must never reach
      * {@link co.edu.uniquindio.legajo.port.CorpusRepository#save}, because {@code save}
      * unconditionally replaces whatever corpus is already there — including the

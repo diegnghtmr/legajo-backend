@@ -7,7 +7,7 @@ import java.util.NoSuchElementException;
 
 /**
  * In-memory {@link CorpusRepository} test double shared by the ingestion use case
- * tests, standing in for {@code JsonCorpusRepository} (infrastructure, task T4) so
+ * tests, standing in for {@code JsonCorpusRepository} (an infrastructure concern) so
  * {@code application} tests never depend on infrastructure or the filesystem.
  */
 final class InMemoryCorpusRepository implements CorpusRepository {

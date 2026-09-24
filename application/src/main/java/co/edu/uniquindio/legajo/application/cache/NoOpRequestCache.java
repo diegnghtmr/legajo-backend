@@ -4,8 +4,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Always a miss, never stores anything (NFR-QA-01, task A5: the similarity/clustering
- * benchmarks run "with the similarity cache disabled"). Constructor-injectable in place of
+ * Always a miss, never stores anything: the similarity/clustering benchmarks run with the
+ * similarity cache disabled. Constructor-injectable in place of
  * {@code CaffeineRequestCache}, with no new configuration key — a caller cannot tell whether
  * caching is disabled by this class or absent for another reason, which is exactly the point:
  * every call reports a fresh computation, deterministically.

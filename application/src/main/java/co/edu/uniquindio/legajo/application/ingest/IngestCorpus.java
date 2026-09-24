@@ -18,17 +18,16 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
- * The offline ingestion pipeline of TRD §6.1: scan a folder of PDFs sorted by name,
+ * The offline ingestion pipeline: scan a folder of PDFs sorted by name,
  * extract each one through {@link PdfMetadataExtractor} (a GROBID/PDFBox fallback
- * chain in production, task T4's infrastructure), assign {@code d01..dNN} ids in that
+ * chain in production, its own infrastructure concern), assign {@code d01..dNN} ids in that
  * order, and write the result through {@link CorpusRepository} — replacing whatever
- * corpus was there before (TRD §3.1: re-running ingestion on any folder produces a new
+ * corpus was there before (re-running ingestion on any folder produces a new
  * {@code corpus.json}).
  *
- * <p>Every document is written with {@code manuallyValidated = false}: TRD §6.1, item 5
- * makes manual validation "the only mandatory control", performed later and only by an
- * explicit call to {@link ValidateCorpus} (constraint reinforced in the feature doc:
- * "never set by the agent on its own").
+ * <p>Every document is written with {@code manuallyValidated = false}: manual validation is
+ * the only mandatory control, performed later and only by an
+ * explicit call to {@link ValidateCorpus} (this field is never set by the agent on its own).
  *
  * <p><b>Id width (explicit, deterministic rule).</b> Ids are {@code "d" + i} zero-padded
  * to {@code max(2, digitCountOf(sourceCount))}, where {@code i} runs 1..{@code
@@ -38,15 +37,15 @@ import java.util.stream.Stream;
  * → {@code d001..d100}), which is required so {@link CorpusHasher#corpusSha256}'s
  * ascending-{@code id}-order convention stays a correct numeric order within that
  * corpus (unpadded ids would sort {@code d1, d10, d2, ...} lexicographically). This
- * rule has been in place since T4 and does not change any id in the committed
+ * rule does not change any id in the committed
  * {@code data/corpus.json} (20 documents → width 2, same as today).
  *
- * <p><b>Fails closed on an empty input (robustness advisory).</b> An input folder with
+ * <p><b>Fails closed on an empty input.</b> An input folder with
  * zero PDFs is refused with {@link IllegalStateException} before {@link
  * CorpusRepository#save} is ever called, because {@code save} unconditionally replaces
  * the previous corpus — running ingestion against an empty or misspelled folder must
  * never silently destroy a committed, author-validated {@code corpus.json}. This class
- * intentionally does <b>not</b> also enforce the TRD §6.1 "at least 3 documents"
+ * intentionally does <b>not</b> also enforce the "at least 3 documents"
  * minimum: that invariant is {@link co.edu.uniquindio.legajo.corpus.CorpusVerifier}'s
  * {@code MINIMUM_DOCUMENT_COUNT} rule, the designated gate for whether a corpus is
  * acceptable to use, run explicitly via {@code verify-corpus} after ingestion and

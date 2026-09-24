@@ -3,7 +3,7 @@ package co.edu.uniquindio.legajo.application.embedding;
 import java.util.Objects;
 
 /**
- * {@code GET /embeddings/status} (TRD §6.6): provider, model, dimension, device, cached/live
+ * {@code GET /embeddings/status}: provider, model, dimension, device, cached/live
  * mode, the cache's {@code corpusSha256}, and whether it matches the currently loaded corpus.
  */
 public record EmbeddingStatus(
