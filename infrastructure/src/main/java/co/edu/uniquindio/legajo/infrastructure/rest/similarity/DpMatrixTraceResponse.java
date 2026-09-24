@@ -6,11 +6,10 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Wire shape of the DP trace shared by {@code levenshtein} and {@code needleman-wunsch}
- * (TRD §6.3, NFR-QA-03): the complete matrix, row/column token labels, the deterministic
+ * Wire shape of the DP trace shared by {@code levenshtein} and {@code needleman-wunsch}:
+ * the complete matrix, row/column token labels, the deterministic
  * optimal path, and the per-step operation classification. {@code matrix} is never
- * truncated — there is no truncation parameter on the trace endpoint (task A3 constraint,
- * NFR-QA-03).
+ * truncated — there is deliberately no truncation parameter on the trace endpoint.
  */
 public record DpMatrixTraceResponse(
         String algorithmId,

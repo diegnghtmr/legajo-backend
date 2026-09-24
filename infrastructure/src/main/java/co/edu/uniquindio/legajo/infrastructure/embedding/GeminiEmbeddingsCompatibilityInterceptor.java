@@ -33,9 +33,9 @@ import java.io.IOException;
  *       client (fixed there in milestone 1.0.0-M7); it resurfaced in 2.0.x's rewrite onto the
  *       official OpenAI Java SDK, whose {@code CreateEmbeddingResponse.usage()} is required
  *       too. This class synthesizes a zero-valued {@code usage} object — Gemini's real token
- *       counts are simply not available on this response, and TRD §6.3's traces never surface
- *       token usage, only vector/metric data — matching the workaround the original issue's
- *       reporter already used (mocking the usage values).</li>
+ *       counts are simply not available on this response, and this application's embedding
+ *       traces never surface token usage, only vector/metric data — matching the workaround
+ *       the original issue's reporter already used (mocking the usage values).</li>
  * </ul>
  *
  * <p>Both required fields make the OpenAI Java SDK throw {@code OpenAIInvalidDataException}
@@ -45,8 +45,8 @@ import java.io.IOException;
  * omitted, and leaves every other response, and every other request path, untouched. It is
  * registered on {@link OpenAiCompatibleEmbedder}'s HTTP client through Spring AI's documented
  * {@code httpClientBuilderCustomizer} extension point; it never touches the hand-written
- * metric or normalization code R-02 protects (TRD §3.3) — this only repairs the wire shape of
- * a third-party response before Spring AI's own SDK parses it.
+ * metric or normalization code that must not be delegated to a library — this only repairs
+ * the wire shape of a third-party response before Spring AI's own SDK parses it.
  */
 final class GeminiEmbeddingsCompatibilityInterceptor implements Interceptor {
 

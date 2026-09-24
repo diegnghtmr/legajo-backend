@@ -12,17 +12,17 @@ import java.util.Objects;
 
 /**
  * Calls one OpenAI-compatible embeddings endpoint over the network for the offline precompute
- * job (TRD §6.3, §8, ADR-015): {@code gemini-embedding-2-preview} through Gemini's
- * OpenAI-compatible layer, by default, but this class only knows the generic
- * {@code base-url}/{@code api-key}/{@code model}/{@code dimensions} shape Spring AI's OpenAI
- * client speaks, not the specific provider (TRD §8: "el prefijo {@code SPRING_AI_OPENAI_*}
- * nombra la vía de acceso ... no al proveedor del modelo").
+ * job: {@code gemini-embedding-2-preview} through Gemini's OpenAI-compatible layer, by
+ * default, but this class only knows the generic {@code base-url}/{@code api-key}/{@code
+ * model}/{@code dimensions} shape Spring AI's OpenAI client speaks, not the specific
+ * provider — the {@code SPRING_AI_OPENAI_*} prefix names the access path this client
+ * speaks, not the model's actual provider.
  *
- * <p>Model inference (the provider's own tokenizer and forward pass, run remotely) is
- * delegable under R-02 (TRD §3.3); the L2 normalization applied on write — even though the
- * provider already returns unit vectors truncated by Matryoshka (TRD §6.3, "Capacidades de
- * embedding (fijadas)") — stays hand-written in {@link EmbeddingVector#normalize}, exactly as
- * {@link MiniLmEmbedder} does for the local provider.
+ * <p>Model inference (the provider's own tokenizer and forward pass, run remotely) is fine
+ * to run through a library; the L2 normalization applied on write — even though the
+ * provider already returns unit vectors truncated by Matryoshka, per this application's
+ * fixed embedding capabilities — stays hand-written in {@link EmbeddingVector#normalize},
+ * exactly as {@link MiniLmEmbedder} does for the local provider.
  *
  * <p><b>Failure mapping.</b> Spring AI's OpenAI client (built on the official OpenAI Java SDK)
  * throws unchecked exceptions for every provider failure shape — a 5xx response, an
@@ -33,7 +33,7 @@ import java.util.Objects;
  * precompute CLI fails the whole batch closed with a clear cause instead of writing a partial
  * or fabricated cache entry. A successful call whose returned vector does not have the
  * configured dimension is treated the same way — the provider silently changed its output
- * shape (TR-10: the model is in preview) — rather than being cached wrong.
+ * shape (the model is still in preview) — rather than being cached wrong.
  *
  * <p><b>Verified Gemini/openai-java compatibility gaps.</b> {@link GeminiEmbeddingsCompatibilityInterceptor}
  * is registered on the underlying HTTP client to work around two real, reproduced
@@ -86,7 +86,7 @@ public final class OpenAiCompatibleEmbedder implements AutoCloseable {
     /**
      * Embeds {@code rawAbstract} for {@code documentId} over the network, then L2-normalizes
      * the returned vector with hand-written code and records the pre-normalization norm as
-     * {@code preNormL2} provenance (TRD §6.3), exactly like {@link MiniLmEmbedder#embed}.
+     * {@code preNormL2} provenance, exactly like {@link MiniLmEmbedder#embed}.
      *
      * @throws EmbeddingApiException if the remote call fails (5xx, timeout, auth) or returns a
      *             vector whose dimension does not match the configured {@code dimension}
@@ -120,8 +120,8 @@ public final class OpenAiCompatibleEmbedder implements AutoCloseable {
     }
 
     /**
-     * Embeds every {@code rawAbstracts} entry with exactly ONE network request (TRD §6.3,
-     * "Modo en vivo de {@code embedding-api} (fijado)"), instead of one request per document,
+     * Embeds every {@code rawAbstracts} entry with exactly ONE network request, per the
+     * fixed live-mode contract for {@code embedding-api}, instead of one request per document,
      * then L2-normalizes each returned vector exactly like {@link #embed}. {@code documentIds}
      * and {@code rawAbstracts} must be the same length and share positional order: the
      * provider's response is expected to preserve request order (the OpenAI embeddings
@@ -130,8 +130,8 @@ public final class OpenAiCompatibleEmbedder implements AutoCloseable {
      * rather than guessing which vector belongs to which document.
      *
      * <p>No provider-documented batch-size limit is applied: Gemini's OpenAI-compatible
-     * embeddings endpoint documents no per-request item cap relevant to this corpus's size
-     * (TRD §14), so this sends one request for however many ids are passed in. A future corpus
+     * embeddings endpoint documents no per-request item cap relevant to this corpus's size,
+     * so this sends one request for however many ids are passed in. A future corpus
      * large enough to need chunking should revisit this once such a limit is documented, not
      * invent one.
      *

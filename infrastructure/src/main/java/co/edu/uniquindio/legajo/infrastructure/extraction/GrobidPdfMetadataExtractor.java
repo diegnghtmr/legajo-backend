@@ -18,14 +18,14 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Primary PDF metadata extractor (TRD §6.1, item 1; TRD §8): POSTs the PDF to GROBID's
+ * Primary PDF metadata extractor: POSTs the PDF to GROBID's
  * {@code /api/processHeaderDocument} as {@code multipart/form-data} (field {@code
  * "input"}) and parses the returned TEI with {@link GrobidTeiParser}. Only reachable
- * under Docker Compose's {@code ingest} profile (TRD §14.1); {@link
+ * under Docker Compose's {@code ingest} profile; {@link
  * FallbackPdfMetadataExtractor} is what makes a GROBID outage or an empty abstract
  * non-fatal for the ingestion run as a whole.
  *
- * <p>T4b: when the header abstract looks {@linkplain AbstractQualityCheck suspicious}
+ * <p>When the header abstract looks {@linkplain AbstractQualityCheck suspicious}
  * (too short, contaminated, or cut mid-clause — the {@code d04}/{@code d14} regressions
  * found in the reference corpus), this extractor makes one best-effort retry against
  * {@code /api/processFulltextDocument}, which segments the header and body separately

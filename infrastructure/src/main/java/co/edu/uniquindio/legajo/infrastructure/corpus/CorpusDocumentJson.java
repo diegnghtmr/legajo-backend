@@ -6,7 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /**
- * Wire shape of one corpus document (TRD §9 schema). Field order matches the JSON
+ * Wire shape of one corpus document, matching the fixed on-disk schema. Field order matches the JSON
  * example verbatim; Jackson serializes records in canonical-constructor order, so this
  * declaration order is also the on-disk order. {@code abstract} is a reserved Java
  * keyword, so the domain field {@code abstractText} is renamed on the wire with

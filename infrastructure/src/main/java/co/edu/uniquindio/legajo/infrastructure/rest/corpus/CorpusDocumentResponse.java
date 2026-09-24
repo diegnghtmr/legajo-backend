@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Wire shape of {@code GET /api/v1/corpus/{id}} (TRD §6.6): the article plus its full
+ * Wire shape of {@code GET /api/v1/corpus/{id}}: the article plus its full
  * abstract. {@code abstract} is a reserved Java keyword, so the Java field keeps the
  * domain's own name ({@code abstractText}) and is renamed on the wire with
  * {@link JsonProperty}, the same convention {@code CorpusDocumentJson} already uses for the
- * on-disk {@code corpus.json} schema (TRD §9) — this keeps the API and the data file
+ * on-disk {@code corpus.json} schema — this keeps the API and the data file
  * speaking the same field name for the one field Java cannot spell directly.
  */
 public record CorpusDocumentResponse(

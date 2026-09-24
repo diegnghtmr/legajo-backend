@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.similarity.EmbeddingApiTrace;
 import java.util.List;
 import java.util.Objects;
 
-/** Wire shape of the {@code embedding-api} trace (TRD §6.3): vector excerpt/full vectors, Euclidean distance, score, and provider status. */
+/** Wire shape of the {@code embedding-api} trace: vector excerpt/full vectors, Euclidean distance, score, and provider status. */
 public record EmbeddingApiTraceResponse(
         String algorithmId,
         String provider,

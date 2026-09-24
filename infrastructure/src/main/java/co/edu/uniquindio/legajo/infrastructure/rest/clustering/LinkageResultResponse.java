@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * One linkage's full result within {@code POST /api/v1/clustering} (TRD §6.6): the
+ * One linkage's full result within {@code POST /api/v1/clustering}: the
  * (n-1)-row linkage matrix, the crossing-free {@code leafOrder}, {@code documentIds}
- * (TRD 1.3.9: length n, position i is the document of observation i, the same order
+ * (length n, position i is the document of observation i, the same order
  * {@code idx1}/{@code idx2} and {@code leafOrder} index into), and its evaluation block.
  */
 public record LinkageResultResponse(

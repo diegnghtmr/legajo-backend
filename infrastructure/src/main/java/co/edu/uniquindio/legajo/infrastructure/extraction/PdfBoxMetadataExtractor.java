@@ -16,12 +16,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Reserve PDF metadata extractor (TRD §6.1, item 2; TRD §8): {@code Loader.loadPDF} +
- * {@link ColumnAwareTextExtractor} for left-to-right, top-to-bottom line order (T4c:
- * column-aware for a page whose body is laid out in side-by-side blocks, identical to
+ * Reserve PDF metadata extractor: {@code Loader.loadPDF} +
+ * {@link ColumnAwareTextExtractor} for left-to-right, top-to-bottom line order
+ * (column-aware for a page whose body is laid out in side-by-side blocks, identical to
  * plain {@code PDFTextStripper} otherwise), plus line-based heuristics for the abstract,
- * title and authors. Title and authors are "best effort" by design (TRD §6.1, item 4
- * only requires the fields to be persisted, not to be exact); the abstract heuristic is
+ * title and authors. Title and authors are "best effort" by design (only requiring the
+ * fields to be persisted, not to be exact); the abstract heuristic is
  * the one that matters, because {@link FallbackPdfMetadataExtractor} and {@code
  * verify-corpus}'s non-blank-abstract rule both depend on it finding real text.
  */
@@ -36,8 +36,8 @@ public final class PdfBoxMetadataExtractor implements PdfMetadataExtractor {
 
     /**
      * Upper bound on how much text {@link #extractAbstract} captures after the
-     * "Abstract" heading when no {@link #NEXT_SECTION_HEADING} ever appears (the
-     * unbounded-capture advisory): without it, a document whose layout never renders a
+     * "Abstract" heading when no {@link #NEXT_SECTION_HEADING} ever appears — this
+     * guards against unbounded capture: without it, a document whose layout never renders a
      * heading the regex recognizes — or one with none at all — would have its
      * abstract capture run all the way to the end of the document. In the reference
      * corpus, all 18 correctly extracted abstracts measure between 902 and 1817

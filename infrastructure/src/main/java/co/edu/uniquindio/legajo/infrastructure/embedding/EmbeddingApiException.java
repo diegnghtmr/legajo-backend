@@ -4,7 +4,7 @@ package co.edu.uniquindio.legajo.infrastructure.embedding;
  * Unchecked failure raised by {@link OpenAiCompatibleEmbedder} when the remote
  * OpenAI-compatible embeddings endpoint cannot be used for a document: a 5xx response, a
  * request timeout, an authentication/authorization failure, or a response whose vector shape
- * does not match the configured dimension (TRD §8's "Modo de fallo" for this integration).
+ * does not match the configured dimension — the defined failure mode for this integration.
  * The precompute CLI ({@link co.edu.uniquindio.legajo}) is expected to let this fail the
  * batch job closed rather than writing a partial or fabricated cache.
  */

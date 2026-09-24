@@ -16,14 +16,14 @@ import java.util.Objects;
 
 /**
  * Output adapter for {@link CorpusRepository}: reads and writes {@code data/corpus.json}
- * exactly in the TRD §9 schema — pretty-printed, UTF-8, a stable field order (carried by
+ * exactly in the fixed on-disk schema — pretty-printed, UTF-8, a stable field order (carried by
  * {@link CorpusJson}/{@link CorpusDocumentJson}, whose declaration order Jackson uses
  * for record serialization) and a trailing newline, so the file diffs cleanly in git
  * regardless of the platform that generated it.
  *
- * <p>TRD §9's "generated, not edited" rule for {@code corpus.json} means this adapter
- * is only ever invoked by the ingestion/validation use cases (task T4's {@code
- * IngestCorpus} and {@code ValidateCorpus}), never by a human editing the file by hand.
+ * <p>{@code corpus.json} is generated, never hand-edited: this adapter is only ever invoked
+ * by the ingestion/validation use cases ({@code IngestCorpus} and {@code ValidateCorpus}),
+ * never by a human editing the file by hand.
  */
 public final class JsonCorpusRepository implements CorpusRepository {
 

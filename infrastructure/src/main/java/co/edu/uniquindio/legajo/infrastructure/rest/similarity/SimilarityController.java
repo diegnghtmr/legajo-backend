@@ -20,12 +20,12 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The four similarity endpoints of TRD §6.6 (feature doc task A3): {@code
+ * The four similarity endpoints: {@code
  * POST /similarity/compare}, {@code POST /similarity/matrix}, {@code
  * GET /similarity/{algorithmId}/trace}, and {@code GET /similarity/algorithms}. Pure
  * adapter: every rule (algorithm defaulting, matrix selection bounds, unknown-id lookups)
  * lives in {@link SimilarityService} (application); this class shapes requests/responses and
- * classifies status by request location (TRD §6.6, task A7): a document/algorithm id or a
+ * classifies status by request location: a document/algorithm id or a
  * matrix selection that fails validation is always {@link InvalidRequestException} (400)
  * here, since every one of those values arrives in a body or query string. The one exception
  * is {@code trace}'s path-segment {@code algorithmId}: {@link SimilarityService} cannot know
@@ -34,13 +34,14 @@ import java.util.Objects;
  * and this class reclassifies it to {@link ResourceNotFoundException} (404) only in {@code
  * trace}. See {@link UnknownIdentifierException}'s Javadoc for the full reasoning.
  *
- * <p><b>Trace pair identification — a TRD gap, resolved here.</b> TRD §6.6 fixes the path
+ * <p><b>Trace pair identification — a gap in the REST contract, resolved here.</b> The fixed
+ * contract names the path
  * {@code GET /similarity/{algorithmId}/trace} but never says how the two compared documents
  * are named on that request; unlike {@code compare} (a JSON body with two id fields) or
  * {@code matrix} (a body with a list), a {@code GET} conventionally carries no body. This
  * class resolves the gap with two required query parameters, {@code documentIdA} and
  * {@code documentIdB}, the least surprising shape for a two-document {@code GET} (mirrors
- * {@code compare}'s two body fields, just as query parameters) and the one A6's OpenAPI
+ * {@code compare}'s two body fields, just as query parameters) and one the OpenAPI
  * document can describe unambiguously. Flagged here rather than silently invented; the
  * author may prefer path segments or a different parameter naming.
  */
@@ -62,7 +63,7 @@ public class SimilarityController {
 
     /**
      * {@code POST /api/v1/similarity/compare}: {@code algorithmIds} omitted or {@code null}
-     * defaults to all six (TAC-01, TRD §6.6).
+     * defaults to all six.
      */
     @PostMapping("/compare")
     public List<AlgorithmSimilarityResponse> compare(@RequestBody CompareRequest request) {
@@ -75,7 +76,7 @@ public class SimilarityController {
             results = similarityService.compare(request.documentIdA(), request.documentIdB(), algorithmIds);
         } catch (UnknownIdentifierException exception) {
             // Every id compare() looks up (algorithmIds) is a request-body field here, so an
-            // unknown identifier of any kind is 400, never 404 (TRD §6.6, task A7).
+            // unknown identifier of any kind is 400, never 404.
             throw asInvalidRequest(exception);
         }
         return results.stream().map(AlgorithmSimilarityResponse::from).toList();
@@ -99,7 +100,7 @@ public class SimilarityController {
             rows = similarityService.matrix(documentIds, request.algorithmId());
         } catch (UnknownIdentifierException exception) {
             // matrix()'s algorithmId and documentIds are both request-body fields here, so an
-            // unknown identifier of any kind is 400, never 404 (TRD §6.6, task A7).
+            // unknown identifier of any kind is 400, never 404.
             throw asInvalidRequest(exception);
         }
         return rows.stream()
@@ -109,7 +110,7 @@ public class SimilarityController {
 
     /**
      * {@code GET /api/v1/similarity/{algorithmId}/trace}: the complete trace for one pair,
-     * no truncation parameter (NFR-QA-03). See this class's Javadoc for the pair-
+     * deliberately with no truncation parameter. See this class's Javadoc for the pair-
      * identification decision.
      */
     @GetMapping("/{algorithmId}/trace")
@@ -120,7 +121,7 @@ public class SimilarityController {
             // documentIdA/documentIdB failures reach here already classified as
             // InvalidRequestException (400, requireDocument's calls are never path-based) and
             // pass through unchanged; only algorithmId — this endpoint's path segment — needs
-            // reclassifying from the location-agnostic exception to a 404 (TRD §6.6, task A7).
+            // reclassifying from the location-agnostic exception to a 404.
             trace = similarityService.trace(algorithmId, documentIdA, documentIdB)
                     .orElseThrow(() -> new ResourceNotFoundException(
                             "no trace available for algorithm id: " + algorithmId));
@@ -138,7 +139,7 @@ public class SimilarityController {
 
     /** compare()/matrix(): every id they look up is a request-body field, so any {@link
      * UnknownIdentifierException} they raise is always 400, whatever its {@link
-     * co.edu.uniquindio.legajo.application.error.ProblemType} (TRD §6.6, task A7). */
+     * co.edu.uniquindio.legajo.application.error.ProblemType}. */
     private static InvalidRequestException asInvalidRequest(UnknownIdentifierException exception) {
         return new InvalidRequestException(exception.type(), exception.getMessage());
     }

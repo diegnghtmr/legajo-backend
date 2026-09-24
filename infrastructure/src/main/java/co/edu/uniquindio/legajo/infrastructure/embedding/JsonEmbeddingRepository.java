@@ -22,11 +22,11 @@ import java.util.function.Consumer;
 
 /**
  * Output adapter for {@link EmbeddingRepository}: reads and writes one embedding cache file
- * (e.g. {@code data/embeddings-minilm.json}) exactly in the TRD §9 schema — pretty-printed,
- * UTF-8, a stable field order, and a trailing newline, mirroring
+ * (e.g. {@code data/embeddings-minilm.json}) exactly in the fixed on-disk schema —
+ * pretty-printed, UTF-8, a stable field order, and a trailing newline, mirroring
  * {@code JsonCorpusRepository}'s conventions for {@code corpus.json}.
  *
- * <p><b>Renormalization on load (TRD §6.3, "Invariante de norma unitaria (fijado)").</b>
+ * <p><b>Renormalization on load (the fixed unit-norm invariant).</b>
  * Every vector's {@code values} are parsed to {@code double} and unconditionally
  * L2-renormalized, regardless of how close to unit length they already are; a stored norm
  * that deviates from 1 by more than 1e-6 is reported to {@code provenanceWarningSink} — a
@@ -36,7 +36,7 @@ import java.util.function.Consumer;
  * left it all-zero), fails closed with {@link IllegalStateException} instead of silently
  * renormalizing into a vector of NaN.
  *
- * <p><b>Fails closed on a corpus mismatch (TRD §6.1).</b> {@code load()} compares the
+ * <p><b>Fails closed on a corpus mismatch.</b> {@code load()} compares the
  * cache's {@code corpusSha256} against {@code expectedCorpusSha256} (the corpus this
  * repository was bound to at construction time) and throws {@link IllegalStateException},
  * naming the {@code precomputeEmbeddings} Gradle task, if they differ.
@@ -108,8 +108,8 @@ public final class JsonEmbeddingRepository implements EmbeddingRepository {
 
     /**
      * Parses {@code vectorJson.values()} to {@code double} and unconditionally divides every
-     * component by their current L2 norm (hand-written; TRD §3.3 — normalization is not
-     * delegable), regardless of how close to 1 that norm already is. {@code preNormL2} is
+     * component by their current L2 norm (hand-written; normalization must not be delegated
+     * to a library), regardless of how close to 1 that norm already is. {@code preNormL2} is
      * copied through unchanged: it is precompute-time provenance, not something this loading
      * step recomputes.
      */
@@ -143,7 +143,7 @@ public final class JsonEmbeddingRepository implements EmbeddingRepository {
     }
 
     /**
-     * Fails closed (TRD §6.1 posture) on a corrupted cache entry — a truncated, hand-edited,
+     * Fails closed on a corrupted cache entry — a truncated, hand-edited,
      * or half-written cache file — naming the offending document id and the precompute
      * command to re-run, consistent with the {@code corpusSha256} mismatch path above.
      */

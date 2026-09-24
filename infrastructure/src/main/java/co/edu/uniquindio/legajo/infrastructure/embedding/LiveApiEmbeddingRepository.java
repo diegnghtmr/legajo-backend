@@ -18,8 +18,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Live implementation of {@link EmbeddingRepository} for {@code embedding-api} (TRD §6.3,
- * "Modo en vivo de {@code embedding-api} (fijado)"; feature doc tasks A8/F5): with {@code
+ * Live implementation of {@link EmbeddingRepository} for {@code embedding-api}: with {@code
  * legajo.embedding-provider=live}, this adapter replaces {@link JsonEmbeddingRepository} as
  * the {@code apiEmbeddingRepository} bean ({@code DomainConfiguration}) and fetches every
  * not-yet-cached document's vector from the remote model through {@link
@@ -28,25 +27,26 @@ import java.util.Set;
  * or issuing one request per document.
  *
  * <p><b>Same input text, same normalization, no duplicated math.</b> {@link #load()} reads
- * every document's raw post-ingestion {@code abstract} from {@link CorpusRepository} (TRD
- * §6.3, "Texto de entrada por familia") and hands the not-yet-cached ones to {@link
- * OpenAiCompatibleEmbedder#embedBatch}, which already L2-renormalizes each returned vector with
- * the shared hand-written {@link EmbeddingVector#normalize} — the exact normalization {@link
- * JsonEmbeddingRepository} reuses on load, under the same unit-norm invariant (TRD §6.3). This
- * class does not renormalize a second time; {@link EmbeddingVector}'s own compact constructor
- * already refuses a non-unit-length vector, so a mistake here would fail loudly, not silently.
+ * every document's raw post-ingestion {@code abstract} from {@link CorpusRepository} (the
+ * same per-family input text every embedding capability uses) and hands the not-yet-cached
+ * ones to {@link OpenAiCompatibleEmbedder#embedBatch}, which already L2-renormalizes each
+ * returned vector with the shared hand-written {@link EmbeddingVector#normalize} — the exact
+ * normalization {@link JsonEmbeddingRepository} reuses on load, under the same unit-norm
+ * invariant. This class does not renormalize a second time; {@link EmbeddingVector}'s own
+ * compact constructor already refuses a non-unit-length vector, so a mistake here would fail
+ * loudly, not silently.
  *
- * <p><b>Caffeine {@code embeddings} region, no TTL (TRD §9).</b> {@link #cache} is a plain
+ * <p><b>Caffeine {@code embeddings} region, no TTL.</b> {@link #cache} is a plain
  * per-instance Caffeine cache keyed by document id: since {@code DomainConfiguration} registers
  * this adapter as a Spring singleton bean, one instance lives for the whole process, so every
- * document is fetched from the network at most once per process — exactly TRD's requirement —
- * regardless of how many requests or how many of {@link #load()}'s callers ask for it.
+ * document is fetched from the network at most once per process, regardless of how many
+ * requests or how many of {@link #load()}'s callers ask for it.
  * {@link Cache#getAll(Iterable, java.util.function.Function)} computes only the ids missing
  * from the cache, in one call to the bulk-loading function below, and — per its contract —
  * never caches a partial result if that function throws, so a failed batch retries every
  * missing document again on the next {@code load()}, never fewer.
  *
- * <p><b>No silent fallback (TRD §6.3).</b> Any failure — a 5xx, a timeout, a rejected request,
+ * <p><b>No silent fallback.</b> Any failure — a 5xx, a timeout, a rejected request,
  * a missing/blank API key — surfaces as {@link EmbeddingApiException} (already mapped to a 503
  * Problem Detail by {@code ProblemDetailExceptionHandler}) and never falls back to the
  * versioned JSON cache, which would falsely report a mode this instance is not using.
@@ -56,9 +56,9 @@ import java.util.Set;
  * constructor or in the {@code DomainConfiguration} bean factory method that creates this
  * instance. This is what lets {@code legajo.embedding-provider=live} be configured with a
  * blank or missing {@code SPRING_AI_OPENAI_API_KEY} (or base URL) without failing application
- * startup: the TRD requires a missing key to answer a 503 per request, not to crash the
- * server — any exception raised while configuring the client (as well as any raised while
- * calling it) is wrapped in {@link EmbeddingApiException} the same way.
+ * startup: a missing key must answer a 503 per request, not crash the server — any exception
+ * raised while configuring the client (as well as any raised while calling it) is wrapped in
+ * {@link EmbeddingApiException} the same way.
  *
  * <p><b>Always matches the current corpus.</b> Unlike {@link JsonEmbeddingRepository}, this
  * adapter never fails closed on a {@code corpusSha256} mismatch: the {@link EmbeddingCache} it
@@ -112,7 +112,7 @@ public final class LiveApiEmbeddingRepository implements EmbeddingRepository {
         Map<String, EmbeddingVector> byDocumentId = cache.getAllPresent(ids);
         if (byDocumentId.size() < ids.size()) {
             // getAll alone is not atomic across callers: two cold loads would both fetch. The
-            // lock keeps "each document requested at most once per process" (TRD 1.3.7 §6.3).
+            // lock keeps "each document requested at most once per process".
             synchronized (batchLock) {
                 byDocumentId = cache.getAll(ids, missingIds -> fetchMissing(documents, missingIds));
             }
@@ -133,17 +133,18 @@ public final class LiveApiEmbeddingRepository implements EmbeddingRepository {
     }
 
     /**
-     * Bulk-loading function for {@link #cache}'s {@code getAll} (TRD §6.3,
-     * {@code R3-live-load-fetches-whole-corpus-serially}): Caffeine invokes this at most once
-     * per {@link #load()} call, with only the document ids not already cached, and — per
-     * {@code Cache#getAll}'s contract — never caches a partial result if this function throws,
-     * so a failed batch leaves nothing cached and the next {@code load()} retries every
-     * document again, never fewer.
+     * Bulk-loading function for {@link #cache}'s {@code getAll}: Caffeine invokes this at
+     * most once per {@link #load()} call, with only the document ids not already cached, and
+     * — per {@code Cache#getAll}'s contract — never caches a partial result if this function
+     * throws, so a failed batch leaves nothing cached and the next {@code load()} retries
+     * every document again, never fewer. This batches the whole missing set into one live
+     * network call rather than fetching documents one at a time.
      *
      * <p>{@code missingIds}' iteration order is a {@link Set}, not contractually ordered, so
      * this rebuilds the request from {@code documents} (already in corpus order) filtered down
      * to the missing ids, instead of trusting the set's order — keeping the batched request
-     * body's {@code input} order deterministic and matching TRD "Texto de entrada por familia".
+     * body's {@code input} order deterministic and matching the same per-family input text
+     * ordering every embedding capability uses.
      */
     private Map<String, EmbeddingVector> fetchMissing(List<CorpusDocument> documents, Set<? extends String> missingIds) {
         List<CorpusDocument> toFetch = documents.stream().filter(document -> missingIds.contains(document.id())).toList();

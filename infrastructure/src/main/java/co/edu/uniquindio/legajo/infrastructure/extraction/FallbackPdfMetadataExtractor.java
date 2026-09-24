@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /**
- * The primary/fallback chain of TRD §8's GROBID integration row: try {@code primary}
+ * The primary/fallback chain of the GROBID integration: try {@code primary}
  * first, fall back to {@code fallback} when the primary either throws or comes back
  * with a blank abstract (the extra rule this task adds beyond a plain try/catch), and
  * fail closed with {@link PdfExtractionException} when neither extractor produces a
@@ -16,7 +16,7 @@ import java.util.Objects;
  * verify-corpus}'s non-blank-abstract rule anyway, so it is better to fail the
  * ingestion run loudly than to persist it silently.
  *
- * <p>T4b: a non-blank abstract is no longer automatically "usable" on its own. When the
+ * <p>A non-blank abstract is no longer automatically "usable" on its own. When the
  * primary's abstract is {@linkplain AbstractQualityCheck suspicious} (too short,
  * contaminated, or cut mid-clause), this chain also tries the fallback and keeps the
  * better of the two ({@link AbstractQualityCheck#pickBetter}) instead of committing to
@@ -24,7 +24,7 @@ import java.util.Objects;
  * still reserved for the case neither extractor produces any usable text at all — a
  * result that is merely suspicious, on both sides, is still persisted (as the better of
  * the two) and surfaced to the author through the ingestion CLI's quality summary for
- * manual validation, per TRD §6.1 item 5.
+ * manual validation.
  */
 public final class FallbackPdfMetadataExtractor implements PdfMetadataExtractor {
 
@@ -81,8 +81,8 @@ public final class FallbackPdfMetadataExtractor implements PdfMetadataExtractor 
     }
 
     /**
-     * The outcome of trying one extractor, kept instead of discarding it (the
-     * undiagnosable-failure advisory): when both extractors ultimately fail, {@link
+     * The outcome of trying one extractor, kept instead of discarding it, so an
+     * otherwise-undiagnosable failure stays traceable: when both extractors ultimately fail, {@link
      * #attachTo} records each attempt's cause — either the exception it threw or a
      * note that it returned a blank abstract — as a {@linkplain
      * Throwable#addSuppressed(Throwable) suppressed exception} on the final fail-closed

@@ -14,7 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * T4c: column-aware page text extraction for {@link PdfBoxMetadataExtractor}.
+ * Column-aware page text extraction for {@link PdfBoxMetadataExtractor}.
  *
  * <p>{@code PDFTextStripper} with {@code setSortByPosition(true)} sorts every character
  * on a page primarily by y (top to bottom) then x (left to right). That is the right
@@ -25,12 +25,12 @@ import java.util.List;
  * that expects a line to start with a heading word never matches. This is exactly what
  * happened to one PDF in the reference corpus, where the "Abstract" heading and its text
  * sit in a wide right-hand block next to a narrow left-hand affiliations sidebar: GROBID
- * itself under-segmented the same abstract (see the T4c task notes), and the existing
+ * itself under-segmented the same abstract, and the existing
  * plain-{@code PDFTextStripper} fallback produced the same truncation for a different,
  * PDFBox-specific reason (this class's Javadoc above).
  *
  * <p>Detection is a per-page, generic geometric heuristic — nothing here is specific to
- * any one document (TC-01, reusability over any PDF folder). An earlier version of this
+ * any one document, keeping the extractor reusable over any PDF folder. An earlier version of this
  * class tried to classify each line as "narrow" or "full width" by comparing its own
  * width against a fraction of the page's overall text width, but that measure is fooled
  * by an ordinary wrapped title: a short wrapped header line ("...critical review") is
@@ -58,7 +58,8 @@ import java.util.List;
  *       on the boundary x within {@value #MAX_BOUNDARY_SPREAD} points or forming a
  *       consecutive vertical run of at least {@value #MIN_CONSECUTIVE_TWO_SEGMENT_ROWS}
  *       rows (see {@link #hasStrongColumnEvidence}), so a page with one or two
- *       coincidental wide-gap rows stays single-column (R3-column-false-positive). The
+ *       coincidental wide-gap rows stays single-column, avoiding a false-positive column
+ *       split. The
  *       boundary is then the midpoint between the widest reach of every qualifying row's
  *       left segment and the narrowest reach of every row's right segment, and the column
  *       body starts at the topmost such row.</li>
@@ -101,7 +102,7 @@ final class ColumnAwareTextExtractor {
      * A candidate column split is only trusted once at least this many rows split into
      * exactly two segments. Two was not enough: an ordinary page can hold two isolated
      * wide-gap rows (a running head, right-flushed equation numbers, a two-row table)
-     * without being two-column at all (R3-column-false-positive).
+     * without being two-column at all — avoiding a false-positive column split.
      */
     private static final int MIN_LINES_PER_COLUMN = 3;
 
@@ -240,7 +241,7 @@ final class ColumnAwareTextExtractor {
     /**
      * Requires several two-segment rows plus at least one of: the rows agree on the
      * boundary x, or they form a long consecutive vertical run. The row count alone can be
-     * fooled by a few coincidental wide-gap rows (R3-column-false-positive).
+     * fooled by a few coincidental wide-gap rows — avoiding a false-positive column split.
      */
     private static boolean hasStrongColumnEvidence(List<TwoSegmentRow> pairs, int longestConsecutiveRun) {
         if (pairs.size() < MIN_LINES_PER_COLUMN) {

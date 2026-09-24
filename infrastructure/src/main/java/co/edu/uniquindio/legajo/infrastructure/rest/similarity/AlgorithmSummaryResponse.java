@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.similarity.AlgorithmKind;
 
 import java.util.Objects;
 
-/** Wire shape of one row of {@code GET /api/v1/similarity/algorithms} (TRD §6.6). */
+/** Wire shape of one row of {@code GET /api/v1/similarity/algorithms}. */
 public record AlgorithmSummaryResponse(String id, String displayName, AlgorithmKind kind) {
 
     public AlgorithmSummaryResponse {

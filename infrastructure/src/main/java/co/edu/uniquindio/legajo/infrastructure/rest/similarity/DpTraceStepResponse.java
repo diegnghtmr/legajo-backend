@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.similarity.DpTraceStep;
 
 import java.util.Objects;
 
-/** Wire shape of one classified DP backtrace step (match/mismatch/gap, per TRD §6.3). */
+/** Wire shape of one classified DP backtrace step (match/mismatch/gap). */
 public record DpTraceStepResponse(MatrixCellResponse from, MatrixCellResponse to, DpOperationKind operation) {
 
     public static DpTraceStepResponse from(DpTraceStep step) {

@@ -4,7 +4,7 @@ import co.edu.uniquindio.legajo.similarity.TfIdfTermTrace;
 
 import java.util.Objects;
 
-/** Wire shape of one term's TF-IDF trace row (TRD §6.3): frequencies, weights, and the normalized weights. */
+/** Wire shape of one term's TF-IDF trace row: frequencies, weights, and the normalized weights. */
 public record TfIdfTermTraceResponse(
         String term,
         int frequencyA,

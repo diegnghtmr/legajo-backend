@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Hand-written mean pooling for MiniLM (TRD §3.3: pooling is not delegable under R-02; TRD
- * §6.3, "Límite de tokens de MiniLM": "aplicar pooling por media a los embeddings de token de
- * cada ventana ..., aplicar pooling por media a los vectores de ventana"). Pure arithmetic
- * over plain arrays/lists — {@link MiniLmEmbedder} is the only caller that ever supplies
- * real token embeddings from an ONNX session; every test here fabricates its inputs.
+ * Hand-written mean pooling for MiniLM: pooling must not be delegated to a library. The
+ * fixed pipeline is to mean-pool each window's token embeddings first, then mean-pool the
+ * resulting per-window vectors. Pure arithmetic over plain arrays/lists — {@link
+ * MiniLmEmbedder} is the only caller that ever supplies real token embeddings from an ONNX
+ * session; every test here fabricates its inputs.
  */
 final class MiniLmPooling {
 

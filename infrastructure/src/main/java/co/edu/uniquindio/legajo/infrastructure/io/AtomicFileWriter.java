@@ -10,8 +10,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 
 /**
- * Shared write-then-move helper for {@code corpus.json} and {@code embeddings-*.json}
- * (robustness advisory closed): writing the full new content directly to the target
+ * Shared write-then-move helper for {@code corpus.json} and {@code embeddings-*.json},
+ * fixing a robustness gap: writing the full new content directly to the target
  * path with {@code TRUNCATE_EXISTING} (the previous behavior of both {@code
  * JsonCorpusRepository} and {@code JsonEmbeddingRepository}) truncates the file before
  * the new bytes are fully on disk, so a crash mid-write — a killed process, a disk-full

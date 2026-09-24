@@ -3,7 +3,7 @@ package co.edu.uniquindio.legajo.infrastructure.rest.clustering;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Request body of {@code POST /api/v1/clustering/cut} (TRD §6.6): {@code representation}
+ * Request body of {@code POST /api/v1/clustering/cut}: {@code representation}
  * optional (defaults to {@code tfidf-cosine}), {@code linkage} required, {@code k} required
  * — the only clustering endpoint that accepts a free cut. {@code k} is boxed ({@code
  * Integer}, not {@code int}) so a missing field deserializes to {@code null} instead of

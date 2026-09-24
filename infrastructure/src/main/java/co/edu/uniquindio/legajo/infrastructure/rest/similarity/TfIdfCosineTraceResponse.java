@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.similarity.TfIdfCosineTrace;
 import java.util.List;
 import java.util.Objects;
 
-/** Wire shape of the {@code tfidf-cosine} trace (TRD §6.3): per-term weights plus the dot product, norms, cosine, and angle. */
+/** Wire shape of the {@code tfidf-cosine} trace: per-term weights plus the dot product, norms, cosine, and angle. */
 public record TfIdfCosineTraceResponse(
         String algorithmId,
         int corpusSize,

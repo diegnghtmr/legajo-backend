@@ -8,11 +8,11 @@ import java.util.Objects;
 
 /**
  * Wire shape of one similarity result within {@code POST /similarity/compare} and
- * {@code POST /similarity/matrix} (TRD §6.6): {@code normalizedScore}, {@code rawValue}
+ * {@code POST /similarity/matrix}: {@code normalizedScore}, {@code rawValue}
  * (nullable), {@code computedNanos}, {@code cached}, and {@code degenerate}.
  *
- * <p><b>{@code cached} is real (task A5).</b> {@code SimilarityService} now looks up a
- * request-keyed cache before computing (TRD §9); {@link #from(SimilarityResult, boolean)}
+ * <p><b>{@code cached} is real.</b> {@code SimilarityService} now looks up a
+ * request-keyed cache before computing; {@link #from(SimilarityResult, boolean)}
  * threads that hit/miss flag straight through from the application layer, and {@link
  * #from(CachedSimilarityResult)} does the same for a {@code POST /similarity/matrix} cell,
  * which carries the same flag under a different application-layer shape (no

@@ -11,14 +11,14 @@ import java.util.OptionalDouble;
 
 /**
  * Wire shape of the {@code evaluation} block within {@code POST /clustering} and
- * {@code POST /clustering/evaluation} (TRD §6.6): {@code cophenetic} plus
+ * {@code POST /clustering/evaluation}: {@code cophenetic} plus
  * {@code meanSilhouette}/{@code daviesBouldin}, each keyed by the fixed cut
- * {@code k ∈ {2,3,4,5} ∩ [2, n-1]} (TAC-04). JSON object keys are always strings, so a
+ * {@code k ∈ {2,3,4,5} ∩ [2, n-1]}. JSON object keys are always strings, so a
  * {@code Map<Integer, ...>} serializes with string keys ({@code "2"}, {@code "3"}, ...) —
  * there is no integer-keyed JSON object, so this is the direct, not an invented, mapping.
  *
  * <p><b>{@code daviesBouldin}'s value must serialize as JSON {@code null}, never
- * {@code NaN} or a dropped key (TRD §6.5's coincident-centroids case).</b> The domain
+ * {@code NaN} or a dropped key — the fixed rule for the coincident-centroids case.</b> The domain
  * models this as {@link OptionalDouble} per {@code k}; {@link Map#copyOf} and
  * {@link Map#of} both reject {@code null} values outright, so this class deliberately does
  * <em>not</em> defensively copy the {@code daviesBouldin} map the way {@code meanSilhouette}

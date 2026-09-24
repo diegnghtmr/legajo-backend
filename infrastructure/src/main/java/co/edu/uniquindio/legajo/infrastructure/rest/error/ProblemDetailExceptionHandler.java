@@ -15,8 +15,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 import java.net.URI;
 
 /**
- * Central RFC 9457 Problem Detail mapping for every {@code /api/v1/**} endpoint (TRD §6.6:
- * "Errores: Problem Detail de RFC 9457"). Spring Framework 7 / Boot 4 ships
+ * Central RFC 9457 Problem Detail mapping for every {@code /api/v1/**} endpoint: every error
+ * response is a Problem Detail per RFC 9457. Spring Framework 7 / Boot 4 ships
  * {@link ProblemDetail} natively, so this advice only decides the status per exception type;
  * it never hand-rolls the error body shape.
  *
@@ -32,14 +32,13 @@ import java.net.URI;
  * owns those types, and two handlers for the same type in one advice fail at startup.
  *
  * <p><b>Why {@link IllegalArgumentException} and {@link java.util.NoSuchElementException}
- * are not mapped here (task A3b, advisory {@code R3-broad-exception-mapping}).</b> Both are
- * plain JDK exception types that any code can throw, including code that is simply buggy.
- * Mapping them broadly meant a server-side bug that happened to throw either one was
- * reported to the client as "your request was invalid" or "the resource does not exist",
- * {@link Exception#getMessage()} and all, instead of the honest 500. Only the dedicated
- * {@link InvalidRequestException}/{@link ResourceNotFoundException} subtypes — both
- * introduced by task A3b specifically to mean "the request failed validation" and "the
- * requested resource does not exist" — are mapped below. A raw {@link
+ * are not mapped here.</b> Both are plain JDK exception types that any code can throw,
+ * including code that is simply buggy. Mapping them broadly meant a server-side bug that
+ * happened to throw either one was reported to the client as "your request was invalid" or
+ * "the resource does not exist", {@link Exception#getMessage()} and all, instead of the
+ * honest 500. Only the dedicated {@link InvalidRequestException}/{@link
+ * ResourceNotFoundException} subtypes — introduced specifically to mean "the request failed
+ * validation" and "the requested resource does not exist" — are mapped below. A raw {@link
  * IllegalArgumentException} or {@link java.util.NoSuchElementException} that is not an
  * instance of one of those subtypes no longer matches either handler and falls through to
  * the catch-all, which is the correct outcome: the server, not the client, is at fault.
@@ -51,30 +50,29 @@ import java.net.URI;
  *   <li>{@link InvalidRequestException} → 400 — a validation failure (blank required
  *       field, an out-of-range matrix selection size, a duplicate document id, an unknown
  *       representation id, an out-of-range clustering cut {@code k}).</li>
- *   <li>{@link EmbeddingApiException} → 503 — NFR-QA-12's live-embedding degradation: a
- *       network failure or missing API key on a path that needs a live embedding refresh
- *       must never look like a server bug (500) to the client, because the cached-mode demo
- *       keeps working regardless. See this class's Javadoc addendum below for what this
- *       mapping does and does not cover today.</li>
+ *   <li>{@link EmbeddingApiException} → 503 — a live-embedding degradation: a network
+ *       failure or missing API key on a path that needs a live embedding refresh must never
+ *       look like a server bug (500) to the client, because the cached-mode demo keeps
+ *       working regardless. See this class's Javadoc addendum below for what this mapping
+ *       covers.</li>
  *   <li>Anything else → 500 with a fixed, generic detail. The real exception is logged
  *       server-side only: a response body never carries a stack trace or an internal
  *       class name.</li>
  * </ul>
  *
- * <p><b>NFR-QA-12 finding (feature doc task A4, flagged for the author).</b> Today, no
- * request path actually calls the live Gemini/OpenAI-compatible API: every clustering and
- * similarity computation reads vectors from the versioned {@code embeddings-*.json} caches
- * ({@code ClusteringService}/{@code SimilarityService}), and {@code OpenAiCompatibleEmbedder}
- * — the only thing that ever throws {@link EmbeddingApiException} — is used solely by the
- * offline precompute CLI ({@code PrecomputeApiEmbeddingsCli}), never at serve time. This
- * mapping therefore has no live production trigger yet; it exists so that *if* a live
- * serve-time embedding path is added later (out of this feature's scope — the TRD does not
- * specify one, and inventing one here would be exactly the "arquitectura que el TRD no
- * cubre" the workspace rule forbids), its failure is already correctly classified rather
- * than silently falling through to the generic 500. {@code legajo.embedding-provider=live}
- * (TRD §14.1) today only changes {@code EmbeddingProviderMode}'s serialized value on
- * {@code GET /embeddings/status}'s {@code embedding-api} object — it does not change what
- * any endpoint actually computes with, since nothing reads it to pick a code path yet.
+ * <p><b>When this mapping actually triggers.</b> With {@code legajo.embedding-provider=live},
+ * {@code DomainConfiguration} backs the {@code apiEmbeddingRepository} bean with {@code
+ * LiveApiEmbeddingRepository} instead of the versioned {@code embeddings-openai.json} cache.
+ * {@code SimilarityService}, {@code ClusteringService}, and {@code EmbeddingsService} each
+ * call {@code EmbeddingRepository#load()} once per request, so in live mode that call
+ * synchronously fetches any not-yet-cached document's vector from the configured
+ * OpenAI-compatible embedding endpoint over the network, through {@code
+ * OpenAiCompatibleEmbedder}, at request time. {@link EmbeddingApiException} — the only
+ * exception this handler maps to 503 — is exactly what that live call throws on a network
+ * failure, a missing or blank API key, or an unexpected response shape, so a real request
+ * can genuinely hit this mapping whenever the server runs in live mode. In the default
+ * {@code cached} mode this path never triggers, because {@code JsonEmbeddingRepository}
+ * only reads the local, precomputed cache file and never calls the network.
  */
 @RestControllerAdvice
 public class ProblemDetailExceptionHandler extends ResponseEntityExceptionHandler {
@@ -95,11 +93,11 @@ public class ProblemDetailExceptionHandler extends ResponseEntityExceptionHandle
         return problem;
     }
 
-    /** NFR-QA-12: a live-embedding failure is a degraded dependency, not a client mistake
-     * or a server bug — 503, with the real cause logged server-side only. */
+    /** A live-embedding failure is a degraded dependency, not a client mistake or a server
+     * bug — 503, with the real cause logged server-side only. */
     @ExceptionHandler(EmbeddingApiException.class)
     public ProblemDetail handleEmbeddingApiUnavailable(EmbeddingApiException exception) {
-        log.warn("Live embedding API unavailable (NFR-QA-12 degradation)", exception);
+        log.warn("Live embedding API unavailable (degraded dependency)", exception);
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.SERVICE_UNAVAILABLE, "The live embedding API is currently unavailable.");
         problem.setType(URI.create(ProblemType.EMBEDDING_API_UNAVAILABLE.urn()));

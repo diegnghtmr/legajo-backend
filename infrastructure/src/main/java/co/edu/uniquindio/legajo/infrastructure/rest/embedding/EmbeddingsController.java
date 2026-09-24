@@ -12,20 +12,19 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Objects;
 
 /**
- * {@code GET /api/v1/embeddings/status} (TRD §6.6, fixed by TRD 1.3.6, feature doc task
- * A4): one response carrying both embedding families, one object per capability. Pure
- * adapter: {@link EmbeddingsService#status} (application, A2) computes one family's status
- * at a time — this class calls it twice, once per {@link EmbeddingRepository} bean {@code
- * DomainConfiguration} registers, exactly the composition its own Javadoc anticipated
- * ("the REST layer (A3/A4) can call it once for a single-family response or twice ... for a
- * per-family response").
+ * {@code GET /api/v1/embeddings/status}: one response carrying both embedding families, one
+ * object per capability. Pure adapter: {@link EmbeddingsService#status} (application)
+ * computes one family's status at a time — this class calls it twice, once per {@link
+ * EmbeddingRepository} bean {@code DomainConfiguration} registers, exactly the composition
+ * its own Javadoc anticipated ("the REST layer can call it once for a single-family response
+ * or twice ... for a per-family response").
  *
  * <p><b>{@code device} — a fixed, undocumented deployment fact (author decision, flagged).</b>
  * {@code EmbeddingsService.status} requires a {@code device} argument for every call, but
- * TRD §14.2 only fixes that the default profile is CPU-only and there is no {@code
- * application.yml} key for it (A2's own Javadoc on this same gap). This class supplies the
+ * the fixed rule only requires that the default profile is CPU-only, and there is no
+ * {@code application.yml} key for it. This class supplies the
  * fixed literal {@code "cpu"} rather than inventing a new configuration property — not
- * fixed by the TRD, so flagged here rather than silently decided.
+ * part of the fixed rule, so flagged here rather than silently decided.
  */
 @RestController
 @RequestMapping("/api/v1/embeddings")

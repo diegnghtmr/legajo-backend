@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
 
 /**
  * Infrastructure adapter for {@link BenchmarkReportRepository}: reads the two versioned JMH
- * export CSVs (TRD §6.6, {@code GET /benchmarks}; TRD 1.3.10) — {@code jmh-results.csv}'s
+ * export CSVs backing {@code GET /benchmarks} — {@code jmh-results.csv}'s
  * {@code #}-prefixed harness header and {@code
  * benchmark,family,parameter,size,score,error,unit} rows, and {@code slopes.csv}'s {@code
  * family,points,empiricalSlope,theoreticalExponent} rows — and shapes them into a {@link
@@ -32,8 +32,8 @@ import java.util.regex.Pattern;
  * the JMH harness is measurement tooling, never a runtime dependency of the deployed
  * application. This class hand-writes its own small, unforgiving CSV parser instead of
  * reusing {@code benchmarks.export.JmhResultsCsvWriter}; it only mirrors that writer's exact
- * column names and order by convention (both are read from the one CSV format TRD §6.6 and
- * the feature doc for {@code jmh-benchmarks} fix).
+ * column names and order by convention (both are read from the one fixed CSV format this
+ * adapter and that writer share).
  *
  * <p>No CSV quoting is implemented: every field either writer emits is a Java-identifier-like
  * token, a kebab-case family name, a {@code Double.toString}/{@code "%.6f"} number, or a JMH
@@ -46,7 +46,7 @@ import java.util.regex.Pattern;
  * a column header but zero data rows) throws {@link IllegalStateException} naming the
  * offending file and the export command to re-run ({@value #EXPORT_COMMAND}) — the same
  * fail-closed contract {@code EmbeddingCacheStartupValidator} already applies to a
- * missing/malformed embedding cache (TRD §9): the versioned results files are deployment data,
+ * missing/malformed embedding cache: the versioned results files are deployment data,
  * and an incomplete or corrupt one must stop the server from starting, never serve a partial or
  * wrong report.
  */
@@ -76,7 +76,7 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
      * ({@code 0x1.8p3}), a trailing {@code d}/{@code D}/{@code f}/{@code F} suffix, the literal
      * words {@code NaN}/{@code Infinity}/{@code -Infinity}, and leading/trailing whitespace —
      * none of which a well-formed export ever writes, so every one of them is treated as
-     * corruption (R3-nonfinite-doubles-accepted / R3-nan-score-error).
+     * corruption — a non-finite double or a NaN score is rejected as a parse failure, never accepted.
      */
     private static final Pattern STRICT_DECIMAL = Pattern.compile("-?\\d+(\\.\\d+)?([eE][-+]?\\d+)?");
 
@@ -250,7 +250,7 @@ public final class CsvBenchmarkReportRepository implements BenchmarkReportReposi
      * Accepts only a plain decimal ({@link #STRICT_DECIMAL}) and then requires it to be finite:
      * a well-formed export never writes {@code NaN}, {@code Infinity}, a hex float literal, a
      * {@code d}/{@code f} suffix, surrounding whitespace, or a decimal so large it overflows to
-     * an infinite {@code double} (R3-nonfinite-doubles-accepted / R3-nan-score-error).
+     * an infinite {@code double} — rejected as a parse failure, never accepted silently.
      */
     private static double parseDouble(String value, Path path, String context) {
         if (!STRICT_DECIMAL.matcher(value).matches()) {

@@ -18,14 +18,14 @@ import java.util.Objects;
 
 /**
  * Runs {@code all-MiniLM-L6-v2} locally over one abstract at a time for the offline
- * precompute job (TRD §6.1, §6.3, §5.1: "DJL 0.36.x o ORT 1.29 CPU"). Model inference itself
- * — the HuggingFace tokenizer and the ONNX Runtime forward pass — is delegable under R-02
- * (TRD §3.3); the windowing ({@link MiniLmWindowing}), the mean pooling
+ * precompute job, on DJL 0.36.x with ONNX Runtime 1.29 CPU. Model inference itself — the
+ * HuggingFace tokenizer and the ONNX Runtime forward pass — is fine to run through a
+ * library; the windowing ({@link MiniLmWindowing}), the mean pooling
  * ({@link MiniLmPooling}), and the final L2 normalization ({@link
  * co.edu.uniquindio.legajo.similarity.EmbeddingVector#normalize}) are hand-written, exactly
- * the parts R-02 does not allow to be delegated.
+ * the parts that must not be delegated to a library.
  *
- * <p><b>Pipeline (TRD §6.3, "Límite de tokens de MiniLM").</b> The abstract's raw wordpiece
+ * <p><b>Pipeline (the fixed MiniLM token-limit rule).</b> The abstract's raw wordpiece
  * ids (no special tokens, since {@link MiniLmWindowing} windows the content alone) are split
  * into windows of at most {@link MiniLmWindowing#MAX_CONTENT_TOKENS_PER_WINDOW} tokens; each
  * window gets its own hand-added {@code [CLS]}/{@code [SEP]} pair (derived once from this
@@ -34,9 +34,10 @@ import java.util.Objects;
  * L2-normalized, with the pre-normalization norm recorded as {@code preNormL2} provenance.
  *
  * <p>Not unit-tested directly: it needs a real network-downloaded tokenizer and a ~90MB ONNX
- * model, so it is exercised by the real offline precompute run (task S6) instead of
- * {@code ./gradlew test}. {@link MiniLmWindowing} and {@link MiniLmPooling} — the hand-written
- * logic R-02 actually requires — are unit-tested with fabricated inputs.
+ * model, so it is exercised by the real offline precompute run instead of
+ * {@code ./gradlew test}. {@link MiniLmWindowing} and {@link MiniLmPooling} — the
+ * hand-written logic that must not be delegated to a library — are unit-tested with
+ * fabricated inputs.
  */
 public final class MiniLmEmbedder implements AutoCloseable {
 
@@ -80,7 +81,7 @@ public final class MiniLmEmbedder implements AutoCloseable {
     /**
      * Embeds {@code rawAbstract} for {@code documentId}: windows it, runs MiniLM once per
      * window, mean-pools each window's token embeddings, mean-pools the window vectors, and
-     * L2-normalizes the result (TRD §6.3).
+     * L2-normalizes the result.
      */
     public EmbeddingVector embed(String documentId, String rawAbstract) {
         Objects.requireNonNull(documentId, "documentId");
@@ -108,8 +109,8 @@ public final class MiniLmEmbedder implements AutoCloseable {
         System.arraycopy(contentIds, 0, ids, 1, contentIds.length);
         ids[length - 1] = sepId;
         Arrays.fill(attentionMask, 1L);
-        // tokenTypeIds stays all zeros: a single-sequence input (TRD §6.3 embeds one abstract
-        // at a time, never a sentence pair).
+        // tokenTypeIds stays all zeros: a single-sequence input (this pipeline embeds one
+        // abstract at a time, never a sentence pair).
 
         try (OnnxTensor idsTensor = OnnxTensor.createTensor(environment, new long[][] { ids });
                 OnnxTensor maskTensor = OnnxTensor.createTensor(environment, new long[][] { attentionMask });

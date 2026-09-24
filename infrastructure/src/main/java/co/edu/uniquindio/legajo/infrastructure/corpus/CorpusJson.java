@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.corpus.Corpus;
 import java.util.List;
 
 /**
- * Wire shape of the corpus document (TRD §9 schema): {@code version}, {@code
+ * Wire shape of the corpus document, matching the fixed on-disk schema: {@code version}, {@code
  * sourceCount}, {@code corpusSha256}, then {@code documents}, in that declaration
  * order. Package-private: {@link JsonCorpusRepository} is the only class that needs to
  * see this DTO; every other module keeps depending on the domain {@link Corpus} record.
