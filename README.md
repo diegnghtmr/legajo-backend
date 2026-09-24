@@ -199,10 +199,10 @@ git — use the hosting provider's secret panel in production).
 |---|---|---|---|
 | `LEGAJO_EMBEDDING_PROVIDER` | `application.yml` (`legajo.embedding-provider`) | No, defaults to `cached` | `cached` reads `data/embeddings-*.json`, no network needed |
 | `LEGAJO_CORS_ORIGINS` | `application.yml` (`legajo.cors-origins`) | No, defaults to `http://localhost:5173` and `http://localhost` | Comma-separated browser origins allowed by CORS for `/api/v1/**`; a defined list replaces the defaults instead of adding to them |
-| `SPRING_AI_OPENAI_BASE_URL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | OpenAI-compatible embeddings endpoint (Gemini) |
-| `SPRING_AI_OPENAI_API_KEY` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Read from the environment only; never logged or included in an exception message |
-| `LEGAJO_EMBEDDING_API_MODEL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | e.g. `gemini-embedding-2-preview` |
-| `LEGAJO_EMBEDDING_API_DIMENSION` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Must be a positive integer |
+| `SPRING_AI_OPENAI_BASE_URL` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | For `:bootstrap:precomputeApiEmbeddings` and for `live` mode | OpenAI-compatible embeddings endpoint (Gemini) |
+| `SPRING_AI_OPENAI_API_KEY` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | For `:bootstrap:precomputeApiEmbeddings` and for `live` mode | Read from the environment only; never logged or included in an exception message |
+| `LEGAJO_EMBEDDING_API_MODEL` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | Required by `:bootstrap:precomputeApiEmbeddings`; the server defaults to `gemini-embedding-2-preview` | Embedding model name |
+| `LEGAJO_EMBEDDING_API_DIMENSION` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | Required by `:bootstrap:precomputeApiEmbeddings`; the server defaults to `1536` | Must be a positive integer |
 | `LEGAJO_GROBID_URL` | `IngestCli` | Only for `:bootstrap:ingest` | GROBID endpoint for ingestion. Resolves as `--grobid-url`, then this variable, then `http://localhost:8070`; a blank value counts as unset |
 | `SPRING_AI_OPENAI_EMBEDDING_EMBEDDINGS_PATH` | `PrecomputeApiEmbeddingsCli` | No | Optional, warn-only: Spring AI 2.0.x has no override point to route it to, so this CLI only warns if it is set to something other than `/embeddings`; see the class's Javadoc for the full history |
 
