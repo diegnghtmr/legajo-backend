@@ -13,9 +13,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for the {@code slopes.csv} writer (TRD §6.3/§6.4/§6.5, TAC-18: the empirical
- * log-log slope of each curve against its documented theoretical exponent). Written before
- * {@link SlopesCsvWriter} exists (odd/tasks/jmh-benchmarks.md, task J2: strict TDD).
+ * Unit tests for the {@code slopes.csv} writer (the empirical log-log slope of each curve
+ * against its documented theoretical exponent). Written before {@link SlopesCsvWriter} exists
+ * (strict TDD).
  *
  * <p>Every {@link ClassifiedBenchmarkResult} this writer receives is already classified
  * ({@link BenchmarkFamilies#classifyAll}, called by {@link JmhExportCli} before either writer

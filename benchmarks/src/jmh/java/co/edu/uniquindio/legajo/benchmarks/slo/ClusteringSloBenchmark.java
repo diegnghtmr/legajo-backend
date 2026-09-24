@@ -28,11 +28,12 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * NFR-QA-02's SLO benchmark: one operation is single, complete, average and Ward
- * agglomeration from the real reference corpus's {@code tfidf-cosine} distance matrix (RF2's
- * default representation, TRD §6.4) at n = 20, precomputed once in {@code @Setup} so the
- * measured operation is only the four agglomerations, matching NFR-QA-02's "a partir de
- * matrices de distancias y vectores en caché".
+ * The clustering SLO (service-level objective) benchmark: one operation is single, complete,
+ * average and Ward agglomeration from the real reference corpus's {@code tfidf-cosine}
+ * distance matrix (the default distance representation this clustering engine uses) at
+ * n = 20, precomputed once in {@code @Setup} so the measured operation is only the four
+ * agglomerations, matching the benchmarked operation starting from cached distance matrices
+ * and vectors rather than recomputing them.
  *
  * <p>{@code n} is a JMH {@code @Param} for the same self-documenting CSV reason as
  * {@link ClassicPairwiseSloBenchmark}; {@code @Setup} asserts it against the loaded corpus.

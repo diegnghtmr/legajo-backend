@@ -1,6 +1,7 @@
-// JMH harness: empirical complexity curves against TRD §6.3/§6.4 theoretical complexities
-// (NFR-QA-10's fixed performance-test protocol), plus the SLO benchmarks for NFR-QA-01/02
-// and a CSV/slopes exporter (odd/tasks/jmh-benchmarks.md, tasks J1/J2).
+// JMH harness: empirical complexity curves measured against each algorithm's theoretical
+// complexity, using a fixed performance-test protocol, plus dedicated SLO (service-level
+// objective) benchmarks against the real reference corpus, and a CSV/slopes exporter that
+// compares each measured growth rate to its expected one.
 
 // Plain imports, not fully-qualified inline references: Gradle's Kotlin DSL exposes a `java(...)`
 // extension function on `Project` for configuring `JavaPluginExtension`, which shadows the root
@@ -18,8 +19,8 @@ plugins {
 // the Spring Boot BOM keeps this module's Jackson version aligned with the rest of the
 // backend (infrastructure/build.gradle.kts uses the identical import for the identical
 // reason). Used here only to read data/corpus.json for the real-corpus benchmarks and JMH's
-// own JSON results file for the CSV/slopes exporter (J2) -- never for an R-02-covered
-// algorithm, which this module only ever calls into :domain for.
+// own JSON results file for the CSV/slopes exporter -- never for computing an algorithm's
+// actual result, which this module only ever delegates to :domain for.
 dependencyManagement {
     imports {
         mavenBom("org.springframework.boot:spring-boot-dependencies:${libs.versions.springBoot.get()}")
@@ -42,7 +43,7 @@ jmh {
     resultFormat.set("JSON")
     resultsFile.set(layout.buildDirectory.file("results/jmh/jmh-results.json"))
 
-    // NFR-QA-10's fixed protocol (AverageTime, 1 fork, 3x1s warmup, 5x1s measurement) is
+    // The fixed benchmarking protocol (AverageTime, 1 fork, 3x1s warmup, 5x1s measurement) is
     // declared on every @Benchmark class itself (@Fork, @Warmup, @Measurement); the
     // properties below are deliberately left unset by default so those annotations govern a
     // full run, and only take effect when passed explicitly -- which is how a fast smoke run
@@ -64,12 +65,12 @@ jmh {
     }
 }
 
-// J3: the me.champeau.jmh plugin never wires its own compile task into `check`/`build`, so a
+// The me.champeau.jmh plugin never wires its own compile task into `check`/`build`, so a
 // plain `./gradlew build` silently never compiled this module's JMH sources -- a broken
 // @Benchmark class could sit unnoticed until someone ran :benchmarks:jmh by hand. Making
 // `check` depend on `jmhClasses` (jmh's own "compile + assemble the jmh source set" task)
-// closes that gap without running any benchmark in ordinary CI (TRD §14.3: the JMH job
-// itself stays manual/tag-triggered; only *compiling* it becomes part of the normal build).
+// closes that gap without running any benchmark in ordinary CI -- the JMH job itself stays
+// manual/tag-triggered; only *compiling* it becomes part of the normal build.
 tasks.named("check") {
     dependsOn("jmhClasses")
 }
@@ -167,18 +168,17 @@ tasks.named("jmh") {
     finalizedBy("jmhHarnessSidecar")
 }
 
-// J2: exports the last JMH run (build/results/jmh/jmh-results.json) into the two versioned
-// CSVs the technical documentation reads (TAC-18): benchmarks/results/jmh-results.csv and
+// Exports the last JMH run (build/results/jmh/jmh-results.json) into the two versioned
+// CSVs the technical documentation reads: benchmarks/results/jmh-results.csv and
 // benchmarks/results/slopes.csv. Run after :benchmarks:jmh, e.g.:
 //   ./gradlew :benchmarks:jmh :benchmarks:jmhExport
-// The export itself is strict (odd/tasks/jmh-benchmarks.md, export-strictness slice): it fails
-// before writing either CSV if the harness sidecar is missing or bound to a different JMH
-// results file, its JDK disagrees with what the JMH JSON itself reports, or any benchmark
-// result cannot be classified.
+// The export itself is strict: it fails before writing either CSV if the harness sidecar is
+// missing or bound to a different JMH results file, its JDK disagrees with what the JMH JSON
+// itself reports, or any benchmark result cannot be classified.
 tasks.register<JavaExec>("jmhExport") {
     group = "verification"
     description = "Exports build/results/jmh/jmh-results.json to benchmarks/results/jmh-results.csv " +
-            "and benchmarks/results/slopes.csv (TRD NFR-QA-10, TAC-18). Run :benchmarks:jmh first."
+            "and benchmarks/results/slopes.csv. Run :benchmarks:jmh first."
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("co.edu.uniquindio.legajo.benchmarks.export.JmhExportCli")
     // Ordered after :benchmarks:jmh without forcing a JMH run: jmhExport alone can still

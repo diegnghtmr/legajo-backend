@@ -13,9 +13,9 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Writes {@code benchmarks/results/slopes.csv} (TRD §6.3/§6.4/§6.5, TAC-18): one row per
- * curve family with a documented theoretical exponent ({@link BenchmarkFamilies}) and at
- * least two distinct sizes, giving the least-squares log-log slope of its empirical scores
+ * Writes {@code benchmarks/results/slopes.csv}: one row per curve family with a documented
+ * theoretical exponent ({@link BenchmarkFamilies}) and at least two distinct sizes, giving
+ * the least-squares log-log slope of its empirical scores
  * ({@link LogLogSlope}) next to that theoretical exponent. A fixed-n SLO family (no
  * theoretical exponent) or a family with fewer than two distinct sizes (repeated
  * measurements of the very same size never make a curve) is not a curve and is deliberately

@@ -4,7 +4,7 @@ import java.util.List;
 
 /**
  * The two O(d) single-pass loops {@code EmbeddingPrimitiveBenchmark} measures, extracted here
- * so a unit test can reach and prove them (odd/tasks/debt-cleanup.md, task B4). A plain
+ * so a unit test can reach and prove them. A plain
  * {@code @link} to that class is not used above: it lives in {@code benchmarks}' separate
  * {@code jmh} source set, which the {@code main} source set this class belongs to does not
  * depend on, so javadoc run against {@code main} alone cannot resolve it.
@@ -21,11 +21,11 @@ import java.util.List;
  * on) is what lets a plain unit test reach the exact same loop code the JMH benchmark measures,
  * and then compare its result against the domain algorithms' public {@code compute(...)}.
  * Widening {@code EmbeddingLocal}/{@code EmbeddingApi}'s methods to {@code public} was rejected:
- * {@code benchmarks} must only ever depend on {@code domain}'s public surface (module map,
- * backend/AGENTS.md), so widening those two methods just to reach them from a different module
- * would leak internal algorithm detail across that boundary — this class keeps the boundary
- * intact while still proving the two hand-written loops compute the values the domain algorithms
- * actually rely on.
+ * {@code benchmarks} must only ever depend on {@code domain}'s public surface, per this
+ * codebase's module boundary rules, so widening those two methods just to reach them from a
+ * different module would leak internal algorithm detail across that boundary — this class
+ * keeps the boundary intact while still proving the two hand-written loops compute the values
+ * the domain algorithms actually rely on.
  */
 public final class EmbeddingPrimitives {
 

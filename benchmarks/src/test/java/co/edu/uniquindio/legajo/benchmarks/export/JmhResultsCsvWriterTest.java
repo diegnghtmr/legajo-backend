@@ -12,9 +12,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Unit tests for the {@code jmh-results.csv} writer (TRD NFR-QA-10, TAC-18: harness header +
+ * Unit tests for the {@code jmh-results.csv} writer (harness header +
  * {@code benchmark,family,parameter,size,score,error,unit} columns). Written before
- * {@link JmhResultsCsvWriter} exists (odd/tasks/jmh-benchmarks.md, task J2: strict TDD).
+ * {@link JmhResultsCsvWriter} exists (strict TDD).
  *
  * <p>Every {@link ClassifiedBenchmarkResult} this writer receives is already classified
  * ({@link BenchmarkFamilies#classifyAll}, called by {@link JmhExportCli} before either writer

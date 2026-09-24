@@ -25,8 +25,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Jaccard complexity curve (TRD §6.3: O(|A|+|B|) time/space with hash sets), same
- * synthetic-input shape as {@link LevenshteinBenchmark}. No cache is involved.
+ * Jaccard complexity curve: O(|A|+|B|) time/space with hash sets, same synthetic-input
+ * shape as {@link LevenshteinBenchmark}. No cache is involved.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)

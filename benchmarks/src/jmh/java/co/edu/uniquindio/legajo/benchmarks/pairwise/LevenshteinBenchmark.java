@@ -25,11 +25,11 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Token-level Levenshtein complexity curve (TRD §6.3: O(|A|·|B|) time/space), one data point
- * per {@code length} against two synthetic token sequences of that length built from the
- * real corpus's own tokens (TRD §6.3's fixed performance-test protocol). No caching is
- * involved: {@link Levenshtein#compute} is called directly, exactly as NFR-QA-01 requires
- * for its own SLO benchmark.
+ * Token-level Levenshtein complexity curve: O(|A|·|B|) time/space, one data point per
+ * {@code length} against two synthetic token sequences of that length built from the real
+ * corpus's own tokens, following the fixed performance-test protocol. No caching is
+ * involved: {@link Levenshtein#compute} is called directly, matching how the classic-pairwise
+ * SLO benchmark calls it too.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)

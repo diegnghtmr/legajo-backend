@@ -26,16 +26,16 @@ import org.openjdk.jmh.annotations.Warmup;
 import java.util.concurrent.TimeUnit;
 
 /**
- * {@link LanceWilliamsEngine} agglomeration complexity curve (TRD §6.4: naive O(n^3) time /
- * O(n^2) space, independent of which of the four criteria is fusing), one data point per
+ * {@link LanceWilliamsEngine} agglomeration complexity curve: naive O(n^3) time / O(n^2)
+ * space, independent of which of the four criteria is fusing, one data point per
  * {@code (n, criterion)} pair against a synthetic {@code n x n} distance matrix
  * ({@link SyntheticDistanceMatrices}). Ward runs against {@code D_w = 2*D}
- * ({@link DistanceMatrix#wardBase()}), exactly as RF2 requires (TRD §6.4); the other three
- * criteria run against {@code D} directly.
+ * ({@link DistanceMatrix#wardBase()}), matching how the Ward linkage criterion itself scales
+ * its input distances; the other three criteria run against {@code D} directly.
  *
  * <p>The synthetic vectors' dimension (128) is arbitrary and does not affect the engine's
- * complexity, which is driven by {@code n} alone (TRD §6.4) — {@code cosineDistance} itself
- * runs once in {@code @Setup}, outside the measured operation.
+ * complexity, which is driven by {@code n} alone — {@code cosineDistance} itself runs once in
+ * {@code @Setup}, outside the measured operation.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)

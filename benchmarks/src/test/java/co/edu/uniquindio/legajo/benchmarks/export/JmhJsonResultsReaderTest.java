@@ -15,8 +15,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit tests for the JMH JSON results reader (J2). Written before
- * {@link JmhJsonResultsReader} exists (odd/tasks/jmh-benchmarks.md, task J2: strict TDD).
+ * Unit tests for the JMH JSON results reader. Written before
+ * {@link JmhJsonResultsReader} exists (strict TDD).
  * The fixture is a trimmed-down, but schema-faithful, JMH {@code -rf JSON} output, including
  * JMH's own non-standard bare {@code NaN} token for a single-fork {@code scoreError}.
  */
@@ -82,7 +82,7 @@ class JmhJsonResultsReaderTest {
         Path resultsFile = tempDir.resolve("broken-jmh-results.json");
         Files.writeString(resultsFile, "{ this is not valid JMH JSON ");
 
-        // R3-005: assert the exception type the reader's catch produces, not just the message.
+        // Assert the exception type the reader's catch produces, not just the message.
         assertThatThrownBy(() -> JmhJsonResultsReader.read(resultsFile))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining(resultsFile.toString());

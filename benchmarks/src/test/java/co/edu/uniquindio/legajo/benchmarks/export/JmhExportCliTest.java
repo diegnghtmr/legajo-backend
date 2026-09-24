@@ -17,8 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Unit tests for the export CLI's argument parsing and end-to-end run (J2). Written before
- * {@link JmhExportCli} exists (odd/tasks/jmh-benchmarks.md, task J2: strict TDD).
+ * Unit tests for the export CLI's argument parsing and end-to-end run. Written before
+ * {@link JmhExportCli} exists (strict TDD).
  */
 class JmhExportCliTest {
 

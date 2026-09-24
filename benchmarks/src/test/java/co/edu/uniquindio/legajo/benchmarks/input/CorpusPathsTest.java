@@ -14,8 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit test for the {@code data/corpus.json} path resolver the real-corpus (SLO) benchmarks
- * and their input builders share. Written before {@link CorpusPaths} exists (odd/tasks/
- * jmh-benchmarks.md, task J1: strict TDD).
+ * and their input builders share. Written before {@link CorpusPaths} exists (strict TDD).
  */
 class CorpusPathsTest {
 

@@ -5,10 +5,10 @@ import java.util.Objects;
 
 /**
  * The least-squares slope of {@code ln(score)} against {@code ln(size)} over a set of
- * {@link SizeScore} points (TRD §6.3/§6.4's "las curvas se trazan frente al orden teórico y
- * se reporta la pendiente log-log", TAC-18): a curve whose score grows as {@code size^p}
- * yields a slope of exactly {@code p}, which is what makes this comparable directly against
- * this harness's documented theoretical exponents ({@link BenchmarkFamilies}).
+ * {@link SizeScore} points: the empirical curves are plotted against their theoretical
+ * growth order and reported as this log-log slope. A curve whose score grows as
+ * {@code size^p} yields a slope of exactly {@code p}, which is what makes this comparable
+ * directly against this harness's documented theoretical exponents ({@link BenchmarkFamilies}).
  */
 public final class LogLogSlope {
 

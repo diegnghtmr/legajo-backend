@@ -1,8 +1,8 @@
 package co.edu.uniquindio.legajo.benchmarks.input;
 
 /**
- * Fixed seeds for this harness's deterministic synthetic inputs (TRD §6.3/§6.4's "Protocolo
- * de pruebas de rendimiento (fijado)"). One arbitrary constant per input family, chosen once
+ * Fixed seeds for this harness's deterministic synthetic inputs, following the fixed
+ * performance-test protocol. One arbitrary constant per input family, chosen once
  * and never varied, so every run of this harness — on any machine — measures against the
  * exact same synthetic data, and only the wall-clock time differs.
  */

@@ -14,15 +14,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Loads the real reference corpus (TRD §9, n = 20 in the reference corpus) for the NFR-QA-01
- * and NFR-QA-02 SLO benchmarks, and derives the preprocessed token streams and flattened
- * token pool the pairwise-curve benchmarks build their synthetic sequences from
+ * Loads the real reference corpus (n = 20 documents) for the classic-pairwise and clustering
+ * SLO benchmarks, and derives the preprocessed token streams and flattened token pool the
+ * pairwise-curve benchmarks build their synthetic sequences from
  * ({@link SyntheticTokenSequences}).
  *
  * <p>Reads {@code data/corpus.json} directly with Jackson rather than depending on
  * {@code :infrastructure}'s {@code JsonCorpusRepository}: {@code benchmarks} only ever
- * depends on {@code :domain} (module map, backend/AGENTS.md), so this class carries its own
- * copy of the wire DTOs ({@link BenchmarkCorpusJson}/{@link BenchmarkCorpusDocumentJson}).
+ * depends on {@code :domain}, per this codebase's module boundary rules, so this class
+ * carries its own copy of the wire DTOs ({@link BenchmarkCorpusJson}/
+ * {@link BenchmarkCorpusDocumentJson}).
  */
 public final class BenchmarkCorpus {
 
@@ -41,7 +42,7 @@ public final class BenchmarkCorpus {
     }
 
     /**
-     * Runs the five-step preprocessing pipeline (TRD §6.2) over every document's abstract, in
+     * Runs the five-step preprocessing pipeline over every document's abstract, in
      * corpus order, with Porter stemming off (the v1 default, same as every other caller of
      * {@link TextPreprocessor}).
      */
@@ -56,8 +57,8 @@ public final class BenchmarkCorpus {
 
     /**
      * Concatenates every token stream, in the given order, into the single pool the
-     * pairwise-curve benchmarks cycle through (TRD §6.3's "construidas concatenando tokens
-     * del corpus").
+     * pairwise-curve benchmarks cycle through, built by concatenating the corpus's own
+     * tokens.
      */
     public static List<String> flattenTokenPool(List<List<String>> tokenStreams) {
         List<String> pool = new ArrayList<>();

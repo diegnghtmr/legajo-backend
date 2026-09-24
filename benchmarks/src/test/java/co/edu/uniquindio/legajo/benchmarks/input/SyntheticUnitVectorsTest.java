@@ -9,10 +9,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Unit tests for the HAC-curve and embedding-primitive vector builder (TRD §6.3/§6.4's
- * fixed performance-test protocol: "vectores unitarios sintéticos con n ∈ {5, 10, 20, 40,
- * 80}"; embedding metrics at d = 384/1536). Written before {@link SyntheticUnitVectors}
- * exists (odd/tasks/jmh-benchmarks.md, task J1: strict TDD).
+ * Unit tests for the HAC-curve and embedding-primitive vector builder (synthetic unit
+ * vectors with n ∈ {5, 10, 20, 40, 80}, per the fixed performance-test protocol; embedding
+ * metrics at d = 384/1536). Written before {@link SyntheticUnitVectors} exists (strict TDD).
  */
 class SyntheticUnitVectorsTest {
 

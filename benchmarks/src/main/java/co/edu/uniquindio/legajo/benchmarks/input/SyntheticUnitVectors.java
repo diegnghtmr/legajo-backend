@@ -5,15 +5,15 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * Builds deterministic, L2-normalized synthetic vectors for the HAC-curve benchmarks (TRD
- * §6.4's fixed protocol: "vectores unitarios sintéticos con n ∈ {5, 10, 20, 40, 80}") and for
- * the embedding-primitive benchmark (TRD §6.3: "una única medición de tiempo en d = 384 y en
- * d = 1536").
+ * Builds deterministic, L2-normalized synthetic vectors for the HAC-curve benchmarks
+ * (synthetic unit vectors with n ∈ {5, 10, 20, 40, 80}, per the fixed performance-test
+ * protocol) and for the embedding-primitive benchmark (one timing measurement at d = 384 and
+ * one at d = 1536).
  *
  * <p>Components are drawn from a single {@link Random} seeded once, so a given {@code (count,
  * dimension, seed)} triple always yields the same vectors, and each vector is then
  * hand-normalized to unit length exactly the way the domain's own {@code EmbeddingVector} and
- * {@code DistanceMatrix} expect their inputs (TRD §6.3, "Invariante de norma unitaria").
+ * {@code DistanceMatrix} expect their inputs: the unit-norm invariant both classes rely on.
  */
 public final class SyntheticUnitVectors {
 

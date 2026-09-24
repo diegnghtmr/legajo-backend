@@ -26,14 +26,14 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * TF-IDF cosine complexity curve (TRD §6.3: O(|A|+|B|) per pair once the corpus index is
- * built, which this benchmark's {@code @Setup} does once per trial and outside the measured
- * operation — the O(N·L) one-time corpus indexing TRD §6.3 also documents is deliberately
- * not part of what {@code pairwiseCompute()} measures, since the real service builds that
- * index once per run, never once per pair).
+ * TF-IDF cosine complexity curve: O(|A|+|B|) per pair once the corpus index is built, which
+ * this benchmark's {@code @Setup} does once per trial and outside the measured operation —
+ * the O(N·L) one-time corpus indexing is deliberately not part of what
+ * {@code pairwiseCompute()} measures, since the real service builds that index once per run,
+ * never once per pair.
  *
- * <p><b>Author decision (TRD leaves this open, odd/tasks/jmh-benchmarks.md).</b>
- * {@code tfidf-cosine} needs a {@link SimilarityContext#tfIdfIndex()} for {@code df}/{@code
+ * <p><b>Author decision.</b> {@code tfidf-cosine} needs a
+ * {@link SimilarityContext#tfIdfIndex()} for {@code df}/{@code
  * N}: this benchmark builds it from the two synthetic sequences under comparison themselves
  * (a 2-document corpus, {@code N = 2}), not from the real corpus. This keeps the benchmark
  * self-contained and its "corpus" scaling with the same {@code length} the curve varies,

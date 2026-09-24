@@ -7,12 +7,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Unit tests for the HAC-curve distance-matrix builder (TRD §6.4's fixed protocol: "vectores
- * unitarios sintéticos con n ∈ {5, 10, 20, 40, 80}"). Written before
- * {@link SyntheticDistanceMatrices} exists (odd/tasks/jmh-benchmarks.md, task J1: strict
- * TDD). {@link DistanceMatrix}'s own constructor already validates the symmetric,
- * zero-diagonal invariant, but this test asserts it explicitly against this module's own
- * generated input, per the feature document's instruction.
+ * Unit tests for the HAC-curve distance-matrix builder (synthetic unit vectors with
+ * n ∈ {5, 10, 20, 40, 80}, per the fixed performance-test protocol). Written before
+ * {@link SyntheticDistanceMatrices} exists (strict TDD). {@link DistanceMatrix}'s own
+ * constructor already validates the symmetric, zero-diagonal invariant, but this test asserts
+ * it explicitly against this module's own generated input.
  */
 class SyntheticDistanceMatricesTest {
 

@@ -1,6 +1,6 @@
 /**
- * The single-point O(d) embedding metric primitives (TRD §6.3's fixed performance-test
- * protocol: "una única medición de tiempo en d = 384 y en d = 1536, y no se requiere
- * curva"), measured against synthetic unit vectors (odd/tasks/jmh-benchmarks.md, task J1).
+ * The single-point O(d) embedding metric primitives, following the fixed performance-test
+ * protocol of one timing measurement at d = 384 and one at d = 1536 with no growth curve
+ * required, measured against synthetic unit vectors.
  */
 package co.edu.uniquindio.legajo.benchmarks.embedding;

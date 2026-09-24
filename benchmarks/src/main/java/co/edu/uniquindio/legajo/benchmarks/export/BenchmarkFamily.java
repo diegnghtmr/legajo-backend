@@ -4,9 +4,9 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * One JMH result row's classification for the CSV/slopes export (TAC-18): the curve/family
+ * One JMH result row's classification for the CSV/slopes export: the curve/family
  * it belongs to, which of its {@code @Param}s is the varying size, that size's numeric
- * value, and the TRD-documented theoretical complexity exponent for this family, when this
+ * value, and the documented theoretical complexity exponent for this family, when this
  * family is a curve at all (a fixed-n SLO measurement is not).
  */
 public record BenchmarkFamily(String family, String sizeParameterKey, double size, Optional<Double> theoreticalExponent) {
