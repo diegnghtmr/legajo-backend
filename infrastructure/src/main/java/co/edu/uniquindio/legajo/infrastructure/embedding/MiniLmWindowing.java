@@ -7,8 +7,8 @@ import java.util.Objects;
 
 /**
  * Hand-written windowing of a MiniLM abstract's raw (no special tokens) wordpiece ids into
- * groups of at most {@link #MAX_CONTENT_TOKENS_PER_WINDOW} each (TRD §6.3, "Límite de
- * tokens de MiniLM"): {@code all-MiniLM-L6-v2} accepts 256 wordpiece tokens per forward
+ * groups of at most {@link #MAX_CONTENT_TOKENS_PER_WINDOW} each, per the fixed MiniLM
+ * token-limit rule: {@code all-MiniLM-L6-v2} accepts 256 wordpiece tokens per forward
  * pass, so every window reserves 2 of those slots for the {@code [CLS]}/{@code [SEP]} tokens
  * {@link MiniLmEmbedder} adds around each window's content.
  */

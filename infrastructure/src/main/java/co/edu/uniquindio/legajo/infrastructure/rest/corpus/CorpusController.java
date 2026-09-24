@@ -13,11 +13,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * {@code GET /api/v1/corpus} and {@code GET /api/v1/corpus/{id}} (TRD §6.6, feature doc task
- * A3). Pure adapter: delegates every rule to {@link CorpusService} (application) and only
- * shapes the response as {@link CorpusSummaryResponse}/{@link CorpusDocumentResponse}. An
- * unknown id throws {@link ResourceNotFoundException} (task A3b), mapped to a 404 RFC 9457
- * Problem Detail by {@code ProblemDetailExceptionHandler}.
+ * {@code GET /api/v1/corpus} and {@code GET /api/v1/corpus/{id}}. Pure adapter: delegates
+ * every rule to {@link CorpusService} (application) and only shapes the response as
+ * {@link CorpusSummaryResponse}/{@link CorpusDocumentResponse}. An unknown id throws
+ * {@link ResourceNotFoundException}, mapped to a 404 RFC 9457 Problem Detail by
+ * {@code ProblemDetailExceptionHandler}.
  */
 @RestController
 @RequestMapping("/api/v1/corpus")

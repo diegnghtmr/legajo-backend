@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Wire shape of {@code GET /api/v1/benchmarks} (TRD §6.6, fixed by TRD 1.3.10): {@code
+ * Wire shape of {@code GET /api/v1/benchmarks}, matching the fixed REST contract: {@code
  * harness}, {@code results[]}, and {@code slopes[]}, read as-is from the versioned CSV
  * exports and served with no recalculation.
  */

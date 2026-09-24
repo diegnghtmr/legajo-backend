@@ -4,7 +4,7 @@ import co.edu.uniquindio.legajo.application.similarity.AlgorithmSimilarity;
 
 import java.util.Objects;
 
-/** One algorithm's row within a {@code POST /similarity/compare} response (TRD §6.6). */
+/** One algorithm's row within a {@code POST /similarity/compare} response. */
 public record AlgorithmSimilarityResponse(String algorithmId, SimilarityResultResponse result) {
 
     public AlgorithmSimilarityResponse {

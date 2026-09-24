@@ -6,11 +6,11 @@ import java.util.List;
 
 /**
  * Request body shared by {@code POST /api/v1/clustering} and
- * {@code POST /api/v1/clustering/evaluation} (TRD §6.6): {@code representation} optional,
+ * {@code POST /api/v1/clustering/evaluation}: {@code representation} optional,
  * defaulting to {@code tfidf-cosine}; {@code linkages} optional, defaulting to all four.
  *
- * <p><b>No {@code ks} field, by construction (TAC-04).</b> TRD §6.6 fixes that "no existe
- * parámetro de solicitud {@code ks}" so that no conforming request can alter the fixed
+ * <p><b>No {@code ks} field, by construction.</b> There is deliberately no request
+ * parameter {@code ks}, so that no conforming request can alter the fixed
  * evaluation cuts {@code k ∈ {2,3,4,5} ∩ [2, n-1]}. This record simply has no such field:
  * Jackson either drops an unrecognized {@code ks} property or (Spring Boot's actual
  * default, proven by {@code ClusteringControllerTest

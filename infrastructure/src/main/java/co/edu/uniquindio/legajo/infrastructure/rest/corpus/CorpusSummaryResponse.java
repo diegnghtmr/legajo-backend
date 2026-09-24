@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Wire shape of one row of {@code GET /api/v1/corpus} (TRD §6.6): {@code id}, {@code title},
+ * Wire shape of one row of {@code GET /api/v1/corpus}: {@code id}, {@code title},
  * and {@code authors} only, never the abstract. A dedicated DTO — rather than serializing
  * {@link CorpusSummary} (application) directly — keeps the wire contract free to evolve
  * independently of the application layer's own shape, per this feature's placement decision

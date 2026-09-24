@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.application.clustering.LinkageEvaluationOnly;
 import java.util.Objects;
 
 /**
- * The convenience shape {@code POST /api/v1/clustering/evaluation} returns (TRD §6.6): the
+ * The convenience shape {@code POST /api/v1/clustering/evaluation} returns: the
  * same evaluation block {@code POST /clustering} computes, without the linkage matrix or
  * leaf order.
  */

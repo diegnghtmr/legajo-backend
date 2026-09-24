@@ -5,11 +5,12 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * The ingestion cleaning delegable step fixed by TRD §6.1, item 3: applied to the raw
+ * The fixed ingestion cleaning step: applied to the raw
  * text extracted from a PDF, always, before it is persisted — distinct from and prior
- * to the TRD §6.2 preprocessing pipeline. Delegable per TRD §3.3 (it is glue code, not
- * one of the R-02 algorithms), but hand-written here because it is a handful of regex
- * substitutions and does not warrant a third-party text-cleaning dependency.
+ * to the later text preprocessing pipeline. Fine to delegate to a library (it is glue
+ * code, not one of the algorithms that must be hand-written), but hand-written here
+ * because it is a handful of regex substitutions and does not warrant a third-party
+ * text-cleaning dependency.
  *
  * <p>Steps, applied in order:
  * <ol>

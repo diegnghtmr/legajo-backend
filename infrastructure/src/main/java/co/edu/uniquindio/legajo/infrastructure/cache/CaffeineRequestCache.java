@@ -8,8 +8,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Caffeine-backed {@link RequestCache} (TRD §9: "runtime caches are Caffeine regions, no
- * TTL" — the corpus is static, so nothing here ever expires or is evicted by time; the
+ * Caffeine-backed {@link RequestCache}: runtime caches are Caffeine regions with no TTL,
+ * because the corpus is static, so nothing here ever expires or is evicted by time; the
  * corpus's 20 documents and six algorithms bound the key space to a few thousand entries at
  * most, so no size-based eviction is needed either). One instance is one region: the
  * bootstrap {@code @Configuration} that wires {@code SimilarityService}/

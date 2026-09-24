@@ -11,8 +11,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * T4b: an abstract-completeness/contamination gate for the ingestion chain (TRD §6.1,
- * §8), added after two real regressions were found in the reference corpus while
+ * An abstract-completeness/contamination gate for the ingestion chain, added after two
+ * real regressions were found in the reference corpus while
  * GROBID's {@code processHeaderDocument} was the only source consulted:
  *
  * <ul>
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * <p>{@link FallbackPdfMetadataExtractor} already treated a <em>blank</em> abstract as
  * "try the other extractor"; this class extends that same idea to a non-blank abstract
  * that still looks wrong, without ever hard-coding anything about a specific document,
- * so the ingestion pipeline stays reusable over any PDF folder (TC-01).
+ * so the ingestion pipeline stays reusable over any PDF folder.
  *
  * <p>A result is flagged {@link Verdict#suspicious()} when any of three independent,
  * generic signals fires:
@@ -51,7 +51,7 @@ import java.util.regex.Pattern;
  * ingestion chain keep the better of two candidates, and the caller is the one that
  * decides whether "better but still suspicious" is good enough to persist (surfaced to
  * the author through the ingestion CLI's quality summary) or whether both extractors
- * failed outright, which remains the only case TRD §8 fails closed for.
+ * failed outright, which remains the only case this pipeline fails closed for.
  */
 public final class AbstractQualityCheck {
 
@@ -63,8 +63,8 @@ public final class AbstractQualityCheck {
 
     // Generic English function words (articles, prepositions, conjunctions, determiners)
     // that essentially never legitimately end a complete sentence. Not tied to any
-    // document; this is a linguistic heuristic, distinct from the TRD §6.2 stopword
-    // list used by the preprocessing pipeline for a different purpose.
+    // document; this is a linguistic heuristic, distinct from the stopword list used by
+    // the preprocessing pipeline for a different purpose.
     private static final Set<String> DANGLING_CONNECTOR_WORDS = Set.of(
             "the", "a", "an",
             "in", "on", "at", "by", "for", "with", "of", "to", "from", "into", "onto",

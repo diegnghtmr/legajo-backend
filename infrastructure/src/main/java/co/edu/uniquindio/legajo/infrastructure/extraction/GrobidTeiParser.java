@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Parses a GROBID {@code processHeaderDocument} TEI response (TRD §6.1, item 1): title,
+ * Parses a GROBID {@code processHeaderDocument} TEI response: title,
  * authors as {@code forename + " " + surname}, and abstract paragraphs joined with a
  * space. XPath expressions match on {@code local-name()} so they are unaffected by the
  * TEI default namespace declared on the document and (redundantly, in some GROBID

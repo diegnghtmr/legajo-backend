@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.similarity.EmbeddingLocalTrace;
 import java.util.List;
 import java.util.Objects;
 
-/** Wire shape of the {@code embedding-local} trace (TRD §6.3): vector excerpt/full vectors, norms, cosine, angle, and score. */
+/** Wire shape of the {@code embedding-local} trace: vector excerpt/full vectors, norms, cosine, angle, and score. */
 public record EmbeddingLocalTraceResponse(
         String algorithmId,
         String provider,

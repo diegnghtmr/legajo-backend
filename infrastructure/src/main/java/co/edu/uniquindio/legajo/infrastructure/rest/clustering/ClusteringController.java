@@ -17,25 +17,25 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The three clustering endpoints of TRD §6.6 (feature doc task A4): {@code
+ * The three clustering endpoints: {@code
  * POST /clustering}, {@code POST /clustering/evaluation}, {@code POST /clustering/cut}. Pure
  * adapter: every clustering rule (representation defaulting, linkage resolution, the
- * TAC-04 fixed-cut set, {@code cut}'s free-{@code k} range) lives in
+ * fixed-cut set, {@code cut}'s free-{@code k} range) lives in
  * {@link ClusteringService} (application); this class only parses the request DTOs, shapes
  * the responses, and lets {@link InvalidRequestException} (unknown linkage id, unknown
- * representation id, a missing or out-of-range {@code k} — all 400, task A7) bubble up to
+ * representation id, a missing or out-of-range {@code k} — all 400) bubble up to
  * {@code ProblemDetailExceptionHandler}.
  *
  * <p><b>Classifying an unknown {@code representation} id.</b> {@link Representation#fromId}
  * throws a raw {@link IllegalArgumentException} that would otherwise fall through to a 500
- * (A3b's error-classification fix, correctly, since a raw JDK exception is presumed a server
- * bug). This class instead maps that failure to {@link InvalidRequestException} (400,
- * {@code urn:legajo:problem:unknown-representation}): {@code representation} is not looked up
- * in any registry or catalogue — it is a plain computation-mode selector sent in the request
- * body, and TRD 1.3.7 §6.6 (task A7) fixes 404 to path-identified resources only.
+ * (a raw JDK exception is presumed a server bug). This class instead maps that failure to
+ * {@link InvalidRequestException} (400, {@code urn:legajo:problem:unknown-representation}):
+ * {@code representation} is not looked up in any registry or catalogue — it is a plain
+ * computation-mode selector sent in the request body, and only path-identified resources are
+ * classified 404.
  *
- * <p><b>Task A7: {@code linkage} is 400 too, for the same reason.</b> Before A7 an unknown
- * {@code linkage}/{@code linkages} id was 404; TRD 1.3.7 corrects this, since {@code linkage}
+ * <p><b>{@code linkage} is 400 too, for the same reason.</b> An unknown
+ * {@code linkage}/{@code linkages} id is 400, not 404, since {@code linkage}
  * is likewise never a path segment on any endpoint here — always a request-body field, so an
  * unknown value is a request-validation failure, not a missing resource. {@code
  * ClusteringService.resolveLinkage} now throws {@link InvalidRequestException} directly
@@ -56,7 +56,7 @@ public class ClusteringController {
 
     /**
      * {@code POST /api/v1/clustering}: {@code representation} defaults to
-     * {@link Representation#DEFAULT}, {@code linkages} defaults to all four (TRD §6.6).
+     * {@link Representation#DEFAULT}, {@code linkages} defaults to all four.
      */
     @PostMapping
     public List<LinkageResultResponse> run(@RequestBody ClusteringRequest request) {
@@ -81,7 +81,7 @@ public class ClusteringController {
     /**
      * {@code POST /api/v1/clustering/cut}: the only endpoint accepting a free {@code k}.
      * {@code k}'s range check lives in {@link ClusteringService#cut} (the application
-     * boundary, feature doc task A4); this method only guards against unboxing a {@code
+     * boundary); this method only guards against unboxing a {@code
      * null} {@code k} (which would otherwise throw an unclassified
      * {@link NullPointerException} — a bug, not a validation failure).
      */

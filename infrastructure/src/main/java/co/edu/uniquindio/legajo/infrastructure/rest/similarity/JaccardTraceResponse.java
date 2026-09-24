@@ -5,7 +5,7 @@ import co.edu.uniquindio.legajo.similarity.JaccardTrace;
 import java.util.List;
 import java.util.Objects;
 
-/** Wire shape of the Jaccard trace (TRD §6.3): both sets, their intersection/union, sizes, and the coefficient. */
+/** Wire shape of the Jaccard trace: both sets, their intersection/union, sizes, and the coefficient. */
 public record JaccardTraceResponse(
         String algorithmId,
         List<String> setA,

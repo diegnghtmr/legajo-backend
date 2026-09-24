@@ -8,14 +8,13 @@ import java.util.Objects;
 /**
  * Decorator over another {@link EmbeddingRepository} that loads and validates the underlying
  * cache at most once per process, then reuses that same {@link EmbeddingCache} instance on
- * every later {@link #load()} call (TAC-13 follow-up, feature doc {@code rest-followups.md}
- * F3).
+ * every later {@link #load()} call.
  *
  * <p><b>Why.</b> {@code SimilarityService}, {@code ClusteringService}, and {@code
  * EmbeddingsService} each call {@code EmbeddingRepository#load()} on every request that needs
  * an embedding cache; {@link JsonEmbeddingRepository#load()} re-reads and re-parses the cache
  * file and re-validates its {@code corpusSha256} on every single call. {@code
- * DomainConfiguration} now also validates each cache once at application startup (TRD §6.1/§9)
+ * DomainConfiguration} now also validates each cache once at application startup
  * — without this decorator, that startup call would just be one more full re-read on top of
  * the one every request already pays for. Wrapping the bean in this class instead makes the
  * startup call and every subsequent request-time call share the exact same parsed,

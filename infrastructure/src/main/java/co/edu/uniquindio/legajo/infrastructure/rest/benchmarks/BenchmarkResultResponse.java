@@ -5,9 +5,9 @@ import co.edu.uniquindio.legajo.application.benchmarks.BenchmarkResult;
 import java.util.Objects;
 
 /**
- * Wire shape of one row of {@code GET /api/v1/benchmarks}' {@code results[]} (TRD §6.6, fixed
- * by TRD 1.3.10): {@code benchmark, family, parameter, size, score, error, unit}, exactly the
- * field names and order the TRD row fixes.
+ * Wire shape of one row of {@code GET /api/v1/benchmarks}' {@code results[]}, matching the
+ * fixed REST contract: {@code benchmark, family, parameter, size, score, error, unit}, exactly the
+ * field names and order that contract fixes.
  */
 public record BenchmarkResultResponse(
         String benchmark,

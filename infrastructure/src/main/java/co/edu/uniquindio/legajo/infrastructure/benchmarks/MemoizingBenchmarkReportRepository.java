@@ -8,8 +8,8 @@ import java.util.Objects;
 /**
  * Decorator over another {@link BenchmarkReportRepository} that loads the underlying CSV
  * export at most once per process, then reuses that same {@link BenchmarkReport} instance on
- * every later {@link #load()} call — the same shape as {@code MemoizingEmbeddingRepository}
- * (TAC-13 follow-up), for the same reason: {@code DomainConfiguration}'s startup validator
+ * every later {@link #load()} call — the same shape as {@code MemoizingEmbeddingRepository},
+ * for the same reason: {@code DomainConfiguration}'s startup validator
  * calls {@code load()} once at boot, and every {@code GET /api/v1/benchmarks} request calls
  * it again; without this decorator both would re-read and re-parse
  * {@code benchmarks/results/jmh-results.csv}/{@code slopes.csv} from disk every time, even

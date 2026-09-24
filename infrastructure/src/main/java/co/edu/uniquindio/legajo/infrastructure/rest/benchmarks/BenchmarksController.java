@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Objects;
 
 /**
- * {@code GET /api/v1/benchmarks} (TRD §6.6, fixed by TRD 1.3.10, feature doc task J5): serves
+ * {@code GET /api/v1/benchmarks}: serves
  * the JMH reference-run measurements read from the versioned {@code benchmarks/results/}
  * CSVs. Pure adapter: delegates to {@link BenchmarksService} (application) and only shapes
  * the response as {@link BenchmarkReportResponse}; never runs JMH itself.
