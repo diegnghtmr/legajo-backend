@@ -52,8 +52,9 @@ subprojects {
 
 /**
  * Aggregated coverage across every subproject that has produced test execution data.
- * NFR-QA-06 requires >85% coverage in the algorithm packages; this task is the single
- * entry point CI and local builds use to compute that coverage report.
+ * Line coverage must exceed 85% in each algorithm package (similarity, clustering,
+ * evaluation); this task is the single entry point CI and local builds use to compute
+ * that coverage report.
  */
 tasks.register<JacocoReport>("jacocoRootReport") {
     group = "verification"

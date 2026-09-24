@@ -30,10 +30,10 @@ out/
 
 # Teacher PDFs (ingestion input, git-ignored, never read by the running server)
 data/pdfs/
-# Manual-review aid regenerated during ingestion (backend/AGENTS.md), not read by the server
+# Manual-review aid regenerated during ingestion, not read by the server
 data/corpus-review.md
 
-# Secrets — must never enter the build context or the image (workspace AGENTS.md "Nunca")
+# Secrets — must never enter the build context or the image
 .env
 .env.*
 !.env.example

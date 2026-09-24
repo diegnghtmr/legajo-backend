@@ -1,9 +1,9 @@
-# TRD §14.1/§14.2: profiles select which services run. `ingest` is a one-shot, local-only
+# Profiles select which services run. `ingest` is a one-shot, local-only
 # extraction step (GROBID) — never part of the `default` demo profile.
 #
 # `backend` and `frontend` are the `default`-profile demo target: `backend` builds from
 # this repository's own Dockerfile, `frontend` builds from the sibling frontend
-# repository's checkout (`${LEGAJO_FRONTEND_DIR:-../frontend}`, task K4, TRD §14.2) —
+# repository's checkout (`${LEGAJO_FRONTEND_DIR:-../frontend}`) —
 # neither repository ever copies the other's source, only its build context path. Plain
 # `docker compose up --build` (no `--profile` flag) starts both: the frontend at
 # http://localhost, the API at http://localhost:8080.
@@ -24,7 +24,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # TRD §14.1: the default profile needs no live embedding credentials — it serves the
+      # The default profile needs no live embedding credentials — it serves the
       # versioned caches under data/. LEGAJO_CORS_ORIGINS passes through whatever the host
       # has set (empty by default): unset, the server falls back to its documented defaults
       # (http://localhost:5173, http://localhost); a host value (e.g. a real deployment's
@@ -45,12 +45,12 @@ services:
         # address the *host* (where the browser runs) can reach, not a Compose service
         # name/Docker-network address. http://localhost:8080 is where `backend` publishes
         # its port on the host (`ports:` above); the frontend image bakes this in at build
-        # time (its own Dockerfile requires the arg and fails the build without it, TRD
-        # Appendix A) so it cannot be changed after the image is built.
+        # time (its own Dockerfile requires the arg and fails the build without it)
+        # so it cannot be changed after the image is built.
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
     ports:
       # nginx-unprivileged inside the image listens on :8080 (unprivileged ports only,
-      # frontend/Dockerfile); this maps it to the host's :80 that TRD §14.2 documents.
+      # frontend/Dockerfile); this maps it to the host's :80 for local access.
       # LEGAJO_FRONTEND_PORT overrides the host side only, e.g. when :80 is already taken.
       - "${LEGAJO_FRONTEND_PORT:-80}:8080"
     depends_on:

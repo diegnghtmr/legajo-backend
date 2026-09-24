@@ -1,9 +1,7 @@
 # Legajo backend
 
 Server for Legajo: six hand-written text-similarity capabilities, four hierarchical
-clustering linkages, and their internal metrics, exposed over a REST API. See
-`AGENTS.md` for the full module map and rules; product/technical decisions live in the
-workspace's `../docs/` (not part of this repository).
+clustering linkages, and their internal metrics, exposed over a REST API.
 
 ## Stack
 
@@ -24,7 +22,39 @@ workspace's `../docs/` (not part of this repository).
 
 Root package: `co.edu.uniquindio.legajo`.
 
-## Verification runs in containers (TRD §14.2)
+## Conventions
+
+How the code is kept, not just what it does.
+
+| `domain` package | Owns |
+|---|---|
+| `similarity` | `levenshtein`, `needleman-wunsch`, `jaccard`, `tfidf-cosine`, `embedding-local`, `embedding-api` — one class per capability |
+| `clustering` | The Lance-Williams merge engine and the four linkages: `SingleLinkage`, `CompleteLinkage`, `AverageLinkage`, `WardLinkage` |
+| `evaluation` | Cophenetic correlation, mean silhouette, Davies-Bouldin |
+| `preprocess` | NFC normalization, lowercasing, tokenization, English stopword removal, optional Porter stemming (off by default) |
+| `corpus` | The corpus model (`Corpus`, `CorpusDocument`), SHA-256 hashing, `CorpusVerifier` |
+| `port` | The embeddings port and the corpus port |
+
+- **Hand-written algorithms.** Levenshtein, Needleman-Wunsch, Jaccard, TF-IDF and cosine,
+  the embeddings similarity metric, text preprocessing, Lance-Williams, cophenetic
+  correlation, mean silhouette, and Davies-Bouldin are all written by hand with basic
+  language constructs — no library implements any of them. Delegable: PDF parsing, the
+  embedding model's own inference, the web framework, JSON, caching, packaging.
+- **Fixed constants.** Needleman-Wunsch scores +1 (match), -1 (mismatch), -1 (gap), never
+  tunable. TF-IDF's `df` and `N` are always computed over the whole corpus. Ward's
+  coefficients require the doubled distance base (`2·D`) the shared Lance-Williams merge
+  engine feeds it, not something Ward computes on its own. Determinism is bit-for-bit: the
+  DP matrix backtrace prefers diagonal, then up, then left on ties; clustering merges the
+  lexicographically smallest `(idx1, idx2)` pair on ties.
+- **Contract first.** `docs/openapi-legajo.yaml` changes before the implementation that
+  serves it; the frontend regenerates its types from it, and CI fails on drift.
+- **Generated data.** `data/corpus.json` and `data/embeddings-*.json` come only from
+  ingestion and precompute, never hand-edited; each embeddings cache is bound to the
+  corpus by `corpusSha256`, and startup fails if they no longer match.
+- **Commits and tests.** Conventional Commits, no AI attribution. Tests are written
+  before the code they cover.
+
+## Verification runs in containers
 
 **No check in this repository runs against a host JDK, host Gradle, or host `mise`
 install.** Every build, test, and smoke check runs inside a container, always — a
@@ -60,7 +90,7 @@ docker compose down
 This builds and starts both containers, waits for both healthchecks, publishes the frontend
 at http://localhost and the API at http://localhost:8080. No CORS configuration is needed:
 an unset/empty `LEGAJO_CORS_ORIGINS` falls back to `http://localhost` among its documented
-defaults (TRD §14.4) — exactly the frontend's Compose-published origin — so the two
+defaults — exactly the frontend's Compose-published origin — so the two
 containers talk to each other correctly with nothing to set.
 
 Backend only, no frontend checkout needed (what CI's `image-smoke` job runs, since it has
@@ -71,7 +101,7 @@ docker compose up -d --build --wait backend
 docker compose down
 ```
 
-Compose profiles (TRD §14.1):
+Compose profiles:
 
 | Profile | Services | Purpose |
 |---|---|---|
@@ -106,17 +136,17 @@ plain, no-flag `default` profile despite that.
 ## Checks run in containers
 
 Every check below is the exact command a developer or CI runs — no host JDK, no host
-`npm`/`mise`, ever (TRD §14.2).
+`npm`/`mise`, ever.
 
 | Check | Container command |
 |---|---|
 | Full build (compile, unit tests, ArchUnit) | `./scripts/gradle-in-docker.sh build` |
 | Tests only | `./scripts/gradle-in-docker.sh test` |
-| Aggregated coverage (JaCoCo, >85% in the algorithm packages) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
+| Aggregated coverage (JaCoCo; line coverage must exceed 85% in similarity, clustering, evaluation) | `./scripts/gradle-in-docker.sh jacocoRootReport` |
 | Start locally, no network | `docker compose up -d --wait backend` |
 | Full stack locally, no network | `docker compose up -d --build --wait` (needs `../frontend`, or `LEGAJO_FRONTEND_DIR`) |
 | Image smoke test (health, OpenAPI, corpus, a real NW comparison, Ward clustering, CORS preflight) | see below |
-| JMH performance curves + CSV export (NFR-QA-10; must run on the reference machine — see "Benchmarks" below) | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
+| JMH performance curves + CSV export (must run on the reference machine — see "Benchmarks" below) | `./scripts/gradle-in-docker.sh :benchmarks:jmh :benchmarks:jmhExport` |
 
 The image smoke test always tears the stack down, whether the smoke script passed or
 failed — and it must do so even under `set -e` (the safe default for a script, and this
@@ -168,15 +198,15 @@ git — use the hosting provider's secret panel in production).
 | Variable | Read by | Required | Notes |
 |---|---|---|---|
 | `LEGAJO_EMBEDDING_PROVIDER` | `application.yml` (`legajo.embedding-provider`) | No, defaults to `cached` | `cached` reads `data/embeddings-*.json`, no network needed |
-| `LEGAJO_CORS_ORIGINS` | `application.yml` (`legajo.cors-origins`) | No, defaults to `http://localhost:5173` and `http://localhost` | Comma-separated browser origins allowed by CORS for `/api/v1/**`; a defined list replaces the defaults instead of adding to them (TRD §14.4) |
-| `SPRING_AI_OPENAI_BASE_URL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | OpenAI-compatible embeddings endpoint (Gemini, TRD §8) |
-| `SPRING_AI_OPENAI_API_KEY` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Read from the environment only; never logged or included in an exception message |
-| `LEGAJO_EMBEDDING_API_MODEL` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | e.g. `gemini-embedding-2-preview` |
-| `LEGAJO_EMBEDDING_API_DIMENSION` | `PrecomputeApiEmbeddingsCli` | Only for `:bootstrap:precomputeApiEmbeddings` | Must be a positive integer |
-| `LEGAJO_GROBID_URL` | `IngestCli` | Only for `:bootstrap:ingest` | GROBID endpoint for ingestion (TRD §8). Resolves as `--grobid-url`, then this variable, then `http://localhost:8070`; a blank value counts as unset |
+| `LEGAJO_CORS_ORIGINS` | `application.yml` (`legajo.cors-origins`) | No, defaults to `http://localhost:5173` and `http://localhost` | Comma-separated browser origins allowed by CORS for `/api/v1/**`; a defined list replaces the defaults instead of adding to them |
+| `SPRING_AI_OPENAI_BASE_URL` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | For `:bootstrap:precomputeApiEmbeddings` and for `live` mode | OpenAI-compatible embeddings endpoint (Gemini) |
+| `SPRING_AI_OPENAI_API_KEY` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | For `:bootstrap:precomputeApiEmbeddings` and for `live` mode | Read from the environment only; never logged or included in an exception message |
+| `LEGAJO_EMBEDDING_API_MODEL` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | Required by `:bootstrap:precomputeApiEmbeddings`; the server defaults to `gemini-embedding-2-preview` | Embedding model name |
+| `LEGAJO_EMBEDDING_API_DIMENSION` | `PrecomputeApiEmbeddingsCli`; the server (`DomainConfiguration`) when `LEGAJO_EMBEDDING_PROVIDER=live` | Required by `:bootstrap:precomputeApiEmbeddings`; the server defaults to `1536` | Must be a positive integer |
+| `LEGAJO_GROBID_URL` | `IngestCli` | Only for `:bootstrap:ingest` | GROBID endpoint for ingestion. Resolves as `--grobid-url`, then this variable, then `http://localhost:8070`; a blank value counts as unset |
 | `SPRING_AI_OPENAI_EMBEDDING_EMBEDDINGS_PATH` | `PrecomputeApiEmbeddingsCli` | No | Optional, warn-only: Spring AI 2.0.x has no override point to route it to, so this CLI only warns if it is set to something other than `/embeddings`; see the class's Javadoc for the full history |
 
-## Ingestion, validation and verification (TRD §6.1)
+## Ingestion, validation and verification
 
 The pipeline takes any folder of PDFs and writes `data/corpus.json`, replacing whatever
 was there before. `data/pdfs/` is the reference corpus (20 teacher PDFs, never
@@ -191,7 +221,7 @@ batch job with no web or DI need). All commands run from `backend/`.
 
    ```bash
    docker compose --profile ingest up -d grobid
-   # wait until this returns "true" (containerized, no host curl — TRD §14.2):
+   # wait until this returns "true" (containerized, no host curl):
    docker run --rm --network host alpine:3.20 sh -c 'apk add --no-cache curl >/dev/null && curl -s http://localhost:8070/api/isalive'
    ```
 
@@ -199,7 +229,7 @@ batch job with no web or DI need). All commands run from `backend/`.
    with a PDFBox fallback (used automatically on a GROBID failure *or* an empty
    abstract), applies the ingestion cleaning step, and writes `--output` with every
    document `manuallyValidated=false`. `IngestCli` resolves the GROBID endpoint from
-   `--grobid-url` (`LEGAJO_GROBID_URL`, then `http://localhost:8070`, TRD §8), and
+   `--grobid-url` (`LEGAJO_GROBID_URL`, then `http://localhost:8070`), and
    `http://localhost:8070` only reaches step 1's `grobid` container when the ingest itself
    also runs with host networking — otherwise "localhost" inside the ingest container is
    its own loopback, not the host's, and the Compose-published port is unreachable.
@@ -210,8 +240,8 @@ batch job with no web or DI need). All commands run from `backend/`.
    LEGAJO_NETWORK_HOST=1 ./scripts/gradle-in-docker.sh :bootstrap:ingest --args="--input=data/pdfs --output=data/corpus.json --grobid-url=http://localhost:8070"
    ```
 
-3. **Review each abstract by hand.** This is the only mandatory control (TRD §6.1, item
-   5) and is never automatic — inspect `title`/`authors`/`abstract` per document (e.g.
+3. **Review each abstract by hand.** This is the only mandatory control
+   and is never automatic — inspect `title`/`authors`/`abstract` per document (e.g.
    by reading the freshly written `data/corpus.json`) before validating anything.
 
 4. **Validate** the documents you reviewed, which freezes their `abstractSha256` and
@@ -237,25 +267,23 @@ batch job with no web or DI need). All commands run from `backend/`.
    docker compose --profile ingest down
    ```
 
-Re-running step 2 replaces `data/corpus.json` outright (TRD §3.1): every document goes
+Re-running step 2 replaces `data/corpus.json` outright: every document goes
 back to `manuallyValidated=false`, and any previously computed `data/embeddings-*.json`
 caches become stale (their `corpusSha256` no longer matches) until embeddings are
 recomputed for the new corpus.
 
 ## Benchmarks
 
-`benchmarks/` measures the algorithms with JMH under the fixed protocol (TRD NFR-QA-10,
-"Protocolo de pruebas de rendimiento" and "Arnés de referencia") and proves the performance
-SLOs (TAC-07, NFR-QA-01/NFR-QA-02): `@BenchmarkMode(AverageTime)`, `@Fork(1)`,
-`@Warmup(iterations = 3, time = 1)`, `@Measurement(iterations = 5, time = 1)` on every
-benchmark class.
+`benchmarks/` measures the algorithms with JMH under a fixed protocol, the same on every
+benchmark class: `@BenchmarkMode(AverageTime)`, `@Fork(1)`, `@Warmup(iterations = 3, time = 1)`,
+`@Measurement(iterations = 5, time = 1)`.
 
 | Family | Classes | What varies |
 |---|---|---|
 | Pairwise classic curves | `pairwise.LevenshteinBenchmark`, `NeedlemanWunschBenchmark`, `JaccardBenchmark`, `TfIdfCosineBenchmark` | Token-sequence length L ∈ {50, 100, 200, 400, 800}, built from real corpus tokens |
 | HAC curves | `hac.LanceWilliamsBenchmark` (× 4 linkage criteria), `hac.InternalMetricsBenchmark` (mean silhouette, Davies-Bouldin) | n ∈ {5, 10, 20, 40, 80} synthetic unit vectors |
 | Embedding primitive | `embedding.EmbeddingPrimitiveBenchmark` | d ∈ {384, 1536}, one measurement each, no curve |
-| SLO benchmarks | `slo.ClassicPairwiseSloBenchmark` (NFR-QA-01, per classic algorithm), `slo.ClusteringSloBenchmark` (NFR-QA-02, all four linkages) | Fixed at the real reference corpus, n = 20, similarity cache never involved |
+| SLO benchmarks | `slo.ClassicPairwiseSloBenchmark` (per classic algorithm), `slo.ClusteringSloBenchmark` (all four linkages) | Fixed at the real reference corpus, n = 20, similarity cache never involved |
 
 Run the full protocol and export the CSVs, in the same Gradle session on the reference
 machine (the harness is captured when `jmh` runs, not later when `jmhExport` runs, so both
@@ -270,8 +298,13 @@ Results land in `benchmarks/results/`, versioned in git:
 - `jmh-results.csv` — `#`-prefixed harness header (CPU model, logical cores, total RAM, JDK,
   OS, UTC date) followed by `benchmark,family,parameter,size,score,error,unit` rows.
 - `slopes.csv` — `family,points,empiricalSlope,theoreticalExponent`: the least-squares
-  log-log slope of each curve next to the theoretical complexity TRD §6.3/§6.4/§6.5 document
-  for that family (TAC-18). A fixed-n SLO family has no theoretical exponent and is excluded.
+  log-log slope of each curve next to its theoretical complexity — O(L²) for
+  `levenshtein`/`needleman-wunsch`; O(L) per pair for `jaccard`/`tfidf-cosine` (TF-IDF's
+  one-time corpus indexing is not part of the measured operation); O(n³) for the
+  Lance-Williams `hac` engine, shared by all four linkages; O(n²) per k for
+  `mean-silhouette`; O(n·d) per k for `davies-bouldin` (the dominant term at the fixed
+  small k and d used here); and O(d) for both embedding primitives. A fixed-n SLO family
+  has no theoretical exponent and is excluded.
 
 The export is strict: it writes neither CSV if any benchmark result cannot be classified into
 a family (every skipped record is listed, with its reason, in the failure), if the
@@ -282,7 +315,7 @@ succeeded, so a failed or partial run never leaves behind a sidecar that looks f
 next to a stale results file. The versioned CSVs back the technical documentation, so an
 incomplete or mismatched export is an error, not a partial file to ignore.
 
-`GET /api/v1/benchmarks` (TRD §6.6, fixed by TRD 1.3.10) serves these two versioned CSVs to
+`GET /api/v1/benchmarks` serves these two versioned CSVs to
 the frontend as-is — it never runs JMH and never recalculates anything. If either file is
 missing or malformed, the server fails at startup naming the export command above, instead of
 exposing a broken endpoint.
@@ -296,27 +329,27 @@ subset with a regex:
     -Pjmh.includes=Levenshtein
 ```
 
-The reference harness is the machine recorded in `jmh-results.csv`'s header; TRD NFR-QA-10's
+The reference harness is the machine recorded in `jmh-results.csv`'s header; the
 baseline target is a 4 vCPU / 8 GB x86-64 machine. `.github/workflows/benchmarks.yml` runs the
 JMH suite manually (`workflow_dispatch`) or on a `bench-*` tag push, never on every push or
-pull request (TRD §14.3), and uploads `jmh-results.json` and the two CSVs as a build artifact.
+pull request, and uploads `jmh-results.json` and the two CSVs as a build artifact.
 **The numbers that job produces are not the reference harness**: it runs on a shared,
 unpinned GitHub-hosted runner, not the documented machine. The versioned CSVs in
-`benchmarks/results/` — the ones the technical documentation cites (TAC-07, TAC-18) — always
+`benchmarks/results/` — the reference numbers the technical documentation cites — always
 come from a local run on the reference harness, never from CI.
 
-## Deployment (TRD §14.4, TAC-11)
+## Deployment
 
 **Decided by the author: backend on Render, frontend on Vercel.** Render runs this
-repository's own image (this `Dockerfile`, built the way §14.2 describes) as a Docker web
+repository's own image (this `Dockerfile`) as a Docker web
 service; `docker compose up` here stays the reproducibility path, not the acceptance test —
-TAC-11 is the two public URLs below actually answering.
+what proves deployment is the two public URLs below actually answering.
 
 - **API base URL (Render):** _pending deployment — not yet assigned. This placeholder is
-  replaced with the real Render URL once TAC-11's deployment step runs; it is never a
+  replaced with the real Render URL once deployment runs; it is never a
   fabricated URL._
 - **Frontend URL (Vercel):** _pending deployment — set and documented by the frontend
-  repository once TAC-11 runs there; linked here for convenience once known._
+  repository once deployment runs there; linked here for convenience once known._
 
 **Cold-start note.** Render's free tier suspends the service when idle; the first request
 after a period of inactivity is slow while the instance wakes up. Before a demo, poll the
@@ -328,6 +361,6 @@ docker run --rm alpine:3.20 sh -c 'apk add --no-cache curl >/dev/null && \
   echo "backend is warm"' _ https://<render-app>.onrender.com
 ```
 
-CORS (TRD §14.4 point 3): `LEGAJO_CORS_ORIGINS` is set on Render to the exact public Vercel
+CORS: `LEGAJO_CORS_ORIGINS` is set on Render to the exact public Vercel
 origin; an unset or empty value only ever falls back to the two localhost defaults
 (`http://localhost:5173`, `http://localhost`), never to a wildcard.

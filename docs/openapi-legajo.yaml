@@ -4,11 +4,10 @@ info:
   description: >-
     REST contract for Legajo's RF1 (six similarity capabilities) and RF2
     (hierarchical clustering with four linkage criteria) over the reference
-    corpus (TRD-legajo v1.3.7, §6.6). This file is the contract's source of
-    truth (ADR-010): it describes exactly what the running server accepts and
+    corpus. This file is the contract's source of
+    truth: it describes exactly what the running server accepts and
     returns today, never an aspiration. The frontend generates its TypeScript
-    types from this file with `npm run api:types`, and CI fails on drift
-    (TAC-12, TR-09).
+    types from this file with `npm run api:types`, and CI fails on drift.
   version: "1.0.0"
   contact:
     name: Legajo backend
@@ -19,23 +18,23 @@ servers:
   - url: /
     description: Same-origin (Render in production; localhost in development)
 
-# No authentication scheme exists anywhere in this backend (TRD/PRD do not define one for
+# No authentication scheme exists anywhere in this backend (none is defined for
 # this demo API); declared explicitly, rather than left implicit, so linters and readers see
 # an intentional "no security" rather than an oversight.
 security: []
 
 tags:
   - name: corpus
-    description: The reference corpus (TRD §9).
+    description: The reference corpus.
   - name: similarity
-    description: RF1 — six similarity capabilities (TRD §6.3).
+    description: RF1 — six similarity capabilities.
   - name: clustering
-    description: RF2 — hierarchical clustering, four linkage criteria (TRD §6.4/§6.5).
+    description: RF2 — hierarchical clustering, four linkage criteria.
   - name: embeddings
-    description: Status of the two embedding families (TRD §6.3, fixed by TRD 1.3.6).
+    description: Status of the two embedding families.
   - name: benchmarks
     description: >-
-      JMH reference-run measurements (NFR-QA-10, TAC-07, TAC-18), fixed by TRD 1.3.10.
+      JMH reference-run measurements, served exactly as recorded.
   - name: health
     description: Liveness check (Spring Boot Actuator).
 
@@ -46,7 +45,7 @@ paths:
       tags: [corpus]
       summary: List every document in the reference corpus
       description: >-
-        `id`, `title`, and `authors` only — never the abstract (TRD §6.6).
+        `id`, `title`, and `authors` only — never the abstract.
       responses:
         "200":
           description: The n documents of the reference corpus, in corpus order.
@@ -75,7 +74,7 @@ paths:
                 $ref: "#/components/schemas/CorpusDocument"
         "404":
           description: >-
-            No corpus document with this id (TRD §6.6 error table: 404 because
+            No corpus document with this id (404 because
             `id` is a path segment).
           content:
             application/problem+json:
@@ -94,7 +93,7 @@ paths:
       operationId: listSimilarityAlgorithms
       tags: [similarity]
       summary: The catalogue of the six similarity capabilities
-      description: Exactly six ids, including `needleman-wunsch` (TAC-01).
+      description: Exactly six ids, including `needleman-wunsch`.
       responses:
         "200":
           description: The six capabilities, in registration order.
@@ -114,7 +113,7 @@ paths:
       summary: Multi-algorithm pairwise similarity for two documents
       description: >-
         `algorithmIds` is optional; omitted or `null` defaults to all six
-        capabilities (TAC-01, PRD HU-1.1), so the default request already
+        capabilities, so the default request already
         exercises every capability.
       requestBody:
         required: true
@@ -135,8 +134,8 @@ paths:
           description: >-
             An unknown `algorithmIds` entry (`unknown-algorithm`), an unknown
             `documentIdA`/`documentIdB` (`unknown-document`), or a blank
-            required field (`about:blank`, framework-detected) — TRD §6.6
-            error table: 400 because these values arrive in the request body.
+            required field (`about:blank`, framework-detected) — 400
+            because these values arrive in the request body.
           content:
             application/problem+json:
               schema:
@@ -212,10 +211,9 @@ paths:
       tags: [similarity]
       summary: The complete audit trace for one capability and one document pair
       description: >-
-        Returns the **complete** trace with no truncation parameter
-        (NFR-QA-03). The trace pair is identified by two required query
-        parameters (a decision this feature took: the TRD fixes the path but
-        not the pair-identification shape for a GET).
+        Returns the **complete** trace with no truncation parameter.
+        The trace pair is identified by two required query
+        parameters, since the path alone does not identify a pair for a GET.
       parameters:
         - name: algorithmId
           in: path
@@ -243,7 +241,7 @@ paths:
         "400":
           description: >-
             An unknown `documentIdA`/`documentIdB` query value
-            (`unknown-document`) — TRD §6.6 error table: 400 because these are
+            (`unknown-document`) — 400 because these are
             query parameters, not the path segment.
           content:
             application/problem+json:
@@ -251,8 +249,8 @@ paths:
                 $ref: "#/components/schemas/ProblemDetail"
         "404":
           description: >-
-            An unknown `algorithmId` path segment (`unknown-algorithm`) — TRD
-            §6.6 error table: 404 because this value is a path segment.
+            An unknown `algorithmId` path segment (`unknown-algorithm`) — 404
+            because this value is a path segment.
           content:
             application/problem+json:
               schema:
@@ -276,7 +274,7 @@ paths:
         Returns, per linkage, the (n-1)-row linkage matrix, `leafOrder`, and
         the evaluation block computed always at the fixed cuts
         k ∈ {2,3,4,5} ∩ [2, n-1]. There is no `ks` request parameter, so no
-        conforming request can alter the fixed-cut rule (TAC-04).
+        conforming request can alter the fixed-cut rule.
       requestBody:
         required: false
         content:
@@ -404,7 +402,7 @@ paths:
       description: >-
         One object per capability (`embeddingLocal`, `embeddingApi`), because
         each reads its own cache and each cache can drift from the corpus
-        independently (TRD §6.6, fixed by TRD 1.3.6; TAC-13).
+        independently.
       responses:
         "200":
           description: Both families' status.
@@ -422,7 +420,7 @@ paths:
       summary: JMH reference-run measurements
       description: >-
         Reads the versioned benchmarks/results/jmh-results.csv and slopes.csv exports
-        as-is (TRD §6.6, fixed by TRD 1.3.10); never runs JMH and never recalculates
+        as-is; never runs JMH and never recalculates
         anything. If a results file is missing or malformed the server fails at
         startup instead of exposing this endpoint, so a successful response always
         carries real reference-harness data.
@@ -441,7 +439,7 @@ paths:
       operationId: health
       tags: [health]
       summary: Liveness check
-      description: TAC-11 verifies this answers 200 from the deployed URL.
+      description: Answers 200 with status UP when the application is healthy.
       responses:
         "200":
           description: >-
@@ -471,14 +469,13 @@ components:
   responses:
     EmbeddingApiUnavailable:
       description: >-
-        NFR-QA-12: a network failure, timeout, rejection, or missing API key
-        from the live `embedding-api` provider. Applies to every endpoint
-        that can use the `embedding-api` capability/representation (TRD
-        §6.3). As of this contract's authoring (feature task A6), the live
-        path is not yet wired to any production call site (task A8 does
-        that); the mapping already exists in
-        `ProblemDetailExceptionHandler` and is documented here because the
-        TRD fixes it as part of this endpoint's error contract.
+        A network failure, timeout, rejection, missing API key, or dimension
+        mismatch from the live `embedding-api` provider. Applies to every
+        endpoint that can use the `embedding-api` capability/representation.
+        In live mode, the server fetches missing vectors from the configured
+        OpenAI-compatible embeddings endpoint at request time; any failure of
+        that call is mapped to this response by
+        `ProblemDetailExceptionHandler`.
       content:
         application/problem+json:
           schema:
@@ -509,7 +506,7 @@ components:
   schemas:
     AlgorithmId:
       type: string
-      description: One of the six fixed similarity capability ids (TRD §6.3).
+      description: One of the six fixed similarity capability ids.
       enum:
         - levenshtein
         - needleman-wunsch
@@ -532,7 +529,7 @@ components:
         RFC 9457 Problem Detail, as Spring Framework 7 serializes it natively.
         `type` carries one of this API's fixed URNs, or is entirely absent
         (never a literal JSON `null`) when the error is one Spring's own
-        machinery classifies without a domain-specific cause (TRD §6.6).
+        machinery classifies without a domain-specific cause.
       required: [title, status]
       properties:
         type:
@@ -627,7 +624,7 @@ components:
 
     SimilarityResult:
       type: object
-      description: TRD §6.3 common result envelope, as returned over the wire (with `cached`).
+      description: Common result envelope, as returned over the wire (with `cached`).
       required: [normalizedScore, computedNanos, cached, degenerate]
       properties:
         normalizedScore:
@@ -668,7 +665,7 @@ components:
         algorithmIds:
           type: array
           nullable: true
-          description: Omitted or null defaults to all six capabilities (TAC-01).
+          description: Omitted or null defaults to all six capabilities.
           items:
             $ref: "#/components/schemas/AlgorithmId"
 
@@ -713,7 +710,7 @@ components:
 
     DpMatrixTrace:
       type: object
-      description: Shared by `levenshtein` and `needleman-wunsch` (TRD §6.3).
+      description: Shared by `levenshtein` and `needleman-wunsch`.
       required: [algorithmId, rowLabels, columnLabels, matrix, optimalPath, operations]
       properties:
         algorithmId:
@@ -828,7 +825,7 @@ components:
           type: integer
         terms:
           type: array
-          description: Only terms present in at least one of the two compared documents (TRD §6.3).
+          description: Only terms present in at least one of the two compared documents.
           items:
             $ref: "#/components/schemas/TfIdfTermTrace"
         dotProduct:
@@ -978,7 +975,7 @@ components:
 
     AlgorithmTrace:
       description: >-
-        One variant per similarity capability (TRD §6.3, NFR-QA-03).
+        One variant per similarity capability.
         `levenshtein` and `needleman-wunsch` share the `DpMatrixTrace` shape.
       oneOf:
         - $ref: "#/components/schemas/DpMatrixTrace"
@@ -1039,7 +1036,7 @@ components:
 
     LinkageStep:
       type: object
-      description: One row of a linkage matrix (TRD §6.4). `idx1 < idx2` always.
+      description: One row of a linkage matrix. `idx1 < idx2` always.
       required: [idx1, idx2, mergeDistance, size]
       properties:
         idx1:
@@ -1057,7 +1054,7 @@ components:
       description: >-
         `meanSilhouette`/`daviesBouldin` are objects keyed by the fixed cut k
         (JSON object keys are always strings, e.g. "2".."5") — computed
-        always at k ∈ {2,3,4,5} ∩ [2, n-1] (TAC-04).
+        always at k ∈ {2,3,4,5} ∩ [2, n-1].
       required: [cophenetic, meanSilhouette, daviesBouldin]
       properties:
         cophenetic:
@@ -1070,7 +1067,7 @@ components:
             format: double
         daviesBouldin:
           type: object
-          description: "null for a k whose centroids coincide (TRD §6.5)."
+          description: "null for a k whose centroids coincide."
           additionalProperties:
             type: number
             format: double
@@ -1098,8 +1095,7 @@ components:
           description: >-
             Length n; position i is the id of the document behind observation
             i, in the order of corpus.json (the same order GET /corpus lists).
-            idx1/idx2 (< n) and leafOrder index into this same order (TRD
-            1.3.9).
+            idx1/idx2 (< n) and leafOrder index into this same order.
           items:
             type: string
         evaluation:
@@ -1131,7 +1127,7 @@ components:
           description: >-
             Length n, aligned with labels: documentIds[i] is the document
             whose cluster is labels[i], in the order of corpus.json (the same
-            order GET /corpus lists, TRD 1.3.9).
+            order GET /corpus lists).
           items:
             type: string
 
@@ -1151,7 +1147,7 @@ components:
           type: boolean
         device:
           type: string
-          description: 'Fixed literal "cpu" today (TRD §14.2, CPU-only default).'
+          description: 'Fixed literal "cpu" today (CPU-only default).'
 
     EmbeddingApiStatus:
       type: object
@@ -1169,7 +1165,7 @@ components:
           type: boolean
         mode:
           type: string
-          description: The only capability with a live-update path (NFR-QA-12).
+          description: The only capability with a live-update path.
           enum: [cached, live]
 
     EmbeddingStatus:
@@ -1185,8 +1181,8 @@ components:
       type: object
       description: >-
         The reference-harness metadata recorded in jmh-results.csv's header at JMH
-        run time (NFR-QA-10). Every field is always present: the harness sidecar the
-        export reads from fails closed on a missing key (TRD §6.6/§9).
+        run time. Every field is always present: the harness sidecar the
+        export reads from fails closed on a missing key.
       required: [cpuModel, logicalCores, totalRamBytes, jdk, os, measuredAt]
       properties:
         cpuModel:
@@ -1208,8 +1204,8 @@ components:
       type: object
       description: >-
         One benchmark method at one parameter value, read as-is from
-        jmh-results.csv (TRD §6.6). Includes the slo-* families (NFR-QA-01/
-        NFR-QA-02) and both embedding-dimension measurements.
+        jmh-results.csv. Includes the slo-* families and both
+        embedding-dimension measurements.
       required: [benchmark, family, parameter, size, score, error, unit]
       properties:
         benchmark:
@@ -1235,7 +1231,7 @@ components:
       type: object
       description: >-
         Least-squares log-log slope of one curve family next to its documented
-        theoretical exponent (TRD §6.3/§6.4/§6.5, TAC-18), read as-is from
+        theoretical exponent, read as-is from
         slopes.csv. A fixed-n SLO family is not a curve and never appears here.
       required: [family, points, empiricalSlope, theoreticalExponent]
       properties:

@@ -1,5 +1,5 @@
 #!/bin/sh
-# TRD §14.2: "verificación solo en contenedores" — no host JDK, no host mise, ever, for any
+# Verification runs only in containers — no host JDK, no host mise, ever, for any
 # check. Runs Gradle for this backend inside the same pinned Temurin 25 JDK image the
 # Dockerfile's build stage uses, so a developer without a JDK installed gets exactly the
 # build that CI runs.
@@ -54,7 +54,7 @@ docker run --rm -v "$GRADLE_HOME_VOLUME:/gradle-home" "$IMAGE" \
 # adapter test in this repository (GrobidPdfMetadataExtractorTest) stubs GROBID with a plain
 # JDK HttpServer, not Testcontainers, so `./gradlew build` does not need it. Set
 # LEGAJO_DOCKER_SOCKET=1 the day a Testcontainers-backed integration test is actually added
-# (AGENTS.md's testing table lists Testcontainers as that test's intended tool) — this then
+# (Testcontainers is the intended tool for that kind of test) — this then
 # also adds a host-gateway alias so such a test can reach a sibling container back from
 # inside this one.
 DOCKER_SOCKET_ARGS=""
