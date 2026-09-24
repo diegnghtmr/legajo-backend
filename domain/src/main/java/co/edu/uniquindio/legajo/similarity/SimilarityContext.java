@@ -8,10 +8,10 @@ import org.jspecify.annotations.Nullable;
  * Cross-cutting, corpus-wide state passed to every {@link SimilarityAlgorithm}
  * invocation, decoupling the sealed contract's shape from state a given capability
  * needs beyond its two inputs — for example the df/N statistics {@code tfidf-cosine}
- * computes once over the whole corpus (TRD §6.3), never per pair.
+ * computes once over the whole corpus, never per pair.
  *
  * <p>{@code tfIdfIndex} is {@code null} for every capability that needs no shared state
- * (Levenshtein, Needleman-Wunsch, Jaccard), and required only by {@code tfidf-cosine} (S5),
+ * (Levenshtein, Needleman-Wunsch, Jaccard), and required only by {@code tfidf-cosine},
  * which reads it for the corpus-wide {@link TfIdfCorpusIndex#documentFrequency(String)} and
  * {@link TfIdfCorpusIndex#idf(String)}. Later tasks add further fields here the same way,
  * without touching {@code compute(a, b, context)} on {@link SimilarityAlgorithm} or any

@@ -1,11 +1,11 @@
 package co.edu.uniquindio.legajo.clustering;
 
 /**
- * Single linkage (TRD §6.4 table, "Simple"): alphaI = alphaJ = 1/2, beta = 0, gamma = -1/2,
+ * Single linkage: alphaI = alphaJ = 1/2, beta = 0, gamma = -1/2,
  * independent of the three cluster sizes. Substituting these constants into Lance-Williams
  * reduces algebraically to {@code min(d(i,k), d(j,k))} — nearest-neighbor clustering — but
  * this class never performs that reduction itself; it only ever hands the four constants to
- * {@link LanceWilliamsEngine} (R3), which owns the merge loop (TRD §6.4).
+ * {@link LanceWilliamsEngine}, which owns the merge loop.
  */
 public final class SingleLinkage implements LinkageCriterion {
 

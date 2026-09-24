@@ -8,9 +8,9 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Corpus-wide document-frequency index for {@code tfidf-cosine} (TRD §6.3, "Fórmulas
- * TF-IDF (fijadas)"): {@code df(t)} and {@code N} are computed once over every document's
- * preprocessed token stream in the whole corpus (TRD §6.2) — never over the two documents
+ * Corpus-wide document-frequency index for {@code tfidf-cosine}: {@code df(t)} and
+ * {@code N} are computed once over every document's
+ * preprocessed token stream in the whole corpus — never over the two documents
  * selected for a pairwise comparison. This is why {@code tfidf-cosine} needs corpus-wide
  * state carried through {@link SimilarityContext} instead of deriving df/N from its own two
  * {@link SimilarityInput} arguments.
@@ -40,8 +40,7 @@ public final class TfIdfCorpusIndex {
 
     /**
      * Builds the index from {@code corpusTokenStreams}, one entry per corpus document's
-     * preprocessed token stream. {@code N = corpusTokenStreams.size()} (TRD §6.3, "N =
-     * tamaño del corpus = n = |corpus|").
+     * preprocessed token stream. {@code N = corpusTokenStreams.size()}, i.e. the corpus size.
      */
     public static TfIdfCorpusIndex from(List<List<String>> corpusTokenStreams) {
         Objects.requireNonNull(corpusTokenStreams, "corpusTokenStreams");
@@ -58,7 +57,7 @@ public final class TfIdfCorpusIndex {
         return new TfIdfCorpusIndex(Map.copyOf(documentFrequency), corpusTokenStreams.size());
     }
 
-    /** {@code N}: the corpus size this index was built from (TRD §6.3). */
+    /** {@code N}: the corpus size this index was built from. */
     public int corpusSize() {
         return corpusSize;
     }
@@ -69,7 +68,7 @@ public final class TfIdfCorpusIndex {
         return documentFrequency.getOrDefault(term, 0);
     }
 
-    /** {@code idf(t) = ln((1 + N) / (1 + df(t))) + 1} (TRD §6.3, smoothed idf). */
+    /** {@code idf(t) = ln((1 + N) / (1 + df(t))) + 1} (the fixed smoothed idf formula). */
     public double idf(String term) {
         return Math.log((1.0 + corpusSize) / (1.0 + documentFrequency(term))) + 1.0;
     }

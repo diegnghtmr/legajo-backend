@@ -4,17 +4,17 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The full output of the ranking rule (TRD §6.5, "Regla de ordenación"): every linkage's
+ * The full output of the ranking rule: every linkage's
  * evaluation, the cophenetic tie set, and the two leaders the interface/report must always
- * point to — {@code bestTreeFidelity} (the resolved cophenetic winner: "mejor fidelidad del
- * árbol") and {@code bestPartitionAtKRef} (the plain silhouette leader at {@code k_ref}:
- * "mejor partición en k_ref"). {@link ClusteringRanking} is this record's only intended
+ * point to — {@code bestTreeFidelity} (the resolved cophenetic winner, i.e. the tree's best
+ * fit) and {@code bestPartitionAtKRef} (the plain silhouette leader at {@code k_ref}, i.e.
+ * the best partition). {@link ClusteringRanking} is this record's only intended
  * producer, but it re-validates its own cross-field invariants rather than trusting its
  * caller — the house rule this package's other validated value types already follow.
  *
- * <p>{@code sampleSize} carries the sample-size caveat TRD §6.5 requires to be stated "en
- * todos los casos" (n = |corpus|); the actual caveat text and the "both leaders" narrative
- * belong to a future presentation layer (REST/UI), out of this feature's scope — this record
+ * <p>{@code sampleSize} carries the sample-size caveat that must always be stated
+ * (n = |corpus|); the actual caveat text and the "both leaders" narrative
+ * belong to a future presentation layer (REST/UI), out of scope here — this record
  * only guarantees the underlying facts are self-consistent.
  */
 public record ClusteringRankingResult(
@@ -50,8 +50,8 @@ public record ClusteringRankingResult(
         }
 
         // leadersDiffer is caller-supplied but re-derived and checked here rather than
-        // trusted, by the two leaders' stable id() (TRD §6.5, "si el líder en silueta media
-        // en k_ref difiere del líder en cofenética") — never by reference identity, since two
+        // trusted, by the two leaders' stable id() — whether the silhouette leader at k_ref
+        // differs from the cophenetic leader — never by reference identity, since two
         // LinkageEvaluation instances describing the same criterion are not guaranteed to
         // share a LinkageCriterion instance.
         boolean expectedLeadersDiffer =

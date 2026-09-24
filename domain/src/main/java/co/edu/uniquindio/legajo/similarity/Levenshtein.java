@@ -4,10 +4,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Token-level Levenshtein edit distance (TRD §6.3, §13, FTR-SIM), hand-written under
- * R-02 on top of the generic {@link LevenshteinCore}. {@code normalized = 1 - D /
+ * Token-level Levenshtein edit distance, hand-written; no library implements it,
+ * on top of the generic {@link LevenshteinCore}. {@code normalized = 1 - D /
  * max(lenA, lenB)}, with both token streams empty mapped to {@code 1.0} to avoid the
- * 0/0 case; {@code degenerate} stays {@code false} always — the TRD reserves that flag
+ * 0/0 case; {@code degenerate} stays {@code false} always — that flag is reserved
  * for the documented TF-IDF null-vector case, not for Levenshtein's empty-input result.
  * The trace exposes the full DP matrix, the row/column token labels, and the
  * deterministic optimal path (tie order: diagonal, then up, then left).

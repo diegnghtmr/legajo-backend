@@ -5,10 +5,10 @@ import java.util.Objects;
 
 /**
  * The complete set of {@link CorpusViolation}s found by {@link CorpusVerifier}. Every
- * applicable rule is checked regardless of earlier failures (TRD §6.1, item 6: "cualquier
- * discrepancia hace fallar el script" describes the overall script outcome, not an
- * early return — this verifier collects every violation so the author can fix them
- * all in one pass).
+ * applicable rule is checked regardless of earlier failures: any discrepancy is meant
+ * to fail the overall verification run, not just the first one found — an early return
+ * would describe only the outcome, so this verifier instead collects every violation
+ * so the author can fix them all in one pass.
  */
 public record CorpusVerificationResult(List<CorpusViolation> violations) {
 

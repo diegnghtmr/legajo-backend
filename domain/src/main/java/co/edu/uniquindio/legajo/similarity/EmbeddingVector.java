@@ -5,18 +5,18 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * One document's cached embedding vector (TRD §6.3/§9): {@code documentId} it belongs to,
+ * One document's cached embedding vector: {@code documentId} it belongs to,
  * {@code provider}/{@code model} metadata (e.g. {@code "local"}/{@code "all-MiniLM-L6-v2"}),
  * the L2-normalized {@code values}, and {@code preNormL2} — the norm of the raw pooled
- * vector <em>before</em> that normalization, kept only as precompute-time provenance (TRD
- * §6.3, "Invariante de norma unitaria (fijado)").
+ * vector <em>before</em> that normalization, kept only as precompute-time provenance (the
+ * fixed unit-norm invariant).
  *
  * <p><b>Structural invariant.</b> {@code values} must always be unit length (within 1e-9);
  * this type only ever holds an already-normalized vector, so every reader (the
  * {@code embedding-local} metric, its trace, a JSON adapter after renormalizing on load) can
  * rely on {@code values} being ready to dot-product directly. {@code preNormL2} is
- * deliberately unconstrained relative to 1 — it is typically a much larger number (e.g. the
- * TRD §9 example's {@code 5.814322}), because it is the norm of the vector <em>before</em>
+ * deliberately unconstrained relative to 1 — it is typically a much larger number (e.g. a
+ * value such as {@code 5.814322}), because it is the norm of the vector <em>before</em>
  * normalization, not after.
  */
 public record EmbeddingVector(String documentId, String provider, String model, double preNormL2,
@@ -56,7 +56,7 @@ public record EmbeddingVector(String documentId, String provider, String model, 
         return values.size();
     }
 
-    /** Hand-written L2 norm (TRD §3.3: normalization is not delegable under R-02). */
+    /** Hand-written L2 norm (no library implements it: normalization is not delegable). */
     public static double l2Norm(List<Double> vector) {
         Objects.requireNonNull(vector, "vector");
         double sumOfSquares = 0.0;
@@ -68,10 +68,9 @@ public record EmbeddingVector(String documentId, String provider, String model, 
 
     /**
      * Builds a unit vector from {@code rawValues} by hand-computing their L2 norm and
-     * dividing every component by it (TRD §6.3, "Invariante de norma unitaria (fijado)").
+     * dividing every component by it (the fixed unit-norm invariant).
      * {@code preNormL2} records the pre-normalization norm as provenance, exactly as the
-     * offline precompute job must (TRD §6.3, "Límite de tokens de MiniLM": "... registrando
-     * preNormL2 antes de normalizar").
+     * offline precompute job must, recording {@code preNormL2} before normalizing.
      */
     public static EmbeddingVector normalize(String documentId, String provider, String model,
             List<Double> rawValues) {

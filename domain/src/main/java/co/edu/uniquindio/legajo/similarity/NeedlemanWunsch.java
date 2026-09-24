@@ -4,12 +4,12 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Needleman-Wunsch global sequence alignment over tokens (TRD §6.3, ADR-012), hand-written
- * under R-02 on top of the generic {@link NeedlemanWunschCore}. The scoring constants are
+ * Needleman-Wunsch global sequence alignment over tokens, hand-written; no library
+ * implements it, on top of the generic {@link NeedlemanWunschCore}. The scoring constants are
  * fixed in v1 (match {@code +1}, mismatch {@code -1}, gap {@code -1}) and never editable
  * from any layer.
  *
- * <p>Normalization uses the theoretical bounds fixed by the TRD, with
+ * <p>Normalization uses the fixed theoretical bounds, with
  * {@code m = min(lenA, lenB)} and {@code M = max(lenA, lenB)}: {@code S_min = mismatch·m +
  * gap·(M - m)} (a lower bound on the optimal score — always achievable by aligning the m
  * shared positions and gapping the rest), {@code S_max = match·M} (the absolute upper
@@ -17,8 +17,8 @@ import java.util.Optional;
  * quotient would be 0/0), and otherwise {@code normalized = (S - S_min) / (S_max - S_min)}
  * — which, algebraically, reduces to {@code (S + M) / (2·M)} once the fixed constants are
  * substituted (both forms are computed and asserted equal in
- * {@code NeedlemanWunschTest}). {@code degenerate} stays {@code false} always; the TRD
- * reserves that flag for the TF-IDF null-vector case, not for this capability's
+ * {@code NeedlemanWunschTest}). {@code degenerate} stays {@code false} always; that flag
+ * is reserved for the TF-IDF null-vector case, not for this capability's
  * empty-input result.
  *
  * <p>The trace exposes the full DP matrix, the row/column token labels, and the

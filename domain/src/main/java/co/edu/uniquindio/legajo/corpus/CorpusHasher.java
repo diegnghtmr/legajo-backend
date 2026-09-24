@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Sha256 hashing rules fixed by TRD §6.1: {@code java.security.MessageDigest} is a
+ * Fixed sha256 hashing rules: {@code java.security.MessageDigest} is a
  * plain JDK API, not a framework, so it is safe to use from {@code domain}.
  *
  * <p>{@code abstractSha256} is the sha256 hex digest of the UTF-8 abstract text.

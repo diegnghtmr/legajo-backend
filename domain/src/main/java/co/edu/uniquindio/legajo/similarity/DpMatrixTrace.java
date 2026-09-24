@@ -5,13 +5,13 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Shared trace model for the two DP algorithms of TRD §6.3: the full matrix (never
+ * Shared trace model for the two DP algorithms: the full matrix (never
  * truncated — the UI windows it, but the computed value always matches the published
  * trace), the row/column token labels, the deterministic optimal path (fixed backtrace
  * tie order: diagonal, then up, then left), and the per-step operation classification.
  *
  * <p>Modeled as plain, validated, read-only data so a future CSV/REST export is a pure
- * read of this record — no export or REST code is written here (S1 scope).
+ * read of this record — no export or REST code is written here.
  *
  * <p>{@code matrix} is defensively deep-copied on construction and on every read of
  * {@link #matrix()}, because a {@code double[][]} field is otherwise a mutable hole in an
@@ -24,7 +24,7 @@ import java.util.Objects;
  * transition, in the same order (each {@code operations.get(i)} moves from
  * {@code optimalPath.get(i + 1)} to {@code optimalPath.get(i)}), and every move stays within
  * one row and one column of its neighbor (diagonal, up, or left), matching the fixed
- * backtrace tie order (TRD §6.3). Each step's {@link DpOperationKind} must also match its
+ * backtrace tie order. Each step's {@link DpOperationKind} must also match its
  * actual geometric direction: {@link DpOperationKind#MATCH}/{@link DpOperationKind#SUBSTITUTION}/
  * {@link DpOperationKind#MISMATCH} require a diagonal move; {@link DpOperationKind#DELETION}
  * requires an up move; {@link DpOperationKind#INSERTION} requires a left move;

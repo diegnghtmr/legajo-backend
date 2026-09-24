@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Hand-written Needleman-Wunsch global-alignment DP core (R-02), generic over
- * {@code List<T>} (TRD §6.3, ADR-012). The scoring constants are fixed in v1 and not
+ * Hand-written Needleman-Wunsch global-alignment DP core — no library implements it —
+ * generic over {@code List<T>}. The scoring constants are fixed in v1 and not
  * exposed for override anywhere: {@link #MATCH_SCORE} (+1), {@link #MISMATCH_SCORE} (-1),
  * {@link #GAP_SCORE} (-1).
  *
@@ -14,7 +14,7 @@ import java.util.Objects;
  * {@code dp[i][j] = max(dp[i-1][j-1] + score(a[i-1], b[j-1]), dp[i-1][j] + GAP_SCORE,
  * dp[i][j-1] + GAP_SCORE)} — maximizing alignment score, unlike
  * {@link LevenshteinCore}'s minimized edit cost. The backtrace resolves ties with the
- * same fixed order the TRD requires for both DP capabilities: diagonal
+ * same fixed order required for both DP capabilities: diagonal
  * (match/mismatch), then up (gap), then left (gap).
  */
 final class NeedlemanWunschCore {

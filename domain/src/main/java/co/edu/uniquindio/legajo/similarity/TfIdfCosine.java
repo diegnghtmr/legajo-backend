@@ -9,25 +9,25 @@ import java.util.Optional;
 import java.util.TreeSet;
 
 /**
- * TF-IDF cosine similarity over preprocessed token streams (TRD §6.3, "Fórmulas TF-IDF
- * (fijadas)"; PRD HU-1.3), hand-written under R-02: {@code tf(t,d) = 1 + ln f(t,d)} when
+ * TF-IDF cosine similarity over preprocessed token streams, hand-written; no library
+ * implements it: {@code tf(t,d) = 1 + ln f(t,d)} when
  * {@code f(t,d) > 0}, else {@code 0}; {@code idf(t) = ln((1 + N) / (1 + df(t))) + 1}
  * (smoothed); {@code w(t,d) = tf(t,d) · idf(t)}; both vectors L2-normalized; cosine = the
  * dot product of the normalized vectors; angle = {@code arccos(cosine)} in degrees.
  *
- * <p><b>Corpus-wide df/N (TRD §6.3, "nunca sobre el par seleccionado").</b> Unlike the other
+ * <p><b>Corpus-wide df/N (never over the selected pair).</b> Unlike the other
  * three classical capabilities, this one needs state beyond its two {@link SimilarityInput}
  * arguments: {@code df(t)} and {@code N} are computed once over the whole corpus. That state
  * is a {@link TfIdfCorpusIndex}, carried through {@link SimilarityContext#tfIdfIndex()} —
  * required (non-null) for every non-degenerate computation.
  *
- * <p><b>Degenerate cases (TRD §6.3, "Vector nulo de TF-IDF (fijado)").</b> Both token
+ * <p><b>Degenerate cases (the fixed TF-IDF null-vector convention).</b> Both token
  * streams empty → {@code normalizedScore = 1.0}; exactly one empty → {@code 0.0}; in both
  * cases {@code rawValue = null} and {@code degenerate = true}. Both branches are
  * short-circuited before the corpus index is consulted at all: the "one empty" case's
  * mathematically genuine cosine is 0 regardless of any term's idf (one whole vector is the
  * zero vector, so every product in the dot sum is zero), and the "both empty" case has no
- * terms to weigh at all (the underlying {@code 0/0} is undefined and TRD fixes it to
+ * terms to weigh at all (the underlying {@code 0/0} is undefined and this is fixed to
  * {@code 1.0} by convention, mirroring Jaccard's and Needleman-Wunsch's own empty-input
  * conventions) — so neither branch has genuine per-term evidence to show, and their traces
  * both report an empty term list with the same fixed convention values.
@@ -112,7 +112,7 @@ public final class TfIdfCosine implements SimilarityAlgorithm {
 
     private static TfIdfCorpusIndex requireIndex(SimilarityContext context) {
         return Objects.requireNonNull(context.tfIdfIndex(),
-                "context.tfIdfIndex() is required for tfidf-cosine (TRD §6.3: df/N over the whole corpus)");
+                "context.tfIdfIndex() is required for tfidf-cosine: df/N over the whole corpus");
     }
 
     /**
@@ -129,9 +129,9 @@ public final class TfIdfCosine implements SimilarityAlgorithm {
 
     /**
      * Runs the fixed formula over the union of terms present in {@code tokensA} or
-     * {@code tokensB} (TRD §6.3; scope rationale on {@link TfIdfCosineTrace}), in two
+     * {@code tokensB} (scope rationale on {@link TfIdfCosineTrace}), in two
      * passes: raw weights and both raw norms first, then each term's normalized weight
-     * (TRD §6.3's explicit "segundo paso") and the running dot product, which — over
+     * (the fixed, explicit second-pass step) and the running dot product, which — over
      * L2-normalized vectors — is the cosine itself.
      */
     private static Computation computeVectors(List<String> tokensA, List<String> tokensB, TfIdfCorpusIndex index) {
@@ -192,7 +192,7 @@ public final class TfIdfCosine implements SimilarityAlgorithm {
         return Math.max(0.0, Math.min(1.0, cosine));
     }
 
-    /** {@code tf(t,d) = 1 + ln f(t,d)} when {@code f(t,d) > 0}, else {@code 0} (TRD §6.3). */
+    /** {@code tf(t,d) = 1 + ln f(t,d)} when {@code f(t,d) > 0}, else {@code 0} (the fixed term-frequency formula). */
     private static double termFrequency(int frequency) {
         return frequency > 0 ? 1.0 + Math.log(frequency) : 0.0;
     }

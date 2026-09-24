@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Step-by-step evidence for {@code embedding-local} (TRD §6.3's embedding trace row): each
+ * Step-by-step evidence for {@code embedding-local} (the embedding trace row): each
  * vector's first 8 dimensions and full dimension count, the dot product, each vector's
  * {@code preNormL2} recorded at precompute time (provenance only, not recomputed here), the
  * unit vectors themselves as stored in the cache, the cosine, the angle in degrees, the
@@ -14,10 +14,9 @@ import java.util.Objects;
  * {@code vectorAExcerpt}/{@code vectorBExcerpt} are exactly the first
  * {@code min(8, dimension)} components of the corresponding full vector; {@code dotProduct}
  * equals the hand-computed dot product of {@code vectorA} and {@code vectorB};
- * {@code cosine} equals {@code dotProduct} (both vectors are unit length, TRD §6.3);
- * {@code angleDegrees} equals {@code degrees(acos(clamp(cosine, -1, 1)))}; and
- * {@code normalizedScore} equals {@code clamp(cosine, 0, 1)} (TRD §6.3, "Capacidades de
- * embedding (fijadas)").
+ * {@code cosine} equals {@code dotProduct} (both vectors are unit length); {@code angleDegrees}
+ * equals {@code degrees(acos(clamp(cosine, -1, 1)))}; and {@code normalizedScore} equals
+ * {@code clamp(cosine, 0, 1)}, the fixed embedding-score mapping.
  */
 public record EmbeddingLocalTrace(
         String algorithmId,
@@ -89,7 +88,7 @@ public record EmbeddingLocalTrace(
         }
         if (NumericGuards.isOutOfTolerance(cosine, dotProduct, TOLERANCE)) {
             throw new IllegalArgumentException(
-                    "cosine must equal dotProduct for unit vectors (TRD §6.3), dotProduct was %.12f, cosine was %.12f"
+                    "cosine must equal dotProduct for unit vectors, dotProduct was %.12f, cosine was %.12f"
                             .formatted(dotProduct, cosine));
         }
 

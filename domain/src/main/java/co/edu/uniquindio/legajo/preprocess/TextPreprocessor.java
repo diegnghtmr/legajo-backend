@@ -17,14 +17,14 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Five-step text preprocessing pipeline (TRD §6.2), pure Java with no framework
+ * Five-step text preprocessing pipeline, pure Java with no framework
  * dependency: NFC normalization, lowercasing with {@link Locale#ROOT}, regex
  * tokenization, English stopword removal, and optional Porter stemming (default off).
  *
  * <p>No token-length filter is applied: two-letter domain tokens such as "ai" or "ml"
  * survive. The five steps feed only the four classic similarity capabilities and the
  * {@code tfidf-cosine} representation; the embedding capabilities consume the raw
- * abstract instead (TRD §6.2, §6.3), which is why this class returns tokens rather
+ * abstract instead, which is why this class returns tokens rather
  * than reaching further into similarity concerns.
  */
 public final class TextPreprocessor {
@@ -50,7 +50,7 @@ public final class TextPreprocessor {
     }
 
     /**
-     * Runs the five TRD §6.2 steps over {@code text}: NFC, lowercase, tokenize, remove
+     * Runs the five preprocessing steps over {@code text}: NFC, lowercase, tokenize, remove
      * stopwords, and — when {@code stemming} is {@code true} — apply the hand-written
      * Porter (1980) stemmer uniformly to the remaining tokens.
      */

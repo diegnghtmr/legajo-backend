@@ -4,9 +4,10 @@ import java.util.List;
 
 /**
  * Hand-written implementation of the original Porter (1980) stemming algorithm
- * ("An algorithm for suffix stripping", Program 14(3), pp. 130-137). TRD §3.3 lists
- * "Porter opcional" among the components domain must implement itself (R-02): no
- * Lucene, OpenNLP, CoreNLP, spaCy, NLTK, or Snowball stemmer dependency is used here.
+ * ("An algorithm for suffix stripping", Program 14(3), pp. 130-137). Optional Porter
+ * stemming is one of the components domain must implement itself — hand-written; no
+ * library implements it: no Lucene, OpenNLP, CoreNLP, spaCy, NLTK, or Snowball stemmer
+ * dependency is used here.
  *
  * <p>The algorithm reduces a word in up to seven ordered steps (1a, 1b, 1c, 2, 3, 4,
  * 5a, 5b), each conditioned on the "measure" {@code m} of the stem — the number of

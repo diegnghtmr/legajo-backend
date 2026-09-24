@@ -11,8 +11,8 @@ import java.util.OptionalInt;
 import java.util.stream.Collectors;
 
 /**
- * The {@code verify-corpus} rules of TRD §6.1, item 6, plus a corpus-wide hash
- * cross-check (§6.1's fixed {@code corpusSha256} definition): every rule is
+ * The {@code verify-corpus} rules, plus a corpus-wide hash
+ * cross-check against the fixed {@code corpusSha256} definition: every rule is
  * independently evaluated and every violation is collected, so a single run reports
  * everything wrong with a corpus rather than stopping at the first problem.
  *
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  * {@link CorpusRule#NON_BLANK_ABSTRACT}, and re-reporting it as an empty token stream
  * would just restate the same root cause under a second rule. The rule still fires on
  * its own for a non-blank abstract that reduces to zero tokens (e.g. one made
- * entirely of stopwords), which is the case TRD §6.2/§6.1 guards against.
+ * entirely of stopwords), which is the case this guards against.
  */
 public final class CorpusVerifier {
 

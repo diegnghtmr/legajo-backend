@@ -7,14 +7,14 @@ import java.util.Objects;
 import java.util.OptionalDouble;
 
 /**
- * One linkage criterion's evaluation summary (TRD §6.5): the cophenetic correlation (the
+ * One linkage criterion's evaluation summary: the cophenetic correlation (the
  * primary ranking signal, measured over the whole tree against D) plus the two
  * partition-quality metrics at the reference cut {@code k_ref} ({@link MeanSilhouette} and
  * {@link DaviesBouldin}). {@link ClusteringRanking} is this record's only intended producer,
  * but — the house rule this package's other validated value types already follow — it
  * re-validates its own invariants rather than trusting its caller.
  *
- * <p>{@code daviesBouldinAtKRef} is an {@link OptionalDouble} because TRD §6.5 fixes an
+ * <p>{@code daviesBouldinAtKRef} is an {@link OptionalDouble} because there is an
  * explicit undefined case (coincident centroids) that must never collapse into {@code NaN}
  * or a sentinel double; see {@link DaviesBouldin}'s class Javadoc.
  */
@@ -42,8 +42,8 @@ public record LinkageEvaluation(
         }
 
         Objects.requireNonNull(daviesBouldinAtKRef, "daviesBouldinAtKRef");
-        // A defined Davies-Bouldin is a mean of non-negative Euclidean-distance ratios
-        // (TRD §6.5), so it can never legitimately be negative.
+        // A defined Davies-Bouldin is a mean of non-negative Euclidean-distance ratios,
+        // so it can never legitimately be negative.
         daviesBouldinAtKRef.ifPresent(value -> NumericGuards.requireNonNegativeFinite(value, "daviesBouldinAtKRef"));
     }
 }

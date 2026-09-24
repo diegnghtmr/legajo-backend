@@ -3,10 +3,10 @@ package co.edu.uniquindio.legajo.port;
 import java.nio.file.Path;
 
 /**
- * Output port for PDF header extraction (TRD §6.1, items 1-2): {@code domain} depends
+ * Output port for PDF header extraction: {@code domain} depends
  * only on this interface. GROBID (primary), PDFBox (reserve) and the primary/fallback
- * chain that combines them are infrastructure adapters (task T4), not part of this
- * module. Delegable per TRD §3.3 — PDF parsing itself is not one of the R-02 algorithms.
+ * chain that combines them are infrastructure adapters, not part of this
+ * module. Delegable — PDF parsing itself is not one of the hand-written algorithms.
  */
 public interface PdfMetadataExtractor {
 

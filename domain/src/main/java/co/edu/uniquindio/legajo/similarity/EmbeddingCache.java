@@ -5,8 +5,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Domain shape of one {@code embeddings-*.json} cache file (TRD §9): the corpus binding
- * ({@code corpusVersion}/{@code corpusSha256}, TRD §6.1's frozen definition), {@code model}
+ * Domain shape of one {@code embeddings-*.json} cache file: the corpus binding
+ * ({@code corpusVersion}/{@code corpusSha256}, a frozen definition), {@code model}
  * and {@code dimension} metadata, and the per-document {@link EmbeddingVector} entries.
  *
  * <p>Framework-free, like {@link TfIdfCorpusIndex}: the infrastructure JSON adapter that

@@ -6,30 +6,30 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * The agglomerative merge loop shared by all four linkage criteria (TRD §6.4, "el motor
- * solo comparte el bucle de fusión"): repeatedly find the pair of currently-active clusters
+ * The agglomerative merge loop shared by all four linkage criteria — the engine alone owns
+ * the merge loop: repeatedly find the pair of currently-active clusters
  * with the smallest distance, merge it, and use {@code criterion}'s Lance-Williams
  * coefficients to recompute the merged cluster's distance to every other active cluster.
  *
- * <p><b>Cluster ids (TRD §6.4).</b> Original observations are {@code 0..n-1}; the cluster
+ * <p><b>Cluster ids.</b> Original observations are {@code 0..n-1}; the cluster
  * created by merge {@code i} (0-based) is id {@code n+i}. A single {@code n+i x n+i}
  * working distance table (sized {@code 2n-1}) is filled lazily as merges create new ids —
  * an entry for an id that has not merged yet, or that has already been retired, is simply
  * never read.
  *
- * <p><b>Tie-breaking (TRD §6.4, determinism / NFR-QA-04).</b> Candidate pairs are scanned
+ * <p><b>Tie-breaking (determinism requirement).</b> Candidate pairs are scanned
  * in ascending {@code (a, b)} order with {@code a < b}, and a new candidate only replaces
  * the current best on a strictly smaller distance. Because the scan order already visits
  * pairs in lexicographic order, keeping the first-found minimum on ties is exactly "merge
  * the lexicographically smallest (idx1, idx2) pair first" — no separate tie-break step is
  * needed.
  *
- * <p><b>Complexity (TRD §6.4).</b> Naive O(n^3) time / O(n^2) space: each of the n-1 merges
+ * <p><b>Complexity.</b> Naive O(n^3) time / O(n^2) space: each of the n-1 merges
  * scans all O(n^2) active pairs to find the minimum, then does O(n) work to update
  * distances to the remaining active clusters. SLINK/CLINK are explicit non-goals at the
  * n=20 reference corpus scale.
  *
- * <p><b>Only ever receives a validated {@link DistanceMatrix}</b> (TRD §13): this class
+ * <p><b>Only ever receives a validated {@link DistanceMatrix}</b>: this class
  * declares no method that accepts a raw {@code double[][]} in its place, so the only way to
  * reach {@code agglomerate} is through {@link DistanceMatrix#cosineDistance(List)} or
  * {@link DistanceMatrix#wardBase()} — both of which always derive from the run's selected
