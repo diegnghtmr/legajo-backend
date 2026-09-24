@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * The full ranking rule output (TRD §6.5): every linkage's evaluation, the cophenetic tie
+ * The full ranking rule output: every linkage's evaluation, the cophenetic tie
  * set, the two possibly-differing leaders, and the sample-size context. Re-validates its own
  * cross-field invariants rather than trusting {@link ClusteringRanking}, the house rule this
  * package's other validated value types already follow.

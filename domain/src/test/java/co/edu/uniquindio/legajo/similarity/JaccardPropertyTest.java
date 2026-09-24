@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * jqwik properties for the {@code jaccard} capability (TRD §6.3, §13): symmetry, identity
+ * jqwik properties for the {@code jaccard} capability: symmetry, identity
  * (a token stream compared with itself scores 1.0), and the coefficient staying within the
  * closed [0,1] range for every pair.
  */

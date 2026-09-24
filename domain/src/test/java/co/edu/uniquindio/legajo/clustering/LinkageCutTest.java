@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * Flat-cluster extraction by cutting at a fixed k (TRD §6.4: "corte solo por k, con k ∈
- * [2, n-1]; sin corte por altura"). Uses the same n=5 hand-derived single-linkage golden
+ * Flat-cluster extraction by cutting at a fixed k (cuts happen by k alone, with k in
+ * [2, n-1]; no height-based cut). Uses the same n=5 hand-derived single-linkage golden
  * fixture as {@link LanceWilliamsEngineTest} (five points on a line at 0,1,2,10,11), whose
  * rows are (0,1,1,2)(2,5,1,3)(3,4,1,2)(6,7,8,5).
  */
@@ -75,7 +75,7 @@ class LinkageCutTest {
 
     @Test
     void sameInputTwiceProducesTheSameLabels() {
-        // NFR-QA-04 / TAC-10: determinism.
+        // Determinism requirement.
         ClusterAssignment first = LinkageCut.cut(fiveByFiveSingleLinkageGolden(), 3);
         ClusterAssignment second = LinkageCut.cut(fiveByFiveSingleLinkageGolden(), 3);
 

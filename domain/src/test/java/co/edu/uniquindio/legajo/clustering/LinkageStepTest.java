@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * One row of a linkage matrix (TRD §6.4, "Convenciones de la matriz de enlace"):
+ * One row of a linkage matrix:
  * {@code (idx1, idx2, mergeDistance, size)} with {@code idx1 < idx2} always, {@code
  * mergeDistance} finite and non-negative, and {@code size} the number of original
  * observations folded into the cluster this merge creates (at least 2 — a merge always

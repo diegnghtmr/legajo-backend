@@ -5,18 +5,18 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Single linkage (TRD §6.4 table, "Simple"): alphaI = alphaJ = 1/2, beta = 0, gamma = -1/2,
+ * Single linkage: alphaI = alphaJ = 1/2, beta = 0, gamma = -1/2,
  * independent of the three cluster sizes — plugging these into Lance-Williams reduces to
  * {@code min(d(i,k), d(j,k))}, the classic nearest-neighbor update, but this class's only
- * job (per the TRD's "el motor solo comparte el bucle de fusión") is to hand the engine
- * those four constants; {@link LanceWilliamsEngine} (R3) owns the merge loop itself.
+ * job is to hand the engine
+ * those four constants; {@link LanceWilliamsEngine} owns the merge loop itself.
  */
 class SingleLinkageTest {
 
     private final SingleLinkage criterion = new SingleLinkage();
 
     @Test
-    void coefficientsMatchTheTrdTableRegardlessOfClusterSizes() {
+    void coefficientsMatchTheFixedTableRegardlessOfClusterSizes() {
         LanceWilliamsCoefficients coefficients = criterion.coefficients(2, 3, 4);
 
         assertThat(coefficients.alphaI()).isEqualTo(0.5);

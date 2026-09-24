@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * Validated invariants of {@link EmbeddingLocalTrace} (TRD §6.3's embedding trace row):
+ * Validated invariants of {@link EmbeddingLocalTrace} (the embedding trace row):
  * {@code vectorA}/{@code vectorB} must match {@code dimension}; the excerpts must be exactly
  * the first {@code min(8, dimension)} components of the corresponding full vector;
  * {@code dotProduct} must equal the hand-computed dot product of the two vectors;

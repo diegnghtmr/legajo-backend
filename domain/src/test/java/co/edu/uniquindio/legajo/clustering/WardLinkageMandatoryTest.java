@@ -8,12 +8,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * TRD §13's non-negotiable Ward tests ("Pruebas de Ward (obligatorias)"): heights over toy
+ * The non-negotiable mandatory Ward tests: heights over toy
  * unit vectors equal 2 × the ESS increment, and Ward on D versus Ward on 2·D gives an
  * identical merge order with heights in ratio exactly 2. The third mandatory item — "el
  * constructor acepta únicamente D derivada de la representación seleccionada (sin entrada
  * de matriz arbitraria)" — is pinned by {@link LanceWilliamsEngineTest
- * #engineExposesNoWayToAgglomerateOverAnArbitraryMatrix()} (R3): it is a property of the
+ * #engineExposesNoWayToAgglomerateOverAnArbitraryMatrix()}: it is a property of the
  * engine's public API surface in general, not specific to {@link WardLinkage}, so it lives
  * with the engine's other structural tests rather than being duplicated here.
  *
@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.within;
  * <b>ESS increment</b>: two singletons at v0, v1, ΔESS = (n_i·n_j)/(n_i+n_j)·‖c_i-c_j‖²
  * = (1·1)/2·‖(1,0)-(0,1)‖² = 0.5·2 = 1.0. 2·ΔESS = 2.0 = the merge height. (This is not a
  * coincidence restricted to D_w: for two unit-vector singletons, D = ‖u-v‖²/2 = ΔESS
- * exactly, which is exactly why Ward is defined to consume D_w = 2·D — TRD §6.4 — so its
+ * exactly, which is exactly why Ward is defined to consume D_w = 2·D — so its
  * heights read directly as 2·ΔESS.)
  *
  * <p><b>Merge 2 (on D_w).</b> Only pair left is (2, cluster3); via Lance-Williams with

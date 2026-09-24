@@ -11,8 +11,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * jqwik properties for the two behaviors that are naturally property-based, per TRD
- * §6.2 and the ODD task description: idempotence of the NFC + lowercase step, and
+ * jqwik properties for the two behaviors that are naturally property-based:
+ * idempotence of the NFC + lowercase step, and
  * "no stopword survives preprocessing".
  */
 class TextPreprocessorPropertyTest {

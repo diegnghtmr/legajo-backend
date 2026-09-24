@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * The cophenetic distance matrix derived from a merge tree (TRD §6.5): the cophenetic
+ * The cophenetic distance matrix derived from a merge tree: the cophenetic
  * distance between observations i and j is the merge height of the first cluster that
  * contains both.
  *

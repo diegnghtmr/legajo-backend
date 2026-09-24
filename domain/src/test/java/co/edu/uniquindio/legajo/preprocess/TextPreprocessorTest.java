@@ -8,7 +8,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.2: exactly five steps (NFC, lowercase, tokenize, stopword removal, optional
+ * Exactly five fixed steps (NFC, lowercase, tokenize, stopword removal, optional
  * Porter stemming), no token-length filter, deterministic output.
  */
 class TextPreprocessorTest {

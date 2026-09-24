@@ -9,23 +9,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Token-level {@code jaccard} capability (TRD §6.3, §13; PRD HU-1.1/HU-1.6): {@code |S_A ∩
+ * Token-level {@code jaccard} capability: {@code |S_A ∩
  * S_B| / |S_A ∪ S_B|} over the token SETS built from the preprocessed token streams (a
  * {@link SimilarityInput#tokens()} list is deduplicated into a set here — repeated tokens do
  * not inflate either side).
  *
- * <p>The coefficient is already in [0,1] (TRD §6.3, "Ya está en [0,1]"): unlike Levenshtein
+ * <p>The coefficient is already in [0,1]: unlike Levenshtein
  * (raw edit distance vs. {@code 1 - D/max}) or Needleman–Wunsch (raw alignment score vs. the
  * bounded transform), Jaccard has no separate raw-vs-normalized split, so {@code rawValue}
  * equals {@code normalizedScore} for every input, including the both-empty edge case, where
- * the {@code |A∩B|/|A∪B| = 0/0} fundamento is undefined and TRD §6.3 fixes the result to
- * {@code 1.0} by convention (both numbers, not just the normalized one). {@code degenerate}
- * stays {@code false} always — TRD §6.3 reserves that flag exclusively for the TF-IDF
+ * the {@code |A∩B|/|A∪B| = 0/0} underlying formula is undefined and this is fixed to the
+ * result {@code 1.0} by convention (both numbers, not just the normalized one). {@code degenerate}
+ * stays {@code false} always — that flag is reserved exclusively for the TF-IDF
  * null-vector case, not for Jaccard's own empty-input convention (same pattern already
  * established for Levenshtein/NW's both-empty results).
  *
  * <p>Goldens for the two-non-empty-sets case are hand-computed from the set definitions
- * (TRD §13 does not carry a Jaccard-specific numeric golden beyond "disjoint = 0.0" and
+ * (there is no Jaccard-specific numeric golden beyond "disjoint = 0.0" and
  * "both empty = 1.0", so this reuses the same token pairs Levenshtein's golden tests use,
  * recomputed here as sets rather than edit distance):
  *

@@ -12,12 +12,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * jqwik properties for the {@code tfidf-cosine} capability (TRD §6.3): symmetry, identity
+ * jqwik properties for the {@code tfidf-cosine} capability: symmetry, identity
  * (a token stream compared with itself scores 1.0), and the normalized score staying within
  * the closed [0,1] range. Each generated pair is treated as its own two-document corpus
  * (df/N computed over exactly {@code {tokensA, tokensB}}) — a property test has no larger
  * reference corpus to draw from, and df/N are order-independent (they count document
- * membership, not position), so this stays consistent with TRD §6.3's "over the whole
+ * membership, not position), so this stays consistent with the fixed "over the whole
  * corpus, never the pair" rule for whatever corpus is actually passed in.
  */
 class TfIdfCosinePropertyTest {

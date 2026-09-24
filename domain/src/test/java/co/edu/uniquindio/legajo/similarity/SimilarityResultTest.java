@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 /**
  * {@link SimilarityResult} is the common outcome envelope for every algorithm in
- * {@code SimilarityAlgorithm} (TRD §6.3): a normalized score in [0,1], an optional raw
+ * {@code SimilarityAlgorithm}: a normalized score in [0,1], an optional raw
  * value, the nanoseconds measured inside {@code compute()}, and the {@code degenerate}
  * flag required by the contract.
  */

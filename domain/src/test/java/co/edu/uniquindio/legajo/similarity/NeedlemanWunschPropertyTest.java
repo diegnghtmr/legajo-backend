@@ -12,9 +12,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * jqwik properties for the {@code needleman-wunsch} capability (TRD §6.3, §13): symmetry,
+ * jqwik properties for the {@code needleman-wunsch} capability: symmetry,
  * identity (a sequence compared with itself scores 1.0), the normalized score staying
- * within the closed [0,1] range, and the TRD's stated upper bound of {@code m/M} for
+ * within the closed [0,1] range, and the fixed stated upper bound of {@code m/M} for
  * sequences of different lengths (m = min(lenA, lenB), M = max(lenA, lenB)).
  */
 class NeedlemanWunschPropertyTest {

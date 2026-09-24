@@ -10,18 +10,17 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * {@code tfidf-cosine} capability (TRD §6.3, "Fórmulas TF-IDF (fijadas)"; PRD HU-1.3):
+ * {@code tfidf-cosine} capability:
  * {@code tf(t,d) = 1 + ln f(t,d)} when {@code f(t,d) > 0}, else 0; {@code idf(t) = ln((1 +
  * N) / (1 + df(t))) + 1}; {@code w(t,d) = tf(t,d) · idf(t)}; vectors L2-normalized; cosine =
  * dot product of the normalized vectors; angle = arccos(cosine) in degrees. {@code df} and
  * {@code N} are computed over the whole corpus passed through {@link SimilarityContext} —
- * never over the two compared documents alone (TRD §6.3, "nunca sobre el par
- * seleccionado").
+ * never over the two compared documents alone.
  *
- * <p>TRD §13 carries no numeric TF-IDF golden, so both goldens below are hand-computed from
- * the fixed formula (not read off a running implementation), using Python's {@code math}
- * module as a calculator (ln/sqrt/acos), and quoted here to 16 significant digits (well
- * past the 1e-9 tolerance TRD §6.3 requires).
+ * <p>There is no numeric TF-IDF golden specified elsewhere, so both goldens below are
+ * hand-computed from the fixed formula (not read off a running implementation), using
+ * Python's {@code math} module as a calculator (ln/sqrt/acos), and quoted here to 16
+ * significant digits (well past the 1e-9 tolerance required).
  *
  * <pre>
  * Golden 1 — corpus larger than the compared pair (proves df/N are corpus-wide):
@@ -137,8 +136,8 @@ class TfIdfCosineTest {
     @Test
     void computeThrowsAClearExceptionWhenTheContextCarriesNoTfIdfIndex() {
         // Both streams non-empty means the degenerate short-circuits don't apply, so
-        // compute() must actually consult context.tfIdfIndex() (TRD §6.3: df/N are
-        // corpus-wide state this capability cannot derive from its own two inputs).
+        // compute() must actually consult context.tfIdfIndex(): df/N are
+        // corpus-wide state this capability cannot derive from its own two inputs.
         assertThatNullPointerException()
                 .isThrownBy(() -> tfIdfCosine.compute(input("a"), input("b"), SimilarityContext.EMPTY))
                 .withMessageContaining("tfIdfIndex");

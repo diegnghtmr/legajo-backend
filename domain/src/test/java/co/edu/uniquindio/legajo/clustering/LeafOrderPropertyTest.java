@@ -17,8 +17,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * The property that actually makes a dendrogram SVG crossing-free (TRD §6.4, "leafOrder
- * para un SVG sin cruces"): for every merge row, the set of original observations under
+ * The property that actually makes a dendrogram SVG crossing-free: for every merge row,
+ * the set of original observations under
  * that node occupies one contiguous run of positions in {@link LeafOrder#of(LinkageMatrix)}.
  * A test that only checks the output is a permutation of {@code 0..n-1} (covered by
  * {@link LeafOrderTest#isAPermutationOfZeroToNMinusOne()}) would pass for any shuffle and

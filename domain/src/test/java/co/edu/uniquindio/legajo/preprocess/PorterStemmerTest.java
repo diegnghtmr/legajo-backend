@@ -160,7 +160,7 @@ class PorterStemmerTest {
      * Full-pipeline regression cases, verified by hand through all eight steps (not
      * copied from a single step's illustration). Several deliberately show a step-1b
      * result being reduced further downstream, which is expected: {@code stem()}
-     * always runs the complete pipeline, TRD §6.2 does not stop early.
+     * always runs the complete pipeline and does not stop early.
      */
     @ParameterizedTest(name = "full pipeline: {0} -> {1}")
     @CsvSource({

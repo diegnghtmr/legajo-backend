@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * The ranking rule (TRD §6.5, "Regla de ordenación"): the highest cophenetic correlation
+ * The ranking rule: the highest cophenetic correlation
  * wins by default; the tie set is every linkage within 1e-3 of the highest; the tie set is
  * resolved by highest mean silhouette at {@code k_ref}, then lowest Davies-Bouldin at
  * {@code k_ref}, then declaration order (single, complete, average, ward); if the silhouette
@@ -78,7 +78,7 @@ class ClusteringRankingTest {
 
     @Test
     void anUndefinedDaviesBouldinLosesTheTieBreakToAnyDefinedValue() {
-        // Author decision (not covered by the TRD, flagged in the feature document): an
+        // Author decision (not otherwise specified): an
         // undefined ("null") Davies-Bouldin is treated as worse than any finite value for
         // this tie-break step, since it carries no evidence of a well-separated partition.
         // single and complete are still tied on correlation and silhouette; single's DB is
@@ -114,7 +114,7 @@ class ClusteringRankingTest {
         // complete and average tie for the highest silhouette (0.9) across ALL FOUR
         // linkages (not just the cophenetic tie set); declaration order (complete before
         // average) is the same deterministic fallback used for the cophenetic tie-break
-        // (author decision, not covered by the TRD for this specific leader).
+        // (author decision, not otherwise specified for this specific leader).
         LinkageEvaluation single = new LinkageEvaluation(new SingleLinkage(), 0.9, 0.5, OptionalDouble.empty());
         LinkageEvaluation complete = new LinkageEvaluation(new CompleteLinkage(), 0.5, 0.9, OptionalDouble.empty());
         LinkageEvaluation average = new LinkageEvaluation(new AverageLinkage(), 0.4, 0.9, OptionalDouble.empty());

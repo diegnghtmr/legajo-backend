@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Token-level {@code needleman-wunsch} capability (TRD §6.3, ADR-012, §13). Scoring
+ * Token-level {@code needleman-wunsch} capability. Scoring
  * constants are fixed: match {@code +1}, mismatch {@code -1}, gap {@code -1}.
  *
  * <p>Golden matrices below are hand-computed from the recurrence
@@ -117,12 +117,12 @@ class NeedlemanWunschTest {
 
         assertThat(result.rawValue()).isEqualTo(1.0);
 
-        // TRD §6.3 fixed form: (S - S_min) / (S_max - S_min), S_min = mismatch*m + gap*(M-m),
+        // Fixed form: (S - S_min) / (S_max - S_min), S_min = mismatch*m + gap*(M-m),
         // S_max = match*M.
         double sMin = -1.0 * 2 + -1.0 * (3 - 2);
         double sMax = 1.0 * 3;
         double fixedForm = (1.0 - sMin) / (sMax - sMin);
-        // TRD §6.3 reduced form with the fixed constants substituted: (S + M) / (2*M).
+        // Reduced form with the fixed constants substituted: (S + M) / (2*M).
         double reducedForm = (1.0 + 3.0) / (2.0 * 3.0);
 
         assertThat(fixedForm).isCloseTo(reducedForm, within(TOLERANCE));
@@ -206,7 +206,7 @@ class NeedlemanWunschTest {
     @Test
     void traceBacktraceBreaksAThreeWayTieInFavorOfTheDiagonal() {
         // A = [a,b,b], B = [b,a,a]: hand-computed matrix (verified by exhaustive search
-        // over the recurrence, see the S3 evidence) is
+        // over the recurrence) is
         //      ""   b   a   a
         //  ""    0  -1  -2  -3
         //  a    -1  -1   0  -1

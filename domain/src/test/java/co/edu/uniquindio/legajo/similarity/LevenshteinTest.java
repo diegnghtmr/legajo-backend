@@ -9,8 +9,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Token-level {@code levenshtein} capability (TRD §6.3, §13). Golden values are quoted
- * from TRD §13 verbatim:
+ * Token-level {@code levenshtein} capability. Golden values are the fixed reference
+ * values, quoted verbatim:
  *
  * <pre>
  * ["the","cat","sat"] vs ["the","cat","sat","down"] -&gt; D = 1, normalized 0.75

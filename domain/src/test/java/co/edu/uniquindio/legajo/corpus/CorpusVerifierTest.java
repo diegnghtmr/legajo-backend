@@ -8,7 +8,7 @@ import java.util.OptionalInt;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.1, item 6 (verify-corpus): every rule below must be checked independently
+ * The verify-corpus rules: every rule below must be checked independently
  * and every violation reported, never fail-fast on the first one.
  */
 class CorpusVerifierTest {

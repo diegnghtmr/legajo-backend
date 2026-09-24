@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * The validated n×n distance matrix RF2's four linkage criteria consume (TRD §6.4): every
+ * The validated n×n distance matrix the four linkage criteria consume: every
  * entry finite and non-negative, symmetric within 1e-9, zero diagonal within 1e-9.
  *
  * <p>Golden case (hand-computed, three 2D unit vectors):

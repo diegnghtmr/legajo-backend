@@ -8,8 +8,8 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Hand-written Pearson correlation (R-02: no statistics library), the primitive
- * {@link CopheneticCorrelation} builds on (TRD §6.5). Uses
+ * Hand-written Pearson correlation (no library implements it: no statistics library), the
+ * primitive {@link CopheneticCorrelation} builds on. Uses
  * {@code r = (n*Sxy - Sx*Sy) / sqrt((n*Sxx - Sx^2) * (n*Syy - Sy^2))}, the sum-of-products
  * form that avoids computing the means as a separate pass.
  */
@@ -84,8 +84,8 @@ class PearsonCorrelationTest {
      * against an absolute 1e-9 floor reads this input as having no variance: the term is
      * 6e-10 for each array even though the true correlation is exactly 1. Cophenetic
      * correlation is fed cosine distances that get this small when the corpus holds
-     * near-duplicate abstracts, so an absolute floor would fail RF2's primary ranking signal
-     * closed on legitimate input (TRD §6.5).
+     * near-duplicate abstracts, so an absolute floor would fail the primary ranking signal
+     * closed on legitimate input.
      */
     @Test
     void acceptsLegitimateSmallMagnitudeInput() {

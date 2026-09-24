@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * Davies-Bouldin in V space at a fixed k (TRD §6.5, "Definición de Davies-Bouldin"),
+ * Davies-Bouldin in V space at a fixed k,
  * including the {@code M_ij = 0 -> null} rule.
  */
 class DaviesBouldinTest {
@@ -65,8 +65,8 @@ class DaviesBouldinTest {
     @Test
     void reportsNullWhenTwoCentroidsCoincide() {
         // cluster0={v0,v1}=(1,0),(-1,0) -> centroid0=(0,0). cluster1={v2,v3}=(0,1),(0,-1)
-        // -> centroid1=(0,0). M01=0 exactly, so both clusters' quotient is +infinity (TRD
-        // §6.5: "el cociente se toma como +infinito") and DB is undefined for this k.
+        // -> centroid1=(0,0). M01=0 exactly, so both clusters' quotient is +infinity
+        // (the fixed M_ij=0 convention) and DB is undefined for this k.
         List<List<Double>> vectors = List.of(
                 List.of(1.0, 0.0),
                 List.of(-1.0, 0.0),
@@ -89,7 +89,7 @@ class DaviesBouldinTest {
         // +infinity. cluster2={v2=(0,1), v3=(0,-1)} (centroid (0,0), sigma2=1) supplies a
         // finite, larger-than-covered alternative term (1.0) for clusters 0 and 1, so a
         // buggy implementation that drops the NaN reports a finite DB (1.0) instead of the
-        // undefined result the TRD requires: with the guard, term01=term10=+infinity makes
+        // undefined result required: with the guard, term01=term10=+infinity makes
         // clusters 0 and 1's max +infinity, the overall sum +infinity, and DB undefined.
         List<List<Double>> vectors = List.of(
                 List.of(1.0, 0.0),

@@ -6,13 +6,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * The four Lance-Williams coefficients (TRD §6.4) one {@link LinkageCriterion} contributes
+ * The four Lance-Williams coefficients one {@link LinkageCriterion} contributes
  * per merge: {@code alphaI}, {@code alphaJ}, {@code beta}, {@code gamma} in
  * {@code d(i∪j, k) = alphaI*d(i,k) + alphaJ*d(j,k) + beta*d(i,j) + gamma*|d(i,k)-d(j,k)|}.
  * Plain accessors; the four criteria classes are the only producers, so this record's own
  * job is exactly what {@code DpMatrixTrace}'s Javadoc calls "the compact constructor's
  * tolerance and range invariants": reject a non-finite coefficient before it can silently
- * corrupt the engine's merge loop (R3).
+ * corrupt the engine's merge loop.
  */
 class LanceWilliamsCoefficientsTest {
 

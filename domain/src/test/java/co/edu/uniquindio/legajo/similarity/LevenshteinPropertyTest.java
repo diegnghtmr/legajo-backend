@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * jqwik properties for the {@code levenshtein} capability (TRD §13): symmetry, identity
+ * jqwik properties for the {@code levenshtein} capability: symmetry, identity
  * (a sequence compared with itself scores 1.0), and the normalized score staying within
  * the closed [0,1] range for arbitrary token streams.
  */

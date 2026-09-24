@@ -9,11 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
- * {@link SimilarityInput} carries both text representations the six TRD §6.3
+ * {@link SimilarityInput} carries both text representations the six
  * capabilities need: the classical capabilities and {@code tfidf-cosine} read
- * {@code tokens()} (the preprocessed stream, TRD §6.2); {@code embedding-local} and
+ * {@code tokens()} (the preprocessed stream); {@code embedding-local} and
  * {@code embedding-api} read {@code rawAbstract()} because each pretrained model owns
- * its own tokenizer (delegable under R-02). Bundling both in one record lets
+ * its own tokenizer (delegable). Bundling both in one record lets
  * {@code SimilarityAlgorithm} expose a single {@code compute(a, b, context)} shape
  * without branching on {@code kind()} before the call, and without a second,
  * kind-specific method pair on the sealed contract.

@@ -8,8 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
- * {@link DpMatrixTrace} is the shared trace model for the two DP algorithms of TRD §6.3
- * (Levenshtein, S2; Needleman–Wunsch, S3): the full matrix, row/column token labels, the
+ * {@link DpMatrixTrace} is the shared trace model for the two DP algorithms
+ * (Levenshtein and Needleman–Wunsch): the full matrix, row/column token labels, the
  * deterministic optimal path (fixed backtrace tie order: diagonal, up, left), and the
  * per-step operation classification. It is modeled as plain read-only data so a future
  * REST/CSV export (out of scope here) is a pure read of this record.
