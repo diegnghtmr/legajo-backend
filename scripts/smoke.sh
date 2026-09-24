@@ -44,14 +44,16 @@ MAX_TIME=15
 # override with SMOKE_READY_TIMEOUT_SECONDS for an even slower environment.
 # Validates that $2 is a positive, base-10 integer suitable for both a `[ -gt ]` comparison
 # and, later, $(( )) arithmetic (the health-readiness deadline below uses this value that
-# way) — one helper instead of one copy of the same message per validated variable. A leading
-# zero (other than the single digit "0", already rejected by requiring > 0) is rejected
-# outright rather than accepted and reinterpreted: POSIX shell arithmetic treats a
-# leading-zero numeric literal as octal (verified in busybox ash: $((010)) evaluates to 8,
-# not 10; $((099)) is an outright "arithmetic syntax error" since 9 is not a valid octal
-# digit), while the `[ -gt 0 ]` check just below reads the identical string as plain decimal —
-# two different readings of the same value, one of which crashes the script instead of
-# failing cleanly. Requiring no leading zero keeps both readings identical.
+# way) — one helper instead of one copy of the same message per validated variable. The
+# second case arm below rejects "0" and any "0" followed by more digits together, in the same
+# pattern, before the `[ -gt 0 ]` check in the third arm ever runs — "0" never reaches that
+# numeric comparison at all. Every leading zero is rejected outright rather than accepted and
+# reinterpreted, "0" included: POSIX shell arithmetic treats a leading-zero numeric literal as
+# octal (verified in busybox ash: $((010)) evaluates to 8, not 10; $((099)) is an outright
+# "arithmetic syntax error" since 9 is not a valid octal digit), while the `[ -gt 0 ]` check
+# reads the identical string as plain decimal — two different readings of the same value, one
+# of which crashes the script instead of failing cleanly. Requiring no leading zero on any
+# accepted value keeps both readings identical.
 # Usage: validate_positive_integer <name> <value>
 validate_positive_integer() {
     name="$1"
@@ -82,34 +84,53 @@ fail() {
     exit 1
 }
 
-# Runs one HTTP request with the bounded timeouts above, fails clearly on a transport error
-# or a non-200 status (both routed through fail(), never a bare curl/shell exit), and leaves
-# the response body in REPLY_BODY for the caller to inspect further — one shared helper
-# instead of a separate copy of the same curl/status-split/fail dance per check.
+# Runs curl with the shared bounded timeouts above and captures its own exit status without
+# ever letting a transport failure trip `set -e` early — one helper instead of a separate copy
+# of the same capture dance in http_request and cors_preflight below. curl's exit status is
+# captured through an `if`/`else`, not a bare assignment followed by a later `curl_exit=$?`:
+# under `set -eu`, a plain "out=$(curl ...)" that fails is itself a failing simple command, so
+# the shell would exit right there before the next line ever ran, losing the exact code
+# entirely (confirmed while writing this: reads as a bare `28`/`7`/etc. with none of the
+# caller's own message). An `if` condition is one of the constructs POSIX shells explicitly
+# exempt from `set -e`, so the assignment always completes and both branches always run. The
+# assignment sits in the `if`'s own condition (not negated with `!`), because `$?` after a
+# negated condition reports the negation's own exit status (0 or 1), not curl's real one
+# (confirmed while writing this: a closed-port run through `if ! CURL_OUT="$(curl ...)"; then
+# CURL_RC=$?` always reads CURL_RC=0, silently discarding curl's actual exit code) — the
+# `else` branch below runs exactly when the condition failed, so `$?` there still holds
+# curl's own exit status untouched. Leaves curl's stdout in CURL_OUT and its exit status in
+# CURL_RC for the caller to inspect — never piped into anything else here (e.g. straight into
+# `tr`), since a trailing pipe would report the pipe's own exit status instead and silently
+# mask a connection failure under `set -eu` with no pipefail in POSIX sh.
+# Usage: run_curl <curl-args...>
+CURL_OUT=""
+CURL_RC=0
+run_curl() {
+    if CURL_OUT="$(curl -s --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" "$@")"; then
+        CURL_RC=0
+    else
+        CURL_RC=$?
+    fi
+}
+
+# Runs one HTTP request through run_curl, fails clearly on a transport error or a non-200
+# status (both routed through fail(), never a bare curl/shell exit), and leaves the response
+# body in REPLY_BODY for the caller to inspect further — one shared helper instead of a
+# separate copy of the same status-split/fail dance per check.
 # Usage: http_request <check-name> <curl-args...>
 REPLY_BODY=""
 http_request() {
     check_name="$1"
     shift
-    # curl's own exit status is captured through an `if`, not a bare assignment followed by
-    # `curl_exit=$?`: under `set -eu`, a plain "response=$(curl ...)" that fails is itself a
-    # failing simple command, so the shell would exit right there before the next line ever
-    # ran, losing the exact code entirely (confirmed while writing this: reads as a bare
-    # `28`/`7`/etc. with none of this function's own message). An `if` condition is one of
-    # the constructs POSIX shells explicitly exempt from `set -e`, so both branches always run.
-    if response="$(curl -s --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" -w '\n%{http_code}' "$@")"; then
-        curl_exit=0
-    else
-        curl_exit=$?
-    fi
-    [ "$curl_exit" -eq 0 ] \
-        || fail "$check_name: request failed (curl exit $curl_exit — connection error or timeout)" "$response"
-    status="$(printf '%s' "$response" | tail -n1)"
-    REPLY_BODY="$(printf '%s' "$response" | sed '$d')"
+    run_curl -w '\n%{http_code}' "$@"
+    [ "$CURL_RC" -eq 0 ] \
+        || fail "$check_name: request failed (curl exit $CURL_RC — connection error or timeout)" "$CURL_OUT"
+    status="$(printf '%s' "$CURL_OUT" | tail -n1)"
+    REPLY_BODY="$(printf '%s' "$CURL_OUT" | sed '$d')"
     [ "$status" = "200" ] || fail "$check_name: expected HTTP 200, got $status" "$REPLY_BODY"
 }
 
-# Same request/response shape as http_request, but deliberately does not treat a non-200
+# Same request shape as http_request via run_curl, but deliberately does not treat a non-200
 # (e.g. Spring's 403 response to a disallowed preflight origin) as a transport failure — the
 # CORS check (6, below) needs to inspect which headers came back for both an allowed and a
 # disallowed origin, not have a non-200 short-circuit the run before it can look.
@@ -117,26 +138,14 @@ http_request() {
 REPLY_HEADERS=""
 cors_preflight() {
     origin="$1"
-    # curl's own exit status must drive the failure check, so it is captured on its own
-    # (not piped straight into tr below — a trailing pipe would report tr's exit status
-    # instead, silently masking a connection failure under `set -eu` with no pipefail in
-    # POSIX sh) and through an `if`, not a bare assignment: under `set -eu`, a plain
-    # "raw_headers=$(curl ...)" that fails is itself a failing simple command, so the shell
-    # would exit right there before a following "curl_exit=$?" line ever ran, losing the
-    # exact code entirely — an `if` condition is one of the constructs POSIX shells
-    # explicitly exempt from `set -e`, so both branches always run. Raw HTTP headers are
-    # CRLF-terminated; \r is stripped afterwards so the later exact-value comparison isn't
-    # thrown off by a trailing \r.
-    if raw_headers="$(curl -s -D - -o /dev/null --connect-timeout "$CONNECT_TIMEOUT" --max-time "$MAX_TIME" \
+    run_curl -D - -o /dev/null \
         -X OPTIONS "$BASE_URL/api/v1/corpus" \
-        -H "Origin: $origin" -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: Content-Type')"; then
-        curl_exit=0
-    else
-        curl_exit=$?
-    fi
-    [ "$curl_exit" -eq 0 ] \
-        || fail "cors: preflight request failed (curl exit $curl_exit — connection error or timeout)" "$raw_headers"
-    REPLY_HEADERS="$(printf '%s' "$raw_headers" | tr -d '\r')"
+        -H "Origin: $origin" -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: Content-Type'
+    [ "$CURL_RC" -eq 0 ] \
+        || fail "cors: preflight request failed (curl exit $CURL_RC — connection error or timeout)" "$CURL_OUT"
+    # Raw HTTP headers are CRLF-terminated; \r is stripped here so the later exact-value
+    # comparison against SMOKE_CORS_ALLOWED_ORIGIN isn't thrown off by a trailing \r.
+    REPLY_HEADERS="$(printf '%s' "$CURL_OUT" | tr -d '\r')"
 }
 
 echo "== smoke: $BASE_URL =="
