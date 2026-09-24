@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TAC-13 follow-up (feature doc {@code rest-followups.md}, F3): {@link
+ * {@link
  * MemoizingEmbeddingRepository} lets the startup validator's {@code load()} call and every
  * later request-time {@code load()} call (from {@code SimilarityService}/{@code
  * ClusteringService}/{@code EmbeddingsService}) share one already-validated, already-parsed

@@ -25,8 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * HTTP server standing in for GROBID, so the multipart request shape and the TEI
  * response parsing are both verified without needing Docker or WireMock in the unit
  * test suite. The optional Testcontainers integration test against the real GROBID
- * image is a separate, Docker-tagged test (see {@code T4} scope notes in the feature
- * doc); it is not required for {@code ./gradlew build}.
+ * image is a separate, Docker-tagged test; it is not required for {@code ./gradlew build}.
  */
 class GrobidPdfMetadataExtractorTest {
 

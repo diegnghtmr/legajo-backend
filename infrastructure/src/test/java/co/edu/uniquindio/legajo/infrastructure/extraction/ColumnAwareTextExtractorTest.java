@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link ColumnAwareTextExtractor} in isolation, ahead of the end-to-end
- * {@link PdfBoxMetadataExtractorTest} coverage (T4c). PDFBox's default {@code
+ * {@link PdfBoxMetadataExtractorTest} coverage. PDFBox's default {@code
  * PDFTextStripper} with {@code setSortByPosition(true)} sorts every character on a page
  * primarily by y then x, so two side-by-side blocks of text that share the same
  * vertical band get merged onto the very same output line instead of staying two
@@ -59,9 +59,9 @@ class ColumnAwareTextExtractorTest {
 
     @Test
     void singleColumnPageWithARunningHeadStaysSingleColumn(@TempDir Path tempDir) throws IOException {
-        // Exactly two wide-gap rows (a running head repeated as a header and a footer),
-        // the R3-column-false-positive shape: "on the strength of only two qualifying
-        // rows". Everything else on the page is ordinary single-column prose.
+        // Exactly two wide-gap rows (a running head repeated as a header and a footer) —
+        // the false-positive shape this detector must reject: "on the strength of only
+        // two qualifying rows". Everything else on the page is ordinary single-column prose.
         Path pdf = tempDir.resolve("running-head.pdf");
         writePdf(pdf, (document, page) -> {
             writeLine(document, page, "Journal of Example Studies", 50, 800);

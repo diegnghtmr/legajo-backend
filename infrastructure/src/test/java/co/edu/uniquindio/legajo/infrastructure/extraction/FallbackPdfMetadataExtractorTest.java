@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The primary/fallback chain of TRD §8: try the primary extractor (GROBID in
+ * The primary/fallback chain: try the primary extractor (GROBID in
  * production), fall back to the reserve (PDFBox) when the primary throws or returns a
  * blank abstract, and fail closed with {@link PdfExtractionException} when neither
  * produces a usable (non-blank-abstract) result. Exercised against fakes so the chain's
@@ -126,7 +126,7 @@ class FallbackPdfMetadataExtractorTest {
     }
 
     /**
-     * The undiagnosable-failure advisory: before this fix, both underlying failures
+     * The otherwise-undiagnosable-failure fix: before this fix, both underlying failures
      * were caught and discarded (returning {@code null}), so the final fail-closed
      * exception carried only a generic "both failed" message with no way to tell why
      * either extractor actually failed. Both original exceptions must now be

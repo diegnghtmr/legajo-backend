@@ -27,10 +27,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * {@link LiveApiEmbeddingRepository} against a stubbed OpenAI-compatible embeddings endpoint
- * (feature doc task A8/F5, TRD §6.3 "Modo en vivo de {@code embedding-api} (fijado)"): fetches
+ * {@link LiveApiEmbeddingRepository} against a stubbed OpenAI-compatible embeddings endpoint,
+ * exercising the fixed live-mode contract for {@code embedding-api}: fetches
  * every not-yet-cached corpus document's vector with ONE batched network request per
- * {@link LiveApiEmbeddingRepository#load()} call ({@code R3-live-load-fetches-whole-corpus-serially}),
+ * {@link LiveApiEmbeddingRepository#load()} call, batching the whole missing set instead
+ * of fetching the corpus document-by-document,
  * renormalizes each vector, caches it so each document is requested at most once per instance,
  * and maps every failure shape — 5xx, timeout, a missing/blank API key, and a provider vector
  * count that does not match the request — to {@link EmbeddingApiException}, never a silent
@@ -77,8 +78,8 @@ class LiveApiEmbeddingRepositoryTest {
     }
 
     /**
-     * {@code R3-live-load-fetches-whole-corpus-serially}: {@link LiveApiEmbeddingRepository#load()}
-     * must send exactly ONE batched request for all not-yet-cached documents (TRD §6.3), with
+     * {@link LiveApiEmbeddingRepository#load()}
+     * must send exactly ONE batched request for all not-yet-cached documents, with
      * the corpus's abstracts in corpus order, and map each returned vector back to the right
      * document id strictly by position. Each stub vector below is a distinct one-hot direction
      * precisely so a positional mix-up (e.g. the old per-document loop reversed, or an
@@ -120,15 +121,14 @@ class LiveApiEmbeddingRepositoryTest {
     }
 
     /**
-     * {@code R3-live-load-fetches-whole-corpus-serially}: a provider response whose vector
+     * A provider response whose vector
      * count does not match the request must fail closed instead of silently misassigning
      * vectors, and — because {@link LiveApiEmbeddingRepository}'s cache is only populated
      * after a whole batch succeeds — a failed batch must leave nothing cached, so the very
      * next {@code load()} re-requests every document, not just the ones the failed attempt
      * happened not to reach.
-     */
-    /**
-     * TRD 1.3.7 §6.3: each document is requested at most once per process, including when two
+     *
+     * <p>Each document is requested at most once per process, including when two
      * requests arrive together on a cold cache (a bulk {@code getAll} alone is not atomic).
      */
     @Test
@@ -200,7 +200,7 @@ class LiveApiEmbeddingRepositoryTest {
 
     @Test
     void wrapsAMissingApiKeyInEmbeddingApiExceptionInsteadOfFailingAtConstruction() {
-        // A blank key must never crash construction (TRD: a missing key answers 503 per
+        // A blank key must never crash construction (a missing key must answer 503 per
         // request, not at startup); the WireMock server answers 401 regardless of whether the
         // SDK sends a real Authorization header, so the request-time failure is observed
         // either way.
@@ -216,7 +216,7 @@ class LiveApiEmbeddingRepositoryTest {
     }
 
     /**
-     * {@code R3-client-construction-failure-path-untested}: {@link
+     * Covers the previously-untested client-construction failure path: {@link
      * LiveApiEmbeddingRepository#embedder()} wraps any exception raised while <em>building</em>
      * the underlying {@link OpenAiCompatibleEmbedder} client in {@link EmbeddingApiException},
      * the same as a call failure — never a startup crash. A malformed base URL makes {@code

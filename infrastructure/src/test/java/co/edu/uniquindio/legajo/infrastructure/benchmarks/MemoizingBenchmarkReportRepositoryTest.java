@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
- * TRD §6.6, fixed by TRD 1.3.10: like {@code MemoizingEmbeddingRepository} (TAC-13 follow-up),
+ * Like {@code MemoizingEmbeddingRepository},
  * this decorator lets {@code BenchmarksStartupValidator}'s boot-time {@code load()} call and
  * every later {@code GET /api/v1/benchmarks} request share one already-parsed {@link
  * BenchmarkReport} instead of re-reading and re-parsing the versioned CSVs on every call —

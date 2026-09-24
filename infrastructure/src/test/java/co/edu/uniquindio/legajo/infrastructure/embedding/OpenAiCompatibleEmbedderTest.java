@@ -22,13 +22,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * {@link OpenAiCompatibleEmbedder} against a stubbed OpenAI-compatible embeddings endpoint
- * (TRD §13, "Adaptador remoto"): success (including Gemini's real, index/usage-omitting
+ * {@link OpenAiCompatibleEmbedder} against a stubbed OpenAI-compatible embeddings endpoint,
+ * exercising the remote embedding adapter: success (including Gemini's real, index/usage-omitting
  * response shape — see {@link GeminiEmbeddingsCompatibilityInterceptor}), a 5xx response, a
  * 401, a client-side timeout, and a dimension mismatch, all mapped through
  * {@link EmbeddingApiException} rather than reaching the caller as raw SDK exceptions. No test
  * in this class talks to the real network — Gemini's endpoint is exercised separately by the
- * offline precompute run (task S6b), never by {@code ./gradlew test}.
+ * offline precompute run, never by {@code ./gradlew test}.
  */
 class OpenAiCompatibleEmbedderTest {
 
@@ -51,7 +51,7 @@ class OpenAiCompatibleEmbedderTest {
     @Test
     void embedsSuccessfullyAndL2NormalizesTheReturnedVector() {
         // Deliberately not already unit length, so a passing test proves this class performs
-        // its own L2 normalization (TRD §6.3, "Invariante de norma unitaria (fijado)")
+        // its own L2 normalization, per the fixed unit-norm invariant,
         // instead of trusting the provider's output unchanged.
         String body = """
                 {
@@ -81,7 +81,7 @@ class OpenAiCompatibleEmbedderTest {
     @Test
     void embedsSuccessfullyAgainstGeminisRealResponseShapeWhereIndexIsOmittedForTheFirstItem() {
         // Reproduces the exact shape observed against the real Gemini endpoint (verified with
-        // a raw curl call, TRD §8): data[0] has no "index" key at all — Gemini's OpenAI-compat
+        // a raw curl call): data[0] has no "index" key at all — Gemini's OpenAI-compat
         // layer omits int32 fields left at their default value (proto3 JSON semantics), and
         // index 0 is that default. Without GeminiEmbeddingsCompatibilityInterceptor, the OpenAI Java
         // SDK's Embedding.index() throws OpenAIInvalidDataException("index is not set")
@@ -153,8 +153,8 @@ class OpenAiCompatibleEmbedderTest {
     }
 
     /**
-     * {@code R3-live-load-fetches-whole-corpus-serially}: {@link OpenAiCompatibleEmbedder#embedBatch}
-     * must send every abstract in ONE request (TRD §6.3) and map the returned vectors back to
+     * {@link OpenAiCompatibleEmbedder#embedBatch}
+     * must send every abstract in ONE request and map the returned vectors back to
      * document ids strictly by position. Each stub vector below is distinct (a different
      * one-hot direction) precisely so a positional mix-up (e.g. reversing the list, or an
      * off-by-one) makes this assertion fail instead of passing by coincidence.

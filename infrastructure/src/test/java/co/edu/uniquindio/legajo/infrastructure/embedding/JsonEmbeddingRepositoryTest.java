@@ -20,11 +20,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
 /**
- * {@link JsonEmbeddingRepository} against TRD §9's embeddings-cache schema: {@code version},
+ * {@link JsonEmbeddingRepository} against the fixed embeddings-cache schema: {@code version},
  * {@code corpusVersion}, {@code corpusSha256}, {@code model}, {@code dimension},
- * {@code vectors[{id, preNormL2, values}]}. Covers the load-time invariants of TRD §6.3,
- * "Invariante de norma unitaria (fijado)" — unconditional renormalization plus a provenance
- * warning on deviation — and the "fails closed" corpusSha256 binding of TRD §6.1.
+ * {@code vectors[{id, preNormL2, values}]}. Covers the load-time invariants of the fixed
+ * unit-norm invariant — unconditional renormalization plus a provenance
+ * warning on deviation — and the "fails closed" corpusSha256 binding.
  */
 class JsonEmbeddingRepositoryTest {
 
@@ -61,7 +61,7 @@ class JsonEmbeddingRepositoryTest {
     }
 
     @Test
-    void writesUtf8PrettyPrintedJsonWithTheTrdFieldOrder(@TempDir Path tempDir) throws IOException {
+    void writesUtf8PrettyPrintedJsonWithTheFixedFieldOrder(@TempDir Path tempDir) throws IOException {
         Path path = tempDir.resolve("embeddings-minilm.json");
         JsonEmbeddingRepository repository = new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256);
 
@@ -161,7 +161,7 @@ class JsonEmbeddingRepositoryTest {
 
     @Test
     void loadingRenormalizesEveryVectorUnconditionallyAndWarnsOnDeviation(@TempDir Path tempDir) throws IOException {
-        // A stored vector deviating from unit length by more than 1e-6 (TRD §6.3): raw
+        // A stored vector deviating from unit length by more than the fixed 1e-6 threshold: raw
         // (0.6, 0.8) scaled by 1.000002, norm = 1.000002, |norm - 1| = 2e-6 > 1e-6.
         Path path = tempDir.resolve("embeddings-minilm.json");
         String json = """

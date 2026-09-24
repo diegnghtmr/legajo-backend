@@ -17,7 +17,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TRD §6.6 {@code GET /benchmarks} (1.3.10), R3-as-is-fidelity-unproved: proves that a value
+ * {@code GET /benchmarks}: proves the previously-unproved as-is fidelity claim, that a value
  * written to the versioned CSV export reaches the {@code GET /api/v1/benchmarks} JSON body
  * unchanged, all the way through {@link CsvBenchmarkReportRepository#load()} and {@link
  * BenchmarkReportResponse#from(BenchmarkReport)} — the two hops between the CSV file and the
