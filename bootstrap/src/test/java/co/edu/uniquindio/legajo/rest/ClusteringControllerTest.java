@@ -87,6 +87,22 @@ class ClusteringControllerTest {
     }
 
     @Test
+    void runAppliesTheDefaultsWhenTheBodyIsOmitted() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[*].linkageId").value(hasItems("single", "complete", "average", "ward")));
+    }
+
+    @Test
+    void evaluationAppliesTheDefaultsWhenTheBodyIsOmitted() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering/evaluation"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(4))
+                .andExpect(jsonPath("$[*].linkageId").value(hasItems("single", "complete", "average", "ward")));
+    }
+
+    @Test
     void runAnswers400ForAnEmptyLinkagesList() throws Exception {
         mockMvc.perform(post("/api/v1/clustering")
                         .contentType(MediaType.APPLICATION_JSON)
