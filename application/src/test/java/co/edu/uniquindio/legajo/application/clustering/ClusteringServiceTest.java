@@ -202,6 +202,14 @@ class ClusteringServiceTest {
                 .isEqualTo(ProblemType.UNKNOWN_LINKAGE);
     }
 
+    @Test
+    void runRejectsANullOrBlankLinkageId() {
+        assertThatThrownBy(() -> service.run(Representation.TFIDF_COSINE, java.util.Arrays.asList("ward", null)))
+                .isInstanceOf(InvalidRequestException.class);
+        assertThatThrownBy(() -> service.run(Representation.TFIDF_COSINE, List.of(" ")))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
     /**
      * Under the statelessness rule, no endpoint may depend on a previous run —
      * request X's result must be identical whether or not another request ran before or

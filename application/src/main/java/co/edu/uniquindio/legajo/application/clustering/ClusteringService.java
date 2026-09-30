@@ -3,6 +3,7 @@ package co.edu.uniquindio.legajo.application.clustering;
 import co.edu.uniquindio.legajo.application.cache.RequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ProblemType;
+import co.edu.uniquindio.legajo.application.error.RequestIds;
 import co.edu.uniquindio.legajo.clustering.AverageLinkage;
 import co.edu.uniquindio.legajo.clustering.ClusterAssignment;
 import co.edu.uniquindio.legajo.clustering.CompleteLinkage;
@@ -254,6 +255,7 @@ public final class ClusteringService {
     }
 
     private List<LinkageCriterion> resolveLinkages(List<String> linkageIds) {
+        RequestIds.requireNoBlankElements(linkageIds, "linkages");
         if (linkageIds == null || linkageIds.isEmpty()) {
             return List.of(new SingleLinkage(), new CompleteLinkage(), new AverageLinkage(), new WardLinkage());
         }

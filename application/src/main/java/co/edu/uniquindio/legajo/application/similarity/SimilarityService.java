@@ -3,6 +3,7 @@ package co.edu.uniquindio.legajo.application.similarity;
 import co.edu.uniquindio.legajo.application.cache.RequestCache;
 import co.edu.uniquindio.legajo.application.error.InvalidRequestException;
 import co.edu.uniquindio.legajo.application.error.ProblemType;
+import co.edu.uniquindio.legajo.application.error.RequestIds;
 import co.edu.uniquindio.legajo.application.error.UnknownIdentifierException;
 import co.edu.uniquindio.legajo.corpus.Corpus;
 import co.edu.uniquindio.legajo.corpus.CorpusDocument;
@@ -128,6 +129,7 @@ public final class SimilarityService {
         Objects.requireNonNull(documentIds, "documentIds");
         Objects.requireNonNull(algorithmId, "algorithmId");
 
+        RequestIds.requireNoBlankElements(documentIds, "documentIds");
         Corpus corpus = corpusRepository.load();
         int n = corpus.documents().size();
         int m = documentIds.size();
@@ -214,6 +216,7 @@ public final class SimilarityService {
     }
 
     private List<SimilarityAlgorithm> resolveAlgorithms(List<String> algorithmIds) {
+        RequestIds.requireNoBlankElements(algorithmIds, "algorithmIds");
         if (algorithmIds == null || algorithmIds.isEmpty()) {
             return registry.all();
         }

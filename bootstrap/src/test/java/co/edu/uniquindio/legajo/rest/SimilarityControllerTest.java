@@ -80,6 +80,67 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
     }
 
+    /** A {@code null} or blank element inside {@code algorithmIds} is a malformed request:
+     * 400 without a fixed type, never a server error. */
+    @Test
+    void compareAnswers400ForANullElementInAlgorithmIds() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"documentIdA":"d01","documentIdB":"d02","algorithmIds":["jaccard",null]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
+    @Test
+    void compareAnswers400ForABlankElementInAlgorithmIds() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"documentIdA":"d01","documentIdB":"d02","algorithmIds":["  "]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
+    @Test
+    void compareKeepsDefaultingToAllSixWhenAlgorithmIdsIsEmpty() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"documentIdA":"d13","documentIdB":"d15","algorithmIds":[]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(6));
+    }
+
+    @Test
+    void matrixAnswers400ForANullElementInDocumentIds() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/matrix")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"algorithmId":"jaccard","documentIds":["d01",null,"d03"]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
+    @Test
+    void matrixAnswers400ForABlankElementInDocumentIds() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/matrix")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"algorithmId":"jaccard","documentIds":["d01","","d03"]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
     /** A body document id is 400 with {@code unknown-document}. */
     @Test
     void compareAnswers400ForAnUnknownDocumentId() throws Exception {

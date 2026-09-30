@@ -162,6 +162,22 @@ class SimilarityServiceTest {
     }
 
     @Test
+    void compareRejectsANullOrBlankAlgorithmId() {
+        assertThatThrownBy(() -> service.compare("d01", "d02", java.util.Arrays.asList("jaccard", null)))
+                .isInstanceOf(InvalidRequestException.class);
+        assertThatThrownBy(() -> service.compare("d01", "d02", List.of(" ")))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
+    @Test
+    void matrixRejectsANullOrBlankDocumentId() {
+        assertThatThrownBy(() -> service.matrix(java.util.Arrays.asList("d01", null, "d03"), "jaccard"))
+                .isInstanceOf(InvalidRequestException.class);
+        assertThatThrownBy(() -> service.matrix(List.of("d01", "", "d03"), "jaccard"))
+                .isInstanceOf(InvalidRequestException.class);
+    }
+
+    @Test
     void matrixRejectsASelectionSmallerThanThree() {
         assertThatThrownBy(() -> service.matrix(List.of("d01", "d02"), "jaccard"))
                 .isInstanceOf(InvalidRequestException.class)

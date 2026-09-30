@@ -112,9 +112,10 @@ paths:
       tags: [similarity]
       summary: Multi-algorithm pairwise similarity for two documents
       description: >-
-        `algorithmIds` is optional; omitted or `null` defaults to all six
-        capabilities, so the default request already
-        exercises every capability.
+        `algorithmIds` is optional; omitted, `null` or empty defaults to all
+        six capabilities, so the default request already exercises every
+        capability. A `null` or blank entry inside `algorithmIds` is a
+        malformed request.
       requestBody:
         required: true
         content:
@@ -133,8 +134,9 @@ paths:
         "400":
           description: >-
             An unknown `algorithmIds` entry (`unknown-algorithm`), an unknown
-            `documentIdA`/`documentIdB` (`unknown-document`), or a blank
-            required field (`about:blank`, framework-detected) — 400
+            `documentIdA`/`documentIdB` (`unknown-document`), a blank
+            required field or a `null`/blank entry in `algorithmIds`
+            (`about:blank`, framework-detected) — 400
             because these values arrive in the request body.
           content:
             application/problem+json:
@@ -293,7 +295,9 @@ paths:
         "400":
           description: >-
             An unknown `representation` (`unknown-representation`) or an
-            unknown entry in `linkages` (`unknown-linkage`).
+            unknown entry in `linkages` (`unknown-linkage`); an empty
+            `linkages` list or a `null`/blank entry in it is a malformed
+            request (`about:blank`).
           content:
             application/problem+json:
               schema:
@@ -665,7 +669,9 @@ components:
         algorithmIds:
           type: array
           nullable: true
-          description: Omitted or null defaults to all six capabilities.
+          description: >-
+            Omitted, null or empty defaults to all six capabilities. Entries
+            must be non-null, non-blank ids.
           items:
             $ref: "#/components/schemas/AlgorithmId"
 
@@ -677,9 +683,10 @@ components:
           $ref: "#/components/schemas/AlgorithmId"
         documentIds:
           type: array
-          description: "Business rule: size m ∈ [3, n] (3–20 in the reference corpus), no duplicates."
+          description: "Business rule: size m ∈ [3, n] (3–20 in the reference corpus), no duplicates. Entries must be non-null, non-blank ids."
           items:
             type: string
+            minLength: 1
 
     MatrixCell:
       type: object
@@ -1011,7 +1018,8 @@ components:
         linkages:
           type: array
           nullable: true
-          description: "Omitted or null defaults to all four. Business rule: non-empty, no unknown ids."
+          minItems: 1
+          description: "Omitted or null defaults to all four. Business rule: when present, non-empty, with no null, blank or unknown ids."
           items:
             $ref: "#/components/schemas/LinkageId"
 
