@@ -56,10 +56,12 @@ public class ClusteringController {
 
     /**
      * {@code POST /api/v1/clustering}: {@code representation} defaults to
-     * {@link Representation#DEFAULT}, {@code linkages} defaults to all four.
+     * {@link Representation#DEFAULT}, {@code linkages} defaults to all four, and an omitted body
+     * applies both defaults.
      */
     @PostMapping
-    public List<LinkageResultResponse> run(@RequestBody ClusteringRequest request) {
+    public List<LinkageResultResponse> run(@RequestBody(required = false) @Nullable ClusteringRequest body) {
+        ClusteringRequest request = orDefaults(body);
         Representation representation = parseRepresentation(request.representation());
         List<String> linkageIds = linkageIds(request);
 
@@ -70,7 +72,8 @@ public class ClusteringController {
     /** {@code POST /api/v1/clustering/evaluation}: the same computation as {@link #run},
      * evaluation block only. */
     @PostMapping("/evaluation")
-    public List<LinkageEvaluationResponse> evaluation(@RequestBody ClusteringRequest request) {
+    public List<LinkageEvaluationResponse> evaluation(@RequestBody(required = false) @Nullable ClusteringRequest body) {
+        ClusteringRequest request = orDefaults(body);
         Representation representation = parseRepresentation(request.representation());
         List<String> linkageIds = linkageIds(request);
 
@@ -97,6 +100,11 @@ public class ClusteringController {
 
         ClusteringCutResult result = clusteringService.cut(representation, request.linkage(), request.k());
         return ClusterAssignmentResponse.from(result);
+    }
+
+    /** An omitted body is the same request as {@code {}}: every field takes its default. */
+    private static ClusteringRequest orDefaults(@Nullable ClusteringRequest body) {
+        return body == null ? new ClusteringRequest(null, null) : body;
     }
 
     /** An omitted {@code linkages} means all four; an explicit empty list is a malformed request. */
