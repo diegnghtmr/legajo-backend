@@ -161,6 +161,41 @@ class SimilarityServiceTest {
         }
     }
 
+    private static final Corpus INFLECTED_CORPUS = new Corpus("1.0", 3, "corpus-sha", List.of(
+            new CorpusDocument("d01", "T1", List.of("A"), "dogs running", "pdf", "grobid", true, "s1"),
+            new CorpusDocument("d02", "T2", List.of("B"), "dog runs", "pdf", "grobid", true, "s2"),
+            new CorpusDocument("d03", "T3", List.of("C"), "unrelated words entirely", "pdf", "grobid", true, "s3")));
+
+    private SimilarityService inflectedService(boolean stemming) {
+        return new SimilarityService(new FakeCorpusRepository(INFLECTED_CORPUS), registry,
+                localEmbeddingRepository, apiEmbeddingRepository, new FakeRequestCache<>(), stemming);
+    }
+
+    private static double jaccardCoefficient(SimilarityService service) {
+        return ((JaccardTrace) service.trace("jaccard", "d01", "d02").orElseThrow()).coefficient();
+    }
+
+    @Test
+    void stemmingIsOffByDefault() {
+        assertThat(service.stemming()).isFalse();
+        assertThat(inflectedService(false).stemming()).isFalse();
+    }
+
+    @Test
+    void withoutStemmingInflectedFormsDoNotMatch() {
+        assertThat(jaccardCoefficient(inflectedService(false))).isZero();
+    }
+
+    @Test
+    void withStemmingInflectedFormsMatchAcrossTheClassicAlgorithms() {
+        SimilarityService stemmed = inflectedService(true);
+
+        assertThat(stemmed.stemming()).isTrue();
+        assertThat(jaccardCoefficient(stemmed)).isEqualTo(1.0);
+        assertThat(stemmed.compare("d01", "d02", List.of("levenshtein")).getFirst().result().normalizedScore())
+                .isEqualTo(1.0);
+    }
+
     @Test
     void compareRejectsANullOrBlankAlgorithmId() {
         assertThatThrownBy(() -> service.compare("d01", "d02", java.util.Arrays.asList("jaccard", null)))

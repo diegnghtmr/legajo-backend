@@ -37,7 +37,7 @@ class CorsWebConfigurationTest {
 
     @Test
     void emptyOriginsFallBackToTheLocalDefaultsInsteadOfRegisteringAnEmptyMapping() {
-        LegajoProperties properties = new LegajoProperties(EmbeddingProviderMode.CACHED, List.of());
+        LegajoProperties properties = new LegajoProperties(EmbeddingProviderMode.CACHED, List.of(), null);
         CorsWebConfiguration configuration = new CorsWebConfiguration(properties);
         ReadableCorsRegistry registry = new ReadableCorsRegistry();
 
@@ -52,7 +52,7 @@ class CorsWebConfigurationTest {
     @Test
     void configuredOriginsAreRegisteredExactlyUnderTheApiV1Prefix() {
         LegajoProperties properties = new LegajoProperties(EmbeddingProviderMode.CACHED,
-                List.of("http://localhost:5173", "https://legajo.example.com"));
+                List.of("http://localhost:5173", "https://legajo.example.com"), null);
         CorsWebConfiguration configuration = new CorsWebConfiguration(properties);
         ReadableCorsRegistry registry = new ReadableCorsRegistry();
 

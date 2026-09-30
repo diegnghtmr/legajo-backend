@@ -66,7 +66,7 @@ public class ClusteringController {
         List<String> linkageIds = linkageIds(request);
 
         List<LinkageRunResult> results = clusteringService.run(representation, linkageIds);
-        return results.stream().map(LinkageResultResponse::from).toList();
+        return results.stream().map(result -> LinkageResultResponse.from(result, clusteringService.stemming())).toList();
     }
 
     /** {@code POST /api/v1/clustering/evaluation}: the same computation as {@link #run},
@@ -78,7 +78,7 @@ public class ClusteringController {
         List<String> linkageIds = linkageIds(request);
 
         List<LinkageEvaluationOnly> results = clusteringService.evaluateOnly(representation, linkageIds);
-        return results.stream().map(LinkageEvaluationResponse::from).toList();
+        return results.stream().map(result -> LinkageEvaluationResponse.from(result, clusteringService.stemming())).toList();
     }
 
     /**

@@ -20,14 +20,15 @@ public record EmbeddingApiTraceResponse(
         double sumSquaredDiff,
         double distance,
         double normalizedScore,
-        String providerStatus) implements AlgorithmTraceResponse {
+        String providerStatus,
+        boolean stemming) implements AlgorithmTraceResponse {
 
-    public static EmbeddingApiTraceResponse from(EmbeddingApiTrace trace) {
+    public static EmbeddingApiTraceResponse from(EmbeddingApiTrace trace, boolean stemming) {
         Objects.requireNonNull(trace, "trace");
         return new EmbeddingApiTraceResponse(
                 trace.algorithmId(), trace.provider(), trace.model(), trace.dimension(),
                 trace.vectorAExcerpt(), trace.vectorBExcerpt(), trace.vectorA(), trace.vectorB(),
                 trace.preNormL2A(), trace.preNormL2B(), trace.sumSquaredDiff(), trace.distance(),
-                trace.normalizedScore(), trace.providerStatus());
+                trace.normalizedScore(), trace.providerStatus(), stemming);
     }
 }

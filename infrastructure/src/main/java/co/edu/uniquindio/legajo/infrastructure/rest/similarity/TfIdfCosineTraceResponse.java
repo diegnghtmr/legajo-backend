@@ -14,13 +14,14 @@ public record TfIdfCosineTraceResponse(
         double rawNormA,
         double rawNormB,
         double cosine,
-        double angleDegrees) implements AlgorithmTraceResponse {
+        double angleDegrees,
+        boolean stemming) implements AlgorithmTraceResponse {
 
-    public static TfIdfCosineTraceResponse from(TfIdfCosineTrace trace) {
+    public static TfIdfCosineTraceResponse from(TfIdfCosineTrace trace, boolean stemming) {
         Objects.requireNonNull(trace, "trace");
         return new TfIdfCosineTraceResponse(
                 trace.algorithmId(), trace.corpusSize(),
                 trace.terms().stream().map(TfIdfTermTraceResponse::from).toList(),
-                trace.dotProduct(), trace.rawNormA(), trace.rawNormB(), trace.cosine(), trace.angleDegrees());
+                trace.dotProduct(), trace.rawNormA(), trace.rawNormB(), trace.cosine(), trace.angleDegrees(), stemming);
     }
 }

@@ -64,24 +64,45 @@ public final class SimilarityService {
     private final EmbeddingRepository apiEmbeddingRepository;
     private final RequestCache<SimilarityCacheKey, SimilarityResult> cache;
     private final Function<String, List<String>> tokenizer;
+    private final boolean stemming;
 
     public SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
             EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
             RequestCache<SimilarityCacheKey, SimilarityResult> cache) {
+        this(corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository, cache, false);
+    }
+
+    /** {@code stemming} switches Porter stemming on for every classic algorithm and {@code tfidf-cosine}. */
+    public SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
+            EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
+            RequestCache<SimilarityCacheKey, SimilarityResult> cache, boolean stemming) {
         this(corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository, cache,
-                preprocessor());
+                preprocessor(stemming), stemming);
     }
 
     /** Test seam: {@code tokenizer} replaces the fixed text preprocessing so calls can be counted. */
     SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
             EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
             RequestCache<SimilarityCacheKey, SimilarityResult> cache, Function<String, List<String>> tokenizer) {
+        this(corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository, cache, tokenizer, false);
+    }
+
+    private SimilarityService(CorpusRepository corpusRepository, SimilarityAlgorithmRegistry registry,
+            EmbeddingRepository localEmbeddingRepository, EmbeddingRepository apiEmbeddingRepository,
+            RequestCache<SimilarityCacheKey, SimilarityResult> cache, Function<String, List<String>> tokenizer,
+            boolean stemming) {
+        this.stemming = stemming;
         this.tokenizer = Objects.requireNonNull(tokenizer, "tokenizer");
         this.corpusRepository = Objects.requireNonNull(corpusRepository, "corpusRepository");
         this.registry = Objects.requireNonNull(registry, "registry");
         this.localEmbeddingRepository = Objects.requireNonNull(localEmbeddingRepository, "localEmbeddingRepository");
         this.apiEmbeddingRepository = Objects.requireNonNull(apiEmbeddingRepository, "apiEmbeddingRepository");
         this.cache = Objects.requireNonNull(cache, "cache");
+    }
+
+    /** Whether Porter stemming is applied to the classic algorithms; fixed for the life of the service. */
+    public boolean stemming() {
+        return stemming;
     }
 
     /** {@code GET /similarity/algorithms}: the catalogue, in registration order. */
@@ -284,9 +305,9 @@ public final class SimilarityService {
         return byDocumentId;
     }
 
-    private static Function<String, List<String>> preprocessor() {
+    private static Function<String, List<String>> preprocessor(boolean stemming) {
         TextPreprocessor textPreprocessor = new TextPreprocessor();
-        return text -> textPreprocessor.preprocess(text).tokens();
+        return text -> textPreprocessor.preprocess(text, stemming).tokens();
     }
 
     private SimilarityInput inputFor(CorpusDocument document, List<String> tokens, SimilarityAlgorithm algorithm,

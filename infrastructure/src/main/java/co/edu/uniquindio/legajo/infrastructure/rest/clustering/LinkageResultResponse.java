@@ -17,9 +17,10 @@ public record LinkageResultResponse(
         List<LinkageStepResponse> rows,
         List<Integer> leafOrder,
         List<String> documentIds,
-        ClusteringEvaluationResponse evaluation) {
+        ClusteringEvaluationResponse evaluation,
+        boolean stemming) {
 
-    public static LinkageResultResponse from(LinkageRunResult result) {
+    public static LinkageResultResponse from(LinkageRunResult result, boolean stemming) {
         Objects.requireNonNull(result, "result");
         return new LinkageResultResponse(
                 result.linkageId(),
@@ -27,6 +28,7 @@ public record LinkageResultResponse(
                 result.rows().stream().map(LinkageStepResponse::from).toList(),
                 result.leafOrder(),
                 result.documentIds(),
-                ClusteringEvaluationResponse.from(result.evaluation()));
+                ClusteringEvaluationResponse.from(result.evaluation()),
+                stemming);
     }
 }

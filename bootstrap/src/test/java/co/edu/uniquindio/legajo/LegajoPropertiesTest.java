@@ -57,6 +57,18 @@ class LegajoPropertiesTest {
     }
 
     @Test
+    void stemmingIsOffWhenThePropertyIsNotSet() {
+        contextRunner.run(context ->
+                assertThat(context.getBean(LegajoProperties.class).preprocess().stemming()).isFalse());
+    }
+
+    @Test
+    void bindsTheStemmingIndicator() {
+        contextRunner.withPropertyValues("legajo.preprocess.stemming=true").run(context ->
+                assertThat(context.getBean(LegajoProperties.class).preprocess().stemming()).isTrue());
+    }
+
+    @Test
     void bindsLiveEmbeddingProvider() {
         contextRunner.withPropertyValues("legajo.embedding-provider=live").run(context -> {
             LegajoProperties properties = context.getBean(LegajoProperties.class);

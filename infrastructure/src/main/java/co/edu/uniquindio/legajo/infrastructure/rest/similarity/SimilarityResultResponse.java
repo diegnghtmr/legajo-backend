@@ -9,7 +9,8 @@ import java.util.Objects;
 /**
  * Wire shape of one similarity result within {@code POST /similarity/compare} and
  * {@code POST /similarity/matrix}: {@code normalizedScore}, {@code rawValue}
- * (nullable), {@code computedNanos}, {@code cached}, and {@code degenerate}.
+ * (nullable), {@code computedNanos}, {@code cached}, {@code degenerate}, and {@code stemming}
+ * (whether the classic tokens were Porter-stemmed).
  *
  * <p><b>{@code cached} is real.</b> {@code SimilarityService} now looks up a
  * request-keyed cache before computing; {@link #from(SimilarityResult, boolean)}
@@ -19,16 +20,17 @@ import java.util.Objects;
  * {@code algorithmId} of its own).
  */
 public record SimilarityResultResponse(
-        double normalizedScore, @Nullable Double rawValue, long computedNanos, boolean cached, boolean degenerate) {
+        double normalizedScore, @Nullable Double rawValue, long computedNanos, boolean cached, boolean degenerate,
+        boolean stemming) {
 
-    public static SimilarityResultResponse from(SimilarityResult result, boolean cached) {
+    public static SimilarityResultResponse from(SimilarityResult result, boolean cached, boolean stemming) {
         Objects.requireNonNull(result, "result");
-        return new SimilarityResultResponse(
-                result.normalizedScore(), result.rawValue(), result.computedNanos(), cached, result.degenerate());
+        return new SimilarityResultResponse(result.normalizedScore(), result.rawValue(), result.computedNanos(),
+                cached, result.degenerate(), stemming);
     }
 
-    public static SimilarityResultResponse from(CachedSimilarityResult cell) {
+    public static SimilarityResultResponse from(CachedSimilarityResult cell, boolean stemming) {
         Objects.requireNonNull(cell, "cell");
-        return from(cell.result(), cell.cached());
+        return from(cell.result(), cell.cached(), stemming);
     }
 }

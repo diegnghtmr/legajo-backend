@@ -9,11 +9,12 @@ import java.util.Objects;
  * same evaluation block {@code POST /clustering} computes, without the linkage matrix or
  * leaf order.
  */
-public record LinkageEvaluationResponse(String linkageId, String linkageDisplayName, ClusteringEvaluationResponse evaluation) {
+public record LinkageEvaluationResponse(
+        String linkageId, String linkageDisplayName, ClusteringEvaluationResponse evaluation, boolean stemming) {
 
-    public static LinkageEvaluationResponse from(LinkageEvaluationOnly result) {
+    public static LinkageEvaluationResponse from(LinkageEvaluationOnly result, boolean stemming) {
         Objects.requireNonNull(result, "result");
         return new LinkageEvaluationResponse(
-                result.linkageId(), result.linkageDisplayName(), ClusteringEvaluationResponse.from(result.evaluation()));
+                result.linkageId(), result.linkageDisplayName(), ClusteringEvaluationResponse.from(result.evaluation()), stemming);
     }
 }

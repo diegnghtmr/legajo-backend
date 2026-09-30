@@ -78,14 +78,28 @@ public final class ClusteringService {
     private final EmbeddingRepository apiEmbeddingRepository;
     private final RequestCache<ClusteringCacheKey, LinkageRunResult> cache;
     private final TextPreprocessor textPreprocessor = new TextPreprocessor();
+    private final boolean stemming;
     private final LanceWilliamsEngine engine = new LanceWilliamsEngine();
 
     public ClusteringService(CorpusRepository corpusRepository, EmbeddingRepository localEmbeddingRepository,
             EmbeddingRepository apiEmbeddingRepository, RequestCache<ClusteringCacheKey, LinkageRunResult> cache) {
+        this(corpusRepository, localEmbeddingRepository, apiEmbeddingRepository, cache, false);
+    }
+
+    /** {@code stemming} switches Porter stemming on for the {@code tfidf-cosine} representation. */
+    public ClusteringService(CorpusRepository corpusRepository, EmbeddingRepository localEmbeddingRepository,
+            EmbeddingRepository apiEmbeddingRepository, RequestCache<ClusteringCacheKey, LinkageRunResult> cache,
+            boolean stemming) {
+        this.stemming = stemming;
         this.corpusRepository = Objects.requireNonNull(corpusRepository, "corpusRepository");
         this.localEmbeddingRepository = Objects.requireNonNull(localEmbeddingRepository, "localEmbeddingRepository");
         this.apiEmbeddingRepository = Objects.requireNonNull(apiEmbeddingRepository, "apiEmbeddingRepository");
         this.cache = Objects.requireNonNull(cache, "cache");
+    }
+
+    /** Whether Porter stemming is applied to the {@code tfidf-cosine} representation; fixed for the service's life. */
+    public boolean stemming() {
+        return stemming;
     }
 
     /**
@@ -232,7 +246,7 @@ public final class ClusteringService {
 
     private List<List<Double>> tfIdfVectors(Corpus corpus) {
         List<List<String>> tokenStreams = corpus.documents().stream()
-                .map(document -> textPreprocessor.preprocess(document.abstractText()).tokens())
+                .map(document -> textPreprocessor.preprocess(document.abstractText(), stemming).tokens())
                 .toList();
         TfIdfCorpusIndex index = TfIdfCorpusIndex.from(tokenStreams);
         return TfIdfCorpusVectors.vectorsOf(tokenStreams, index);

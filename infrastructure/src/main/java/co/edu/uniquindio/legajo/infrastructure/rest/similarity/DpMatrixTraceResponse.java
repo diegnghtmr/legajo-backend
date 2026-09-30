@@ -17,9 +17,10 @@ public record DpMatrixTraceResponse(
         List<String> columnLabels,
         double[][] matrix,
         List<MatrixCellResponse> optimalPath,
-        List<DpTraceStepResponse> operations) implements AlgorithmTraceResponse {
+        List<DpTraceStepResponse> operations,
+        boolean stemming) implements AlgorithmTraceResponse {
 
-    public static DpMatrixTraceResponse from(DpMatrixTrace trace) {
+    public static DpMatrixTraceResponse from(DpMatrixTrace trace, boolean stemming) {
         Objects.requireNonNull(trace, "trace");
         return new DpMatrixTraceResponse(
                 trace.algorithmId(),
@@ -27,6 +28,6 @@ public record DpMatrixTraceResponse(
                 trace.columnLabels(),
                 trace.matrix(),
                 trace.optimalPath().stream().map(MatrixCellResponse::from).toList(),
-                trace.operations().stream().map(DpTraceStepResponse::from).toList());
+                trace.operations().stream().map(DpTraceStepResponse::from).toList(), stemming);
     }
 }

@@ -80,6 +80,49 @@ class SimilarityControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-algorithm"));
     }
 
+    @Test
+    void everyCompareResultReportsStemmingOffByDefault() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/compare")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"documentIdA":"d06","documentIdB":"d07","algorithmIds":["jaccard","levenshtein"]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].result.stemming").value(false))
+                .andExpect(jsonPath("$[1].result.stemming").value(false));
+    }
+
+    @Test
+    void everyMatrixCellReportsStemmingOffByDefault() throws Exception {
+        mockMvc.perform(post("/api/v1/similarity/matrix")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"algorithmId":"jaccard","documentIds":["d16","d18","d20"]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0][0].stemming").value(false))
+                .andExpect(jsonPath("$[2][2].stemming").value(false));
+    }
+
+    @Test
+    void tokensAreNotStemmedByDefault() throws Exception {
+        mockMvc.perform(get("/api/v1/similarity/jaccard/trace")
+                        .param("documentIdA", "d01").param("documentIdB", "d02"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.union").value(org.hamcrest.Matchers.hasItem("studies")));
+    }
+
+    @Test
+    void everyTraceReportsStemmingOffByDefault() throws Exception {
+        for (String algorithmId : new String[] {"levenshtein", "needleman-wunsch", "jaccard", "tfidf-cosine",
+                "embedding-local", "embedding-api"}) {
+            mockMvc.perform(get("/api/v1/similarity/" + algorithmId + "/trace")
+                            .param("documentIdA", "d01").param("documentIdB", "d02"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.stemming").value(false));
+        }
+    }
+
     /** A {@code null} or blank element inside {@code algorithmIds} is a malformed request:
      * 400 without a fixed type, never a server error. */
     @Test

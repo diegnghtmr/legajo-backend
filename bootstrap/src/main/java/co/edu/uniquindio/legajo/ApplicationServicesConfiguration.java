@@ -48,18 +48,20 @@ public class ApplicationServicesConfiguration {
             SimilarityAlgorithmRegistry registry,
             @Qualifier("localEmbeddingRepository") EmbeddingRepository localEmbeddingRepository,
             @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository,
-            RequestCache<SimilarityCacheKey, SimilarityResult> similarityCache) {
-        return new SimilarityService(
-                corpusRepository, registry, localEmbeddingRepository, apiEmbeddingRepository, similarityCache);
+            RequestCache<SimilarityCacheKey, SimilarityResult> similarityCache,
+            LegajoProperties legajoProperties) {
+        return new SimilarityService(corpusRepository, registry, localEmbeddingRepository,
+                apiEmbeddingRepository, similarityCache, legajoProperties.preprocess().stemming());
     }
 
     @Bean
     public ClusteringService clusteringService(CorpusRepository corpusRepository,
             @Qualifier("localEmbeddingRepository") EmbeddingRepository localEmbeddingRepository,
             @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository,
-            RequestCache<ClusteringCacheKey, LinkageRunResult> clusteringCache) {
-        return new ClusteringService(
-                corpusRepository, localEmbeddingRepository, apiEmbeddingRepository, clusteringCache);
+            RequestCache<ClusteringCacheKey, LinkageRunResult> clusteringCache,
+            LegajoProperties legajoProperties) {
+        return new ClusteringService(corpusRepository, localEmbeddingRepository, apiEmbeddingRepository,
+                clusteringCache, legajoProperties.preprocess().stemming());
     }
 
     @Bean
