@@ -139,6 +139,13 @@ public class DomainConfiguration {
         return validator::validate;
     }
 
+    /** Stops the boot when the stored corpus hash is not the hash of the loaded documents. */
+    @Bean
+    public SmartInitializingSingleton corpusIntegrityStartupValidator(CorpusRepository corpusRepository) {
+        CorpusIntegrityStartupValidator validator = new CorpusIntegrityStartupValidator(corpusRepository);
+        return validator::validate;
+    }
+
     @Bean(name = "localEmbeddingRepository")
     public EmbeddingRepository localEmbeddingRepository(CorpusRepository corpusRepository) {
         Corpus corpus = corpusRepository.load();
@@ -174,11 +181,12 @@ public class DomainConfiguration {
      */
     @Bean
     public SmartInitializingSingleton embeddingCacheStartupValidator(
+            CorpusRepository corpusRepository,
             @Qualifier("localEmbeddingRepository") EmbeddingRepository localEmbeddingRepository,
             @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository,
             LegajoProperties legajoProperties) {
         EmbeddingCacheStartupValidator validator = new EmbeddingCacheStartupValidator(
-                localEmbeddingRepository, apiEmbeddingRepository, legajoProperties.embeddingProvider());
+                corpusRepository, localEmbeddingRepository, apiEmbeddingRepository, legajoProperties.embeddingProvider());
         return validator::validate;
     }
 

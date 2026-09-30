@@ -81,7 +81,7 @@ public final class JsonEmbeddingRepository implements EmbeddingRepository {
 
         List<EmbeddingVector> vectors = new ArrayList<>(json.vectors().size());
         for (EmbeddingVectorJson vectorJson : json.vectors()) {
-            vectors.add(renormalizeOnLoad(vectorJson, json.model()));
+            vectors.add(renormalizeOnLoad(vectorJson, json.model(), json.dimension()));
         }
         return new EmbeddingCache(json.version(), json.corpusVersion(), json.corpusSha256(), json.model(),
                 json.dimension(), vectors);
@@ -113,8 +113,12 @@ public final class JsonEmbeddingRepository implements EmbeddingRepository {
      * copied through unchanged: it is precompute-time provenance, not something this loading
      * step recomputes.
      */
-    private EmbeddingVector renormalizeOnLoad(EmbeddingVectorJson vectorJson, String model) {
+    private EmbeddingVector renormalizeOnLoad(EmbeddingVectorJson vectorJson, String model, int dimension) {
         List<Double> storedValues = vectorJson.values();
+        if (storedValues.size() != dimension) {
+            throw failClosed(vectorJson.id(),
+                    "a dimension of %d, but the cache declares %d".formatted(storedValues.size(), dimension));
+        }
         for (double component : storedValues) {
             if (!Double.isFinite(component)) {
                 throw failClosed(vectorJson.id(), "a non-finite component (%s)".formatted(component));

@@ -1,9 +1,15 @@
 package co.edu.uniquindio.legajo;
 
 import co.edu.uniquindio.legajo.application.embedding.EmbeddingProviderMode;
+import co.edu.uniquindio.legajo.corpus.CorpusDocument;
+import co.edu.uniquindio.legajo.port.CorpusRepository;
 import co.edu.uniquindio.legajo.port.EmbeddingRepository;
+import co.edu.uniquindio.legajo.similarity.EmbeddingCache;
+import co.edu.uniquindio.legajo.similarity.EmbeddingCacheCoverage;
 
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A mismatched {@code corpusSha256} must fail application startup, not surface as a runtime
@@ -33,27 +39,46 @@ import java.util.Objects;
  * from {@link #validate()} aborts context refresh with no framework-specific wrapping added
  * here.
  *
+ * <p>Beyond the {@code corpusSha256} comparison, each served cache must hold exactly one
+ * vector per corpus document id (no missing, unexpected or repeated ids); a mismatch stops the
+ * boot with a message naming the precompute task. Vector dimensions are checked on load by the
+ * repository itself.
+ *
  * <p>Any {@code load()} failure stops the boot, not only a {@code corpusSha256} mismatch: a
  * served cache file that is missing, unreadable or malformed is as unusable as a stale one, and
  * the same fail-closed rule that applies to the mismatch applies here too.
  */
 final class EmbeddingCacheStartupValidator {
 
+    private final CorpusRepository corpusRepository;
     private final EmbeddingRepository localEmbeddingRepository;
     private final EmbeddingRepository apiEmbeddingRepository;
     private final EmbeddingProviderMode embeddingProviderMode;
 
-    EmbeddingCacheStartupValidator(EmbeddingRepository localEmbeddingRepository,
+    EmbeddingCacheStartupValidator(CorpusRepository corpusRepository, EmbeddingRepository localEmbeddingRepository,
             EmbeddingRepository apiEmbeddingRepository, EmbeddingProviderMode embeddingProviderMode) {
+        this.corpusRepository = Objects.requireNonNull(corpusRepository, "corpusRepository");
         this.localEmbeddingRepository = Objects.requireNonNull(localEmbeddingRepository, "localEmbeddingRepository");
         this.apiEmbeddingRepository = Objects.requireNonNull(apiEmbeddingRepository, "apiEmbeddingRepository");
         this.embeddingProviderMode = Objects.requireNonNull(embeddingProviderMode, "embeddingProviderMode");
     }
 
     void validate() {
-        localEmbeddingRepository.load();
+        Set<String> corpusIds = corpusRepository.load().documents().stream()
+                .map(CorpusDocument::id)
+                .collect(Collectors.toSet());
+        requireCoverage("embedding-local", localEmbeddingRepository.load(), corpusIds);
         if (embeddingProviderMode == EmbeddingProviderMode.CACHED) {
-            apiEmbeddingRepository.load();
+            requireCoverage("embedding-api", apiEmbeddingRepository.load(), corpusIds);
         }
+    }
+
+    private static void requireCoverage(String capability, EmbeddingCache cache, Set<String> corpusIds) {
+        EmbeddingCacheCoverage.mismatch(corpusIds, cache).ifPresent(problem -> {
+            throw new IllegalStateException(
+                    ("%s embedding cache does not match the corpus documents: %s. "
+                            + "Re-run the offline precompute command: ./gradlew :bootstrap:precomputeEmbeddings")
+                            .formatted(capability, problem));
+        });
     }
 }

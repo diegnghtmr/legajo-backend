@@ -1,6 +1,9 @@
 package co.edu.uniquindio.legajo;
 
+import co.edu.uniquindio.legajo.corpus.Corpus;
+import co.edu.uniquindio.legajo.corpus.CorpusDocument;
 import co.edu.uniquindio.legajo.infrastructure.embedding.JsonEmbeddingRepository;
+import co.edu.uniquindio.legajo.port.CorpusRepository;
 import co.edu.uniquindio.legajo.port.EmbeddingRepository;
 import co.edu.uniquindio.legajo.similarity.EmbeddingCache;
 import co.edu.uniquindio.legajo.similarity.EmbeddingVector;
@@ -119,6 +122,42 @@ class EmbeddingCacheStartupValidatorTest {
         runner(localPath, apiPath, "cached").run(context -> assertThat(context).hasNotFailed());
     }
 
+    @Test
+    void aCacheMissingACorpusIdStopsTheBootAndNamesThePrecomputeCommand() {
+        Path localPath = writeCache(tempDir.resolve("embeddings-minilm.json"), CORPUS_SHA, "d01");
+        Path apiPath = writeCache(tempDir.resolve("embeddings-openai.json"), CORPUS_SHA, "d01", "d02");
+
+        runner(localPath, apiPath, "cached").withPropertyValues("test.corpus-ids=d01,d02").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(rootCause(context.getStartupFailure()).getMessage())
+                    .contains("precomputeEmbeddings")
+                    .contains("missing")
+                    .contains("d02");
+        });
+    }
+
+    @Test
+    void aCacheHoldingAnIdOutsideTheCorpusStopsTheBootAndNamesThePrecomputeCommand() {
+        Path localPath = writeCache(tempDir.resolve("embeddings-minilm.json"), CORPUS_SHA, "d01", "d99");
+        Path apiPath = writeCache(tempDir.resolve("embeddings-openai.json"), CORPUS_SHA, "d01");
+
+        runner(localPath, apiPath, "cached").run(context -> {
+            assertThat(context).hasFailed();
+            assertThat(rootCause(context.getStartupFailure()).getMessage())
+                    .contains("precomputeEmbeddings")
+                    .contains("unexpected")
+                    .contains("d99");
+        });
+    }
+
+    @Test
+    void liveModeDoesNotCheckTheCoverageOfTheUnservedApiCache() {
+        Path localPath = writeCache(tempDir.resolve("embeddings-minilm.json"), CORPUS_SHA, "d01");
+        Path apiPath = writeCache(tempDir.resolve("embeddings-openai.json"), CORPUS_SHA, "d99");
+
+        runner(localPath, apiPath, "live").run(context -> assertThat(context).hasNotFailed());
+    }
+
     private ApplicationContextRunner runner(Path localPath, Path apiPath, String mode) {
         return new ApplicationContextRunner()
                 .withUserConfiguration(TestConfig.class)
@@ -129,9 +168,15 @@ class EmbeddingCacheStartupValidatorTest {
     }
 
     private static Path writeCache(Path path, String storedCorpusSha) {
+        return writeCache(path, storedCorpusSha, "d01");
+    }
+
+    private static Path writeCache(Path path, String storedCorpusSha, String... documentIds) {
         JsonEmbeddingRepository writer = new JsonEmbeddingRepository(path, "provider-x", storedCorpusSha);
-        writer.save(new EmbeddingCache("1.0", "1.0", storedCorpusSha, "model-x", 2,
-                List.of(new EmbeddingVector("d01", "provider-x", "model-x", 1.0, List.of(0.6, 0.8)))));
+        List<EmbeddingVector> vectors = java.util.Arrays.stream(documentIds)
+                .map(id -> new EmbeddingVector(id, "provider-x", "model-x", 1.0, List.of(0.6, 0.8)))
+                .toList();
+        writer.save(new EmbeddingCache("1.0", "1.0", storedCorpusSha, "model-x", 2, vectors));
         return path;
     }
 
@@ -158,14 +203,34 @@ class EmbeddingCacheStartupValidatorTest {
         }
 
         @Bean
+        CorpusRepository corpusRepository(@Value("${test.corpus-ids:d01}") List<String> ids) {
+            List<CorpusDocument> documents = ids.stream()
+                    .map(id -> new CorpusDocument(id, "Title", List.of("A"), "text", "pdf", "grobid", true, "sha-" + id))
+                    .toList();
+            Corpus corpus = new Corpus("1.0", documents.size(), CORPUS_SHA, documents);
+            return new CorpusRepository() {
+                @Override
+                public Corpus load() {
+                    return corpus;
+                }
+
+                @Override
+                public void save(Corpus toSave) {
+                    throw new UnsupportedOperationException();
+                }
+            };
+        }
+
+        @Bean
         SmartInitializingSingleton embeddingCacheStartupValidator(
+                CorpusRepository corpusRepository,
                 @Qualifier("localEmbeddingRepository") EmbeddingRepository localEmbeddingRepository,
                 @Qualifier("apiEmbeddingRepository") EmbeddingRepository apiEmbeddingRepository,
                 LegajoProperties legajoProperties) {
             // Delegates to the production factory, so these tests exercise DomainConfiguration's
             // own wiring of the validator, not a copy of it.
             return new DomainConfiguration().embeddingCacheStartupValidator(
-                    localEmbeddingRepository, apiEmbeddingRepository, legajoProperties);
+                    corpusRepository, localEmbeddingRepository, apiEmbeddingRepository, legajoProperties);
         }
     }
 }
