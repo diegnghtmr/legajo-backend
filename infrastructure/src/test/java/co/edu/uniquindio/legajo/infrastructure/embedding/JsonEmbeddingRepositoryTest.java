@@ -142,6 +142,20 @@ class JsonEmbeddingRepositoryTest {
                 .withMessageContaining("precomputeEmbeddings");
     }
 
+    @Test
+    void loadingAVectorWhoseLengthDiffersFromTheDeclaredDimensionFailsClosedAndNamesThePrecomputeCommand(
+            @TempDir Path tempDir) throws IOException {
+        Path path = tempDir.resolve("embeddings-minilm.json");
+        Files.writeString(path, cacheJsonWithValues("d04", "0.6, 0.8, 0.0"), StandardCharsets.UTF_8);
+        JsonEmbeddingRepository repository = new JsonEmbeddingRepository(path, "local", EXPECTED_CORPUS_SHA_256);
+
+        assertThatIllegalStateException()
+                .isThrownBy(repository::load)
+                .withMessageContaining("d04")
+                .withMessageContaining("dimension")
+                .withMessageContaining("precomputeEmbeddings");
+    }
+
     private static String cacheJsonWithValues(String documentId, String values) {
         return """
                 {
