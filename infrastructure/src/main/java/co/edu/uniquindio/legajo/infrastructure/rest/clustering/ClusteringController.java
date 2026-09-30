@@ -61,7 +61,7 @@ public class ClusteringController {
     @PostMapping
     public List<LinkageResultResponse> run(@RequestBody ClusteringRequest request) {
         Representation representation = parseRepresentation(request.representation());
-        List<String> linkageIds = request.linkages() == null ? List.of() : request.linkages();
+        List<String> linkageIds = linkageIds(request);
 
         List<LinkageRunResult> results = clusteringService.run(representation, linkageIds);
         return results.stream().map(LinkageResultResponse::from).toList();
@@ -72,7 +72,7 @@ public class ClusteringController {
     @PostMapping("/evaluation")
     public List<LinkageEvaluationResponse> evaluation(@RequestBody ClusteringRequest request) {
         Representation representation = parseRepresentation(request.representation());
-        List<String> linkageIds = request.linkages() == null ? List.of() : request.linkages();
+        List<String> linkageIds = linkageIds(request);
 
         List<LinkageEvaluationOnly> results = clusteringService.evaluateOnly(representation, linkageIds);
         return results.stream().map(LinkageEvaluationResponse::from).toList();
@@ -97,6 +97,18 @@ public class ClusteringController {
 
         ClusteringCutResult result = clusteringService.cut(representation, request.linkage(), request.k());
         return ClusterAssignmentResponse.from(result);
+    }
+
+    /** An omitted {@code linkages} means all four; an explicit empty list is a malformed request. */
+    private static List<String> linkageIds(ClusteringRequest request) {
+        List<String> linkages = request.linkages();
+        if (linkages == null) {
+            return List.of();
+        }
+        if (linkages.isEmpty()) {
+            throw new InvalidRequestException("linkages must not be empty when present");
+        }
+        return linkages;
     }
 
     /** See this class's Javadoc for why an unknown id is classified 400, not 404. */

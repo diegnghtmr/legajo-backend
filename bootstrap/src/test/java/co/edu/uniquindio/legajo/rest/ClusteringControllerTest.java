@@ -86,6 +86,54 @@ class ClusteringControllerTest {
                 .andExpect(jsonPath("$.type").value("urn:legajo:problem:unknown-linkage"));
     }
 
+    @Test
+    void runAnswers400ForAnEmptyLinkagesList() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"linkages":[]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
+    @Test
+    void runAnswers400ForANullElementInLinkages() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"linkages":["ward",null]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
+    @Test
+    void evaluationAnswers400ForAnEmptyLinkagesList() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering/evaluation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"linkages":[]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
+    @Test
+    void evaluationAnswers400ForABlankElementInLinkages() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering/evaluation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"linkages":[" "]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").doesNotExist());
+    }
+
     /**
      * There is no request parameter {@code ks}, so no conforming request can alter the fixed-cuts
      * rule: there is no {@code ks}
