@@ -20,14 +20,15 @@ public record EmbeddingLocalTraceResponse(
         double dotProduct,
         double cosine,
         double angleDegrees,
-        double normalizedScore) implements AlgorithmTraceResponse {
+        double normalizedScore,
+        boolean stemming) implements AlgorithmTraceResponse {
 
-    public static EmbeddingLocalTraceResponse from(EmbeddingLocalTrace trace) {
+    public static EmbeddingLocalTraceResponse from(EmbeddingLocalTrace trace, boolean stemming) {
         Objects.requireNonNull(trace, "trace");
         return new EmbeddingLocalTraceResponse(
                 trace.algorithmId(), trace.provider(), trace.model(), trace.dimension(),
                 trace.vectorAExcerpt(), trace.vectorBExcerpt(), trace.vectorA(), trace.vectorB(),
                 trace.preNormL2A(), trace.preNormL2B(), trace.dotProduct(), trace.cosine(), trace.angleDegrees(),
-                trace.normalizedScore());
+                trace.normalizedScore(), stemming);
     }
 }

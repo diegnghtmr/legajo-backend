@@ -12,9 +12,9 @@ public record AlgorithmSimilarityResponse(String algorithmId, SimilarityResultRe
         Objects.requireNonNull(result, "result");
     }
 
-    public static AlgorithmSimilarityResponse from(AlgorithmSimilarity similarity) {
+    public static AlgorithmSimilarityResponse from(AlgorithmSimilarity similarity, boolean stemming) {
         Objects.requireNonNull(similarity, "similarity");
         return new AlgorithmSimilarityResponse(
-                similarity.algorithmId(), SimilarityResultResponse.from(similarity.result(), similarity.cached()));
+                similarity.algorithmId(), SimilarityResultResponse.from(similarity.result(), similarity.cached(), stemming));
     }
 }

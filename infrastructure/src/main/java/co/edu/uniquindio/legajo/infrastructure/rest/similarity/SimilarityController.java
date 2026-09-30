@@ -79,7 +79,9 @@ public class SimilarityController {
             // unknown identifier of any kind is 400, never 404.
             throw asInvalidRequest(exception);
         }
-        return results.stream().map(AlgorithmSimilarityResponse::from).toList();
+        return results.stream()
+                .map(result -> AlgorithmSimilarityResponse.from(result, similarityService.stemming()))
+                .toList();
     }
 
     /**
@@ -104,7 +106,7 @@ public class SimilarityController {
             throw asInvalidRequest(exception);
         }
         return rows.stream()
-                .map(row -> row.stream().map(SimilarityResultResponse::from).toList())
+                .map(row -> row.stream().map(cell -> SimilarityResultResponse.from(cell, similarityService.stemming())).toList())
                 .toList();
     }
 
@@ -128,7 +130,7 @@ public class SimilarityController {
         } catch (UnknownIdentifierException exception) {
             throw new ResourceNotFoundException(exception.type(), exception.getMessage());
         }
-        return AlgorithmTraceMapper.toResponse(trace);
+        return AlgorithmTraceMapper.toResponse(trace, similarityService.stemming());
     }
 
     private static void requireNonBlank(String value, String fieldName) {

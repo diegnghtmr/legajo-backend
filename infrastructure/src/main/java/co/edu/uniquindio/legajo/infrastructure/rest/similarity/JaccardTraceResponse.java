@@ -14,12 +14,13 @@ public record JaccardTraceResponse(
         int unionSize,
         List<String> intersection,
         List<String> union,
-        double coefficient) implements AlgorithmTraceResponse {
+        double coefficient,
+        boolean stemming) implements AlgorithmTraceResponse {
 
-    public static JaccardTraceResponse from(JaccardTrace trace) {
+    public static JaccardTraceResponse from(JaccardTrace trace, boolean stemming) {
         Objects.requireNonNull(trace, "trace");
         return new JaccardTraceResponse(
                 trace.algorithmId(), trace.setA(), trace.setB(), trace.intersectionSize(), trace.unionSize(),
-                trace.intersection(), trace.union(), trace.coefficient());
+                trace.intersection(), trace.union(), trace.coefficient(), stemming);
     }
 }

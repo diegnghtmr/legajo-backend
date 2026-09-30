@@ -20,14 +20,14 @@ public final class AlgorithmTraceMapper {
     private AlgorithmTraceMapper() {
     }
 
-    public static AlgorithmTraceResponse toResponse(AlgorithmTrace trace) {
+    public static AlgorithmTraceResponse toResponse(AlgorithmTrace trace, boolean stemming) {
         Objects.requireNonNull(trace, "trace");
         return switch (trace) {
-            case DpMatrixTrace t -> DpMatrixTraceResponse.from(t);
-            case JaccardTrace t -> JaccardTraceResponse.from(t);
-            case TfIdfCosineTrace t -> TfIdfCosineTraceResponse.from(t);
-            case EmbeddingLocalTrace t -> EmbeddingLocalTraceResponse.from(t);
-            case EmbeddingApiTrace t -> EmbeddingApiTraceResponse.from(t);
+            case DpMatrixTrace t -> DpMatrixTraceResponse.from(t, stemming);
+            case JaccardTrace t -> JaccardTraceResponse.from(t, stemming);
+            case TfIdfCosineTrace t -> TfIdfCosineTraceResponse.from(t, stemming);
+            case EmbeddingLocalTrace t -> EmbeddingLocalTraceResponse.from(t, stemming);
+            case EmbeddingApiTrace t -> EmbeddingApiTraceResponse.from(t, stemming);
         };
     }
 }

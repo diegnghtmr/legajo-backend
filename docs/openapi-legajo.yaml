@@ -629,7 +629,7 @@ components:
     SimilarityResult:
       type: object
       description: Common result envelope, as returned over the wire (with `cached`).
-      required: [normalizedScore, computedNanos, cached, degenerate]
+      required: [normalizedScore, computedNanos, cached, degenerate, stemming]
       properties:
         normalizedScore:
           type: number
@@ -649,6 +649,13 @@ components:
         degenerate:
           type: boolean
 
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
     AlgorithmSimilarity:
       type: object
       required: [algorithmId, result]
@@ -718,10 +725,17 @@ components:
     DpMatrixTrace:
       type: object
       description: Shared by `levenshtein` and `needleman-wunsch`.
-      required: [algorithmId, rowLabels, columnLabels, matrix, optimalPath, operations]
+      required: [algorithmId, rowLabels, columnLabels, matrix, optimalPath, operations, stemming]
       properties:
         algorithmId:
           $ref: "#/components/schemas/AlgorithmId"
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
         rowLabels:
           type: array
           items:
@@ -749,10 +763,17 @@ components:
 
     JaccardTrace:
       type: object
-      required: [algorithmId, setA, setB, intersectionSize, unionSize, intersection, union, coefficient]
+      required: [algorithmId, setA, setB, intersectionSize, unionSize, intersection, union, coefficient, stemming]
       properties:
         algorithmId:
           $ref: "#/components/schemas/AlgorithmId"
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
         setA:
           type: array
           items:
@@ -824,10 +845,17 @@ components:
 
     TfIdfCosineTrace:
       type: object
-      required: [algorithmId, corpusSize, terms, dotProduct, rawNormA, rawNormB, cosine, angleDegrees]
+      required: [algorithmId, corpusSize, terms, dotProduct, rawNormA, rawNormB, cosine, angleDegrees, stemming]
       properties:
         algorithmId:
           $ref: "#/components/schemas/AlgorithmId"
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
         corpusSize:
           type: integer
         terms:
@@ -855,6 +883,7 @@ components:
       type: object
       required:
         - algorithmId
+        - stemming
         - provider
         - model
         - dimension
@@ -871,6 +900,13 @@ components:
       properties:
         algorithmId:
           $ref: "#/components/schemas/AlgorithmId"
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
         provider:
           type: string
         model:
@@ -920,6 +956,7 @@ components:
       type: object
       required:
         - algorithmId
+        - stemming
         - provider
         - model
         - dimension
@@ -936,6 +973,13 @@ components:
       properties:
         algorithmId:
           $ref: "#/components/schemas/AlgorithmId"
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
         provider:
           type: string
         model:
@@ -1083,12 +1127,19 @@ components:
 
     LinkageResult:
       type: object
-      required: [linkageId, linkageDisplayName, rows, leafOrder, documentIds, evaluation]
+      required: [linkageId, linkageDisplayName, rows, leafOrder, documentIds, evaluation, stemming]
       properties:
         linkageId:
           $ref: "#/components/schemas/LinkageId"
         linkageDisplayName:
           type: string
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
         rows:
           type: array
           description: (n-1) rows (19 rows with n = 20).
@@ -1111,12 +1162,19 @@ components:
 
     LinkageEvaluation:
       type: object
-      required: [linkageId, linkageDisplayName, evaluation]
+      required: [linkageId, linkageDisplayName, evaluation, stemming]
       properties:
         linkageId:
           $ref: "#/components/schemas/LinkageId"
         linkageDisplayName:
           type: string
+        stemming:
+          type: boolean
+          description: >-
+            Whether Porter stemming was applied to the token streams behind
+            this result (the server's fixed `legajo.preprocess.stemming`
+            setting; `false` by default). Embedding capabilities do not
+            preprocess text, so for them it only echoes the setting.
         evaluation:
           $ref: "#/components/schemas/ClusteringEvaluation"
 

@@ -30,7 +30,17 @@ import java.util.List;
  * would otherwise treat as "allow every origin".
  */
 @ConfigurationProperties(prefix = "legajo")
-public record LegajoProperties(EmbeddingProviderMode embeddingProvider, List<String> corsOrigins) {
+public record LegajoProperties(EmbeddingProviderMode embeddingProvider, List<String> corsOrigins,
+        Preprocess preprocess) {
+
+    /**
+     * Text preprocessing switches. {@code stemming} turns Porter stemming on for the classic
+     * similarity algorithms and the {@code tfidf-cosine} representation; it is {@code false}
+     * unless {@code legajo.preprocess.stemming} ({@code LEGAJO_PREPROCESS_STEMMING}) says
+     * otherwise, and is fixed for the life of the process.
+     */
+    public record Preprocess(boolean stemming) {
+    }
 
     /** Origins allowed when {@code LEGAJO_CORS_ORIGINS} is empty or absent. */
     public static final List<String> DEFAULT_CORS_ORIGINS = List.of("http://localhost:5173", "http://localhost");
@@ -38,6 +48,7 @@ public record LegajoProperties(EmbeddingProviderMode embeddingProvider, List<Str
     public LegajoProperties {
         embeddingProvider = embeddingProvider == null ? EmbeddingProviderMode.DEFAULT : embeddingProvider;
         corsOrigins = normalizeCorsOrigins(corsOrigins);
+        preprocess = preprocess == null ? new Preprocess(false) : preprocess;
     }
 
     private static List<String> normalizeCorsOrigins(List<String> corsOrigins) {

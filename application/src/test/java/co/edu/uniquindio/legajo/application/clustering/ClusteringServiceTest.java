@@ -202,6 +202,36 @@ class ClusteringServiceTest {
                 .isEqualTo(ProblemType.UNKNOWN_LINKAGE);
     }
 
+    private static final Corpus INFLECTED_CORPUS = new Corpus("1.0", 3, "corpus-sha", List.of(
+            doc("d01", "dogs running"), doc("d02", "dog runs"), doc("d03", "unrelated words entirely running")));
+
+    private ClusteringService inflectedService(boolean stemming) {
+        return new ClusteringService(new FakeCorpusRepository(INFLECTED_CORPUS), localEmbeddingRepository,
+                apiEmbeddingRepository, new FakeRequestCache<>(), stemming);
+    }
+
+    @Test
+    void stemmingIsOffByDefault() {
+        assertThat(service.stemming()).isFalse();
+        assertThat(inflectedService(false).stemming()).isFalse();
+    }
+
+    @Test
+    void withoutStemmingInflectedFormsAreNotMergedFirst() {
+        LinkageRunResult single = inflectedService(false).run(Representation.TFIDF_COSINE, List.of("single")).getFirst();
+
+        assertThat(single.rows().getFirst().mergeDistance()).isGreaterThan(0.0);
+    }
+
+    @Test
+    void withStemmingInflectedFormsMergeAtZeroDistance() {
+        ClusteringService stemmed = inflectedService(true);
+        LinkageRunResult single = stemmed.run(Representation.TFIDF_COSINE, List.of("single")).getFirst();
+
+        assertThat(stemmed.stemming()).isTrue();
+        assertThat(single.rows().getFirst().mergeDistance()).isZero();
+    }
+
     @Test
     void runRejectsANullOrBlankLinkageId() {
         assertThatThrownBy(() -> service.run(Representation.TFIDF_COSINE, java.util.Arrays.asList("ward", null)))

@@ -103,6 +103,22 @@ class ClusteringControllerTest {
     }
 
     @Test
+    void runReportsStemmingOffByDefaultOnEveryLinkage() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].stemming").value(false))
+                .andExpect(jsonPath("$[3].stemming").value(false));
+    }
+
+    @Test
+    void evaluationReportsStemmingOffByDefaultOnEveryLinkage() throws Exception {
+        mockMvc.perform(post("/api/v1/clustering/evaluation").contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].stemming").value(false))
+                .andExpect(jsonPath("$[3].stemming").value(false));
+    }
+
+    @Test
     void runAnswers400ForAnEmptyLinkagesList() throws Exception {
         mockMvc.perform(post("/api/v1/clustering")
                         .contentType(MediaType.APPLICATION_JSON)
