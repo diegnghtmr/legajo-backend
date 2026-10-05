@@ -346,11 +346,8 @@ repository's own image (this `Dockerfile`) as a Docker web
 service; `docker compose up` here stays the reproducibility path, not the acceptance test —
 what proves deployment is the two public URLs below actually answering.
 
-- **API base URL (Render):** _pending deployment — not yet assigned. This placeholder is
-  replaced with the real Render URL once deployment runs; it is never a
-  fabricated URL._
-- **Frontend URL (Vercel):** _pending deployment — set and documented by the frontend
-  repository once deployment runs there; linked here for convenience once known._
+- **API base URL (Render):** https://legajo-backend.onrender.com
+- **Frontend URL (Vercel):** https://legajo-frontend.vercel.app
 
 **Cold-start note.** Render's free tier suspends the service when idle; the first request
 after a period of inactivity is slow while the instance wakes up. Before a demo, poll the
@@ -359,7 +356,7 @@ health endpoint until it answers and only then start the walkthrough:
 ```bash
 docker run --rm alpine:3.20 sh -c 'apk add --no-cache curl >/dev/null && \
   until curl -sf "$1/actuator/health" | grep -q "\"status\":\"UP\""; do sleep 3; done; \
-  echo "backend is warm"' _ https://<render-app>.onrender.com
+  echo "backend is warm"' _ https://legajo-backend.onrender.com
 ```
 
 CORS: `LEGAJO_CORS_ORIGINS` is set on Render to the exact public Vercel
