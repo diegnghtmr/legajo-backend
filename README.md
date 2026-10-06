@@ -349,6 +349,17 @@ what proves deployment is the two public URLs below actually answering.
 - **API base URL (Render):** https://legajo-backend.onrender.com
 - **Frontend URL (Vercel):** https://legajo-frontend.vercel.app
 
+### Native Git deployment policy
+
+The existing `legajo-backend` Docker web service uses Render's native Git connection
+to `github.com/diegnghtmr/legajo-backend` with these dashboard settings:
+
+- **Branch:** `main` — automatic Git deployments apply only to this branch.
+- **Auto-Deploy:** `After CI Checks Pass` — automatic deployments wait for CI checks to pass.
+- **PR Previews:** `Off` — no automatic pull-request preview services are created.
+
+This policy governs automatic Git deployments; it does not prohibit manual deployments.
+
 **Cold-start note.** Render's free tier suspends the service when idle; the first request
 after a period of inactivity is slow while the instance wakes up. Before a demo, poll the
 health endpoint until it answers and only then start the walkthrough:
