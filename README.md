@@ -373,3 +373,7 @@ docker run --rm alpine:3.20 sh -c 'apk add --no-cache curl >/dev/null && \
 CORS: `LEGAJO_CORS_ORIGINS` is set on Render to the exact public Vercel
 origin; an unset or empty value only ever falls back to the two localhost defaults
 (`http://localhost:5173`, `http://localhost`), never to a wildcard.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
