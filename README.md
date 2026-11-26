@@ -154,6 +154,10 @@ The protocol uses one fork, three one-second warmup iterations, and five one-sec
 | `bootstrap` | Spring startup, wiring, and one-shot corpus tools. |
 | `benchmarks` | JMH harness and reference results. |
 
+## Documentation
+
+- [Backend reference](docs/backend-reference.md) — module and package map, container and smoke runbooks, corpus validation, JMH protocol, and Render Git deployment policy.
+
 ## Related repositories
 
 - [legajo-frontend](https://github.com/diegnghtmr/legajo-frontend) — bilingual workbench for exploring scores, traces, trees, and benchmark curves.
